@@ -21,6 +21,9 @@
         import * as THREE from "three";
         import { OrbitControls } from "three/addons/controls/OrbitControls.js";
         import Stats from 'three/addons/libs/stats.module.js';
+        
+        // 定义文件主机路径
+        const FILE_HOST = window.location.origin + '/threeExamples/';
 
         var scene, camera, renderer, clock, controller, stats
         var shader_material, cloud, range = 50
@@ -114,31 +117,31 @@
             return new THREE.ShaderMaterial({
                 uniforms: {
                     texture1: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/1.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/1.png')
                     },
                     texture2: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/2.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/2.png')
                     },
                     texture3: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/3.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/3.png')
                     },
                     texture4: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/4.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/4.png')
                     },
                     texture5: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/5.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/5.png')
                     },
                     texture6: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/6.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/6.png')
                     },
                     texture7: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/7.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/7.png')
                     },
                     texture8: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/8.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/8.png')
                     },
                     texture9: {
-                        value: loader.load(FILE_HOST + 'threeExamples/application/codeCloud/9.png')
+                        value: loader.load(FILE_HOST + 'application/codeCloud/9.png')
                     },
                     random: {
                         value: Math.random()

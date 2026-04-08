@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- 首页 -->
+  <url>
+    <loc>https://threelab.cn/</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 主要分类页面 -->
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=官方资源</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=3D地球</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=智慧城市</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=行业应用</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=高级应用</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=着色器</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=GitHub案例</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/example?navigation=优质引擎</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 具体示例页面 -->
+  <!-- Three.js官方示例 -->
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=Three.js案例&amp;classify=threejsAuthor&amp;id=threejsAuthor</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Cesium官方示例 -->
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=Cesium案例&amp;classify=cesiumAuthor&amp;id=cesiumAuthor</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- 3D地球示例 -->
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=3D地球&amp;classify=3dEarth&amp;id=3dEarth</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- 智慧城市示例 -->
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=智慧城市&amp;classify=smartCity&amp;id=smartCity</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- 着色器示例 -->
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=着色器&amp;classify=shader&amp;id=shader_planet</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- 其他重要示例 -->
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=3D地球&amp;classify=3dEarth&amp;id=pointsEarth</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=智慧城市&amp;classify=smartCity&amp;id=codeCloud</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=行业应用&amp;classify=industry&amp;id=industry</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <url>
+    <loc>https://threelab.cn/#/codeMirror?navigation=高级应用&amp;classify=advanced&amp;id=advanced</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- 代码编辑器页面 -->
+  <url>
+    <loc>https://threelab.cn/#/codeMirror</loc>
+    <lastmod>2025-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>

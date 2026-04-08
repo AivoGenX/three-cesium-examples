@@ -1,9 +1,29 @@
 import { HOST, FILE_HOST } from "./host.js";
 export default [
   {
-    pid: "products",
-    name: "合作伙伴",
+    pid: "official",
+    name: "官方资源",
     children: [
+      {
+        id: "threejsAuthor", // Three.js作者
+        name: "Three.js官方示例",
+        author: "mrdoob",
+        openUrl: "https://threejs.org/examples/#webgl_animation_keyframes",
+        githubUrl: "https://github.com/mrdoob/three.js/",
+        image: HOST + "/threeExamples/openSource/threeexamples.png",
+        tag: "官方", // 标签
+        bgcolor: "rgb(0, 150, 136)", // 背景颜色
+      },
+      {
+        id: "cesiumAuthor", // Cesium作者
+        name: "Cesium官方示例",
+        author: "CesiumGS",
+        openUrl: "https://sandcastle.cesium.com/",
+        githubUrl: "https://github.com/CesiumGS",
+        image: HOST + "/threeExamples/openSource/sandcastle.png",
+        tag: "官方", // 标签
+        bgcolor: "rgb(63, 81, 181)", // 背景颜色
+      },
       {
         id: "ThreeChineseExamples", // 官方示例
         name: "threejs官网实例 - 优化版",
@@ -16,12 +36,22 @@ export default [
       },
       {
         id: "editor",
-        name: "模型编辑器",
-        author: "AivoGenX",
-        openUrl: "https://threelab.cn/threejs-edit/",
-        image: "https://www.threelab.cn/img/threejs-edit.png",
+        name: "threejs编辑器-vue版本",
+        author: "TriLab",
+        openUrl: "https://threelab.cn/ThreeEditX/",
+        image: HOST + "/threeExamples/openSource/ThreeEditX.png",
         tag: "编辑器", // 标签
         bgcolor: "rgb(0 206 249)", // 背景颜色
+      },
+      
+      {
+        id: "threemap",
+        name: "轻量级地图引擎",
+        author: "TriLab",
+        openUrl: "https://threelab.cn/TriLabEngine/#/",
+        image: HOST + "/threeExamples/openSource/trilab.png",
+        tag: "轻量级", // 标签
+        bgcolor: "rgb(255 136 130)", // 背景颜色
       },
       {
         id: "tool",
@@ -33,24 +63,6 @@ export default [
         image: FILE_HOST + "images/tool.png",
         tag: "下载器", // 标签
         bgcolor: "rgb(193 136 0)", // 背景颜色
-      },
-      {
-        id: "threemap",
-        name: "轻量级地图引擎",
-        author: "AivoGenX",
-        openUrl: "https://threelab.cn/threemap/#/example",
-        image: "https://threelab.cn/img/threemap.png",
-        tag: "轻量级", // 标签
-        bgcolor: "rgb(255 136 130)", // 背景颜色
-      },
-      {
-        id: "modelpreview",
-        name: "浏览器传值方式查看模型工具",
-        author: "AivoGenX",
-        openUrl: "https://threelab.cn/tools/modelpreview/#/",
-        image: "https://threelab.cn/img/modelpreview.png",
-        tag: "新工具", // 标签
-        bgcolor: "rgb(181, 200, 34)", // 背景颜色
       },
     ],
   },
@@ -971,15 +983,6 @@ export default [
     name: "应用场景",
     children: [
       {
-        id: "ghostHouse",
-        name: "鬼屋",
-        author: "FFMMCC",
-        codeUrl: HOST + "threeExamples/application/ghostHouse.html",
-        image: HOST + "threeExamples/application/ghostHouse.jpg",
-        tag: "经典案例", // 标签
-        bgcolor: "rgb(181, 28, 34)", // 背景颜色
-      },
-      {
         id: "matrixOperation",
         name: "矩阵操作",
         author: "alwxkxk",
@@ -1250,20 +1253,6 @@ export default [
     gid: "introduction",
     gname: "入门案例",
     children: [
-      {
-        id: "cameraAttribute",
-        name: "相机属性",
-        author: "giser2017",
-        codeUrl: HOST + "threeExamples/basic/cameraAttribute.html",
-        image: HOST + "threeExamples/basic/cameraAttribute.jpg",
-      },
-      {
-        id: "modelShadow",
-        name: "模型阴影",
-        author: "giser2017",
-        codeUrl: HOST + "threeExamples/basic/modelShadow.html",
-        image: HOST + "threeExamples/basic/modelShadow.jpg",
-      },
       {
         id: "modelLoad",
         name: "gltf/fbx/obj模型加载",

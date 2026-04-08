@@ -1,9 +1,7 @@
 import cesiumExamples from "./cesium-examples.js";
 import threeExamples from "./three-examples.js";
-import webglExamples from "./webgl-examples.js";
+import webglGpuExamples from "./webgl-gpu-examples.js";
 import githubExamples from "./github-examples.js";
-// WEBGPU
-import webgpuExamples from "./webgpu-examples.js";
 
 
 // import threeTutorial from "./three-tutorial.js";
@@ -13,15 +11,14 @@ import threeCesiumAuthors from "./author.js";
 import { HOST, FILE_HOST } from "./host.js";
 import threeCesiumLinks from "./links.js";
 window.THREE_CESIUM_LINKS = threeCesiumLinks;
-window.THREE_CESIUM_TITLE= 'Three.js和Cesium.js案例集';
+window.THREE_CESIUM_TITLE= 'ThreeLab三维创意空间';
 
 window.FILE_HOST = FILE_HOST;
 
 window.THREE_CESIUM_NAVIGATION = [
   { name: "Three.js案例",label: "Three.js案例", examples: threeExamples }, 
   { name: "Cesium.js案例",label: "Cesium.js案例", examples: cesiumExamples },
-  { name: "WebGL",label: "WebGL", examples: webglExamples },
-  { name: "WebGPU",  label: "WebGPU",examples: webgpuExamples }, 
+  { name: "WebGL/GPU",label: "WebGL/GPU", examples: webglGpuExamples }, 
   { name: "Github案例",label: "Github案例", examples: githubExamples},
 ];
 

@@ -1,60 +1,67 @@
 export default [
-    {
-        name: '🏡Home',
-        url: 'https://threelab.cn/'
-    },
+  {
+    name: "📦Three",
+    children: [
+      {
+        name: "Home",
+        url: "https://threejs.org/",
+      },
+      {
+        name: "Documents",
+        url: "https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene",
+      },
+      {
+        name: "Examples",
+        url: "https://threejs.org/examples/#webgl_animation_keyframes",
+      },
+      {
+        name: "Editor",
+        url: "https://threejs.org/editor/",
+      },
+    ],
+  },
 
-    {
-        name: '📦Three',
-        children: [
-            {
-                name: '🏡Home',
-                url: 'https://threejs.org/'
-            },
-            {
-                name: '📚Documents',
-                url: 'https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene'
-            },
-            {
-                name: '🐘Examples',
-                url: 'https://threejs.org/examples/#webgl_animation_keyframes',
-            },
-        ]
-    },
-
-    {
-        name: '🌐Cesium',
-        children: [
-            {
-                name: '🏡Home',
-                url: 'https://cesium.com/cesiumjs/'
-            },
-            {
-                name: '📚Documents',
-                url: 'https://cesium.com/docs/cesiumjs-ref-doc/'
-            },
-            {
-                name: '🐘Examples',
-                url: 'https://sandcastle.cesium.com/'
-            },
-        ]
-    },
-    {
-        name: '🍃github',
-        children: [
-            {
-                name: '📦Three',
-                url: 'https://github.com/mrdoob/three.js'
-            },
-            {
-                name: '🌐Cesium',
-                url: 'https://github.com/CesiumGS/cesium'
-            },
-            {
-                name: '⭐Join us',
-                url: 'https://github.com/AivoGenX/threelab-threejs-webgpu-vue-js'
-            }
-        ]
-    }
-
-]
+  {
+    name: "🌐Cesium",
+    children: [
+      {
+        name: "Home",
+        url: "https://cesium.com/cesiumjs/",
+      },
+      {
+        name: "Documents",
+        url: "https://cesium.com/docs/cesiumjs-ref-doc/",
+      },
+      {
+        name: "Examples",
+        url: "https://sandcastle.cesium.com/",
+      },
+    ],
+  },
+  {
+    name: "📚学习教程",
+    children: [
+      {
+        name: "文档教程",
+        url: "https://docs.threelab.cn/",
+      },
+      {
+        name: "视频教程",
+        url: "https://space.bilibili.com/3546385311861401",
+      },
+    ],
+  },
+  {
+    name: "开源引擎",
+    children: [
+      {
+        name: "TriLab引擎",
+        url: "https://threelab.cn/TriLabEngine/#/",
+      },
+      {
+        name: "赞助团队",
+        url: "http://trilab.threelab.cn/index.html",
+      },
+    ],
+  },
+];

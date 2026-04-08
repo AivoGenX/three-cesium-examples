@@ -332,10 +332,40 @@ export default [
     github: "https://github.com/bubinyang",
     icon: "https://avatars.githubusercontent.com/u/52728481?v=4",
   },
-    {
-        id: 'FFMMCC',
-        name: 'FFMMCC',
-        github: 'https://coderfmc.github.io/three.js-demo/fmc-web-3d/',
-        icon: HOST + 'files/author/FFMMCC.jpg'
-    },
+  {
+    id: "mrdoob",
+    name: "mrdoob",
+    github: "https://github.com/mrdoob",
+    icon: "https://avatars.githubusercontent.com/u/97088?v=4",
+  },
+  {
+    id: "CesiumGS",
+    name: "CesiumGS",
+    github: "https://github.com/CesiumGS",
+    icon: "https://avatars.githubusercontent.com/u/54716382?s=200&v=4",
+  },
+  {
+    id: "TriLab",
+    name: "TriLab", 
+    icon: "https://avatars.githubusercontent.com/u/184769639?v=4",
+    github: "https://github.com/AivoGenX",
+  },
+  {
+    id: "maptalks",
+    name: "maptalks",
+    github: "https://github.com/maptalks",
+    icon: "https://avatars.githubusercontent.com/u/136434?s=200&v=4",
+  },
+  {
+    id: "mapbox",
+    name: "mapbox",
+    github: "https://github.com/mapbox",
+    icon: "https://avatars.githubusercontent.com/u/600935?s=200&v=4",
+  },
+  {
+    id: "NASA-AMMOS",
+    name: "NASA-AMMOS",
+    github: "https://github.com/NASA-AMMOS",
+    icon: "https://avatars.githubusercontent.com/u/13568273?s=200&v=4",
+  },
 ];

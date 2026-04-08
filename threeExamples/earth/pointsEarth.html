@@ -31,6 +31,10 @@
         import * as THREE from "three";
         import { OrbitControls } from "three/addons/controls/OrbitControls.js";
         import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+        
+        // 定义文件主机路径
+        const FILE_HOST = window.location.origin + '/threeExamples/';
+        
         let gui = new GUI();
         // 初始化场景、相机和渲染器
         const gl = {

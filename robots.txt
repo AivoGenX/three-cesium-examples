@@ -1,0 +1,39 @@
+# ThreeLab - Three.js和Cesium开源示例网站robots.txt
+
+User-agent: *
+Allow: /
+
+# 禁止抓取的目录
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+
+# 允许抓取的主要页面
+Allow: /index.html
+Allow: /sitemap.xml
+
+# Sitemap位置
+Sitemap: https://threelab.cn/sitemap.xml
+
+# 爬取延迟（秒）
+Crawl-delay: 1
+
+# 允许的搜索引擎
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# 禁止某些爬虫
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /

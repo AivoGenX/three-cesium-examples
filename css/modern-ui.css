@@ -1,0 +1,265 @@
+/* 现代化设计系统 - Three.js & Cesium 实例网站 */
+
+:root {
+  /* 主色调 - 深空科技蓝 */
+  --primary-dark: #0a0e1a;
+  --primary-darker: #050811;
+  --primary-light: #1a1f2e;
+  --primary-lighter: #2a3042;
+  
+  /* 强调色 - 霓虹蓝 */
+  --accent-primary: #00d4ff;
+  --accent-secondary: #7b61ff;
+  --accent-tertiary: #ff6b9d;
+  
+  /* 渐变色彩 */
+  --gradient-primary: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%);
+  --gradient-secondary: linear-gradient(135deg, #1a1f2e 0%, #0a0e1a 100%);
+  --gradient-overlay: linear-gradient(180deg, rgba(10,14,26,0.8) 0%, transparent 100%);
+  
+  /* 文字颜色 */
+  --text-primary: #ffffff;
+  --text-secondary: #b8c2cc;
+  --text-tertiary: #8a94a6;
+  
+  /* 边框和阴影 */
+  --border-primary: rgba(0, 212, 255, 0.3);
+  --border-secondary: rgba(123, 97, 255, 0.2);
+  --shadow-primary: 0 8px 32px rgba(0, 212, 255, 0.15);
+  --shadow-secondary: 0 4px 20px rgba(123, 97, 255, 0.1);
+  --glow-primary: 0 0 20px rgba(0, 212, 255, 0.5);
+  
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  
+  /* 间距 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+}
+
+/* 基础重置 */
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--primary-dark);
+  color: var(--text-primary);
+}
+
+/* 现代化滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--primary-light);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-secondary);
+}
+
+/* 现代化按钮样式 */
+.modern-button {
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: var(--space-sm) var(--space-lg);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-primary);
+}
+
+.modern-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.modern-button:hover::before {
+  left: 100%;
+}
+
+.modern-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary), var(--glow-primary);
+}
+
+.modern-button:active {
+  transform: translateY(0);
+}
+
+/* 现代化卡片样式 */
+.modern-card {
+  background: var(--gradient-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-secondary);
+  transition: all 0.3s ease;
+}
+
+.modern-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-primary), var(--glow-primary);
+  border-color: var(--accent-primary);
+}
+
+/* 现代化输入框 */
+.modern-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+}
+
+.modern-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+
+.modern-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* 现代化导航菜单 */
+.modern-nav {
+  background: var(--gradient-overlay);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.modern-nav-item {
+  color: var(--text-secondary);
+  padding: var(--space-md) var(--space-lg);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.modern-nav-item:hover {
+  color: var(--text-primary);
+}
+
+.modern-nav-item.active {
+  color: var(--accent-primary);
+}
+
+.modern-nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 1px;
+}
+
+/* 现代化侧边栏 */
+.modern-sidebar {
+  background: var(--gradient-secondary);
+  border-right: 1px solid var(--border-primary);
+  backdrop-filter: blur(10px);
+}
+
+.modern-sidebar-item {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  margin: var(--space-xs) 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.modern-sidebar-item:hover {
+  background: rgba(0, 212, 255, 0.1);
+  transform: translateX(4px);
+}
+
+.modern-sidebar-item.active {
+  background: rgba(0, 212, 255, 0.2);
+  border-left: 3px solid var(--accent-primary);
+}
+
+/* 现代化徽章 */
+.modern-badge {
+  background: var(--gradient-primary);
+  color: var(--text-primary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 动画效果 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: var(--shadow-primary);
+  }
+  50% {
+    box-shadow: var(--shadow-primary), var(--glow-primary);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  :root {
+    --space-lg: 16px;
+    --space-xl: 24px;
+  }
+  
+  .modern-card {
+    padding: var(--space-md);
+  }
+}

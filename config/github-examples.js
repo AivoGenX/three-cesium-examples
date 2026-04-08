@@ -1,6 +1,65 @@
 import { HOST, FILE_HOST } from "./host.js";
 
 export default [
+     {
+        pid: 'qualityEngine',
+        name: '优质引擎',
+        name_en: 'Quality Engines',
+        children: [
+            {
+                id: 'threejs',
+                author: 'mrdoob',
+                name: 'Three.js',
+                name_en: 'Three.js',
+                githubUrl: 'https://github.com/mrdoob/three.js',
+                openUrl: 'https://threejs.org/',
+                image: HOST + 'threeExamples/openSource/three.png'
+            },
+            {
+                id: 'cesium',
+                author: 'CesiumGS',
+                name: 'Cesium',
+                name_en: 'Cesium',
+                githubUrl: 'https://github.com/CesiumGS/cesium',
+                openUrl: 'https://cesium.com/',
+                image: HOST + 'threeExamples/openSource/sandcastle.png'
+            },
+          {
+                id: 'iTowns',
+                name: 'iTowns',
+                tag: 'Tiles',
+                author: 'iTowns',
+                githubUrl: 'https://github.com/iTowns/itowns',
+                openUrl: 'https://www.itowns-project.org/',
+                image: HOST + 'threeExamples/openSource/iTowns.jpg'
+            }, 
+            {
+                id: 'maptalks_three',
+                githubUrl: 'https://github.com/maptalks/maptalks.three',
+                openUrl: 'https://maptalks.org/maptalks.three/docs/dist/',
+                name: 'maptalks',
+                image: HOST + 'threeExamples/openSource/maptalks.jpg'
+            },
+            {
+                id: 'mapbox',
+                author: 'mapbox',
+                name: 'Mapbox GL JS',
+                name_en: 'Mapbox GL JS',
+                githubUrl: 'https://github.com/mapbox/mapbox-gl-js',
+                openUrl: 'https://www.mapbox.com/mapbox-gljs',
+                image: HOST + 'threeExamples/openSource/mapbox.png'
+            },
+            {
+                id: '3dtilesrendererjs',
+                author: 'NASA-AMMOS',
+                name: '3D Tiles Renderer',
+                name_en: '3D Tiles Renderer',
+                githubUrl: 'https://github.com/NASA-AMMOS/3DTilesRendererJS',
+                openUrl: 'https://nasa-ammos.github.io/3DTilesRendererJS/',
+                image: HOST + 'threeExamples/openSource/3dtiles.jpg'
+            }
+        ]
+    },
     {
         pid: 'topNavigation',
         name: '精选导航',
@@ -35,15 +94,7 @@ export default [
         name: '相关框架',
         name_en: 'Frame Work',
         children: [
-            {
-                id: 'iTowns',
-                name: 'iTowns',
-                tag: 'Tiles',
-                author: 'iTowns',
-                githubUrl: 'https://github.com/iTowns/itowns',
-                openUrl: 'https://www.itowns-project.org/',
-                image: HOST + 'threeExamples/openSource/iTowns.jpg'
-            }, 
+           
             {
                 id: 'kokomijs',
                 name: 'kokomi.js',
@@ -203,4 +254,5 @@ export default [
             }
         ]
     },
+   
 ]
