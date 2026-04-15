@@ -831,6 +831,18 @@ export default [
         codeUrl: HOST + "threeExamples/shader/compassShader.html",
         image: HOST + "threeExamples/shader/compassShader.jpg",
       },
+      {
+        id: "waterRipple",
+        name: "水波纹扩散",
+        author: "AI Assistant",
+        codeUrl: HOST + "threeExamples/shader/waterRipple.html",
+        image: HOST + "threeExamples/shader/waterRipple.jpg",
+        meta: {
+          title: "水波纹扩散效果",
+          keywords: "three.js,水波纹,着色器,交互效果",
+          description: "使用three.js实现交互式水波纹扩散着色器效果",
+        },
+      },
     ],
   },
   {

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js水波纹扩散效果演示</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">点击屏幕创建水波纹效果</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(50, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(1,1,1)的位置观察场景
+    camera.position.set(1, 1, 1)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 创建平面几何体，作为水波纹效果的载体
+    const geometry = new THREE.PlaneGeometry(4, 4, 128, 128);
+
+    // 存储波纹数据
+    const ripples = [];
+    // 创建波纹数据数组（Three.js要求数组uniforms需要预先分配大小）
+    const rippleArray = new Array(10).fill().map(() => new THREE.Vector3(0, 0, -100));
+
+    // 创建自定义着色器材质，实现水波纹效果的核心部分
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,             // 启用透明度
+      uniforms: {
+        uTime: { value: 0.0 },           // 时间变量，控制波纹动画
+        uRippleCount: { value: 0 },      // 当前波纹数量
+        uWaveColor: { value: new THREE.Color(0x00a8ff) },    // 波纹颜色
+        uWaveSpeed: { value: 2.0 },      // 波纹传播速度
+        uWaveDecay: { value: 0.8 },      // 波纹衰减速度
+        uWaveIntensity: { value: 0.3 },   // 波纹强度
+        // 单独定义每个波纹的uniform
+        uRipple0: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple1: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple2: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple3: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple4: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple5: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple6: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple7: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple8: { value: new THREE.Vector3(0, 0, -100) },
+        uRipple9: { value: new THREE.Vector3(0, 0, -100) }
+      },
+      // 顶点着色器：处理几何体顶点，实现波纹变形
+      vertexShader: `
+        uniform float uTime;
+        uniform int uRippleCount;
+        uniform float uWaveSpeed;
+        uniform float uWaveDecay;
+        uniform float uWaveIntensity;
+        
+        // 单独定义每个波纹的uniform
+        uniform vec3 uRipple0;
+        uniform vec3 uRipple1;
+        uniform vec3 uRipple2;
+        uniform vec3 uRipple3;
+        uniform vec3 uRipple4;
+        uniform vec3 uRipple5;
+        uniform vec3 uRipple6;
+        uniform vec3 uRipple7;
+        uniform vec3 uRipple8;
+        uniform vec3 uRipple9;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vWaveHeight;
+        
+        void main() {
+            vUv = uv;
+            vPosition = position;
+            
+            // 初始位置
+            vec3 newPosition = position;
+            float waveHeight = 0.0;
+            
+            // 计算每个波纹对顶点的影响
+            for(int i = 0; i < 10; i++) {
+                if(i >= uRippleCount) break;
+                
+                // 根据索引选择对应的波纹
+                vec3 ripple;
+                if(i == 0) ripple = uRipple0;
+                else if(i == 1) ripple = uRipple1;
+                else if(i == 2) ripple = uRipple2;
+                else if(i == 3) ripple = uRipple3;
+                else if(i == 4) ripple = uRipple4;
+                else if(i == 5) ripple = uRipple5;
+                else if(i == 6) ripple = uRipple6;
+                else if(i == 7) ripple = uRipple7;
+                else if(i == 8) ripple = uRipple8;
+                else if(i == 9) ripple = uRipple9;
+                
+                float rippleTime = uTime - ripple.z;
+                
+                if(rippleTime < 0.0) continue;
+                
+                // 计算到波纹中心的距离
+                float dist = distance(position.xy, ripple.xy);
+                
+                // 计算波纹传播
+                float waveFront = rippleTime * uWaveSpeed;
+                float waveWidth = 0.3;
+                
+                // 计算波纹高度
+                float wave = smoothstep(waveFront - waveWidth, waveFront, dist) * 
+                            (1.0 - smoothstep(waveFront, waveFront + waveWidth, dist));
+                
+                // 应用衰减
+                wave *= exp(-rippleTime * uWaveDecay);
+                
+                // 累加波纹高度
+                waveHeight += wave * uWaveIntensity;
+            }
+            
+            // 应用波纹变形
+            newPosition.z += waveHeight;
+            vWaveHeight = waveHeight;
+            
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+    `,
+      // 片段着色器：计算每个像素的颜色，实现水波纹视觉效果
+      fragmentShader: `
+        uniform vec3 uWaveColor;
+        uniform float uTime;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vWaveHeight;
+        
+        void main() {
+            // 基础颜色
+            vec3 baseColor = vec3(0.1, 0.3, 0.8);
+            
+            // 根据波纹高度计算颜色
+            vec3 waveColor = uWaveColor;
+            float intensity = vWaveHeight * 2.0;
+            
+            // 混合基础颜色和波纹颜色
+            vec3 finalColor = mix(baseColor, waveColor, intensity);
+            
+            // 添加波纹边缘高光
+            float specular = pow(intensity, 3.0) * 0.5;
+            finalColor += vec3(specular);
+            
+            // 计算透明度，波纹中心更透明
+            float alpha = 0.8 + intensity * 0.5;
+            
+            gl_FragColor = vec4(finalColor, alpha);
+        }
+    `
+    });
+
+    // 创建网格对象，将几何体和材质组合，并添加到场景中
+    const mesh = new THREE.Mesh(geometry, material);
+    // 将平面旋转90度，使其水平放置
+    mesh.rotation.x = -Math.PI / 2
+    scene.add(mesh);
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+
+    // 添加方向光
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+
+    // 创建图形界面控制器，允许用户交互调整参数
+    const gui = new GUI()
+    const params = {
+      waveColor: '#00a8ff',         // 波纹颜色
+      waveSpeed: 2.0,               // 波纹速度
+      waveDecay: 0.8,               // 波纹衰减
+      waveIntensity: 0.3,           // 波纹强度
+      clearRipples: () => {         // 清除所有波纹
+        ripples.length = 0;
+        material.uniforms.uRippleCount.value = 0;
+      }
+    }
+
+    // 添加颜色控制器
+    gui.addColor(params, 'waveColor').onChange((value) => {
+      material.uniforms.uWaveColor.value.set(value)
+    })
+
+    // 添加速度控制器
+    gui.add(params, 'waveSpeed', 0.5, 5.0).onChange((value) => {
+      material.uniforms.uWaveSpeed.value = value
+    })
+
+    // 添加衰减控制器
+    gui.add(params, 'waveDecay', 0.1, 2.0).onChange((value) => {
+      material.uniforms.uWaveDecay.value = value
+    })
+
+    // 添加强度控制器
+    gui.add(params, 'waveIntensity', 0.1, 1.0).onChange((value) => {
+      material.uniforms.uWaveIntensity.value = value
+    })
+
+    // 添加清除按钮
+    gui.add(params, 'clearRipples').name('清除波纹')
+
+    // 鼠标点击事件，创建新的波纹
+    renderer.domElement.addEventListener('click', (event) => {
+      // 获取鼠标点击位置
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      // 将屏幕坐标转换为世界坐标
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(mesh);
+      
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        
+        // 创建新的波纹数据 [x, y, 创建时间]
+        const newRipple = new THREE.Vector3(point.x, point.y, material.uniforms.uTime.value);
+        
+        // 添加到波纹数组（最多10个波纹）
+        if (ripples.length >= 10) {
+          ripples.shift(); // 移除最旧的波纹
+        }
+        ripples.push(newRipple);
+        
+        // 更新着色器uniforms
+        material.uniforms.uRippleCount.value = ripples.length;
+        // 将波纹数据设置到对应的uniforms中
+        const rippleUniforms = [
+          'uRipple0', 'uRipple1', 'uRipple2', 'uRipple3', 'uRipple4',
+          'uRipple5', 'uRipple6', 'uRipple7', 'uRipple8', 'uRipple9'
+        ];
+        
+        for (let i = 0; i < 10; i++) {
+          if (i < ripples.length) {
+            material.uniforms[rippleUniforms[i]].value.copy(ripples[i]);
+          } else {
+            // 重置未使用的波纹
+            material.uniforms[rippleUniforms[i]].value.set(0, 0, -100);
+          }
+        }
+      }
+    });
+
+    // 动画循环函数，驱动整个场景的渲染和更新
+    animate()
+
+    function animate() {
+      // 请求下一帧动画
+      requestAnimationFrame(animate)
+      
+      // 更新控制器状态
+      controls.update()
+      
+      // 渲染场景
+      renderer.render(scene, camera)
+      
+      // 更新时间变量，驱动波纹动画
+      material.uniforms.uTime.value += 0.016; // 约60fps
+    }
+  </script>
+</body>
+</html>
