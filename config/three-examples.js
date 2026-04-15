@@ -245,6 +245,18 @@ export default [
         codeUrl: HOST + "threeExamples/shader/infiniteGrid.html",
         image: HOST + "threeExamples/shader/infiniteGrid.jpg",
       },
+      {
+        id: "particleCity",
+        name: "粒子流动城市",
+        author: "ThreeLab",
+        codeUrl: FILE_HOST + "application/particleCity.html",
+        image: FILE_HOST + "application/particleCity.png",
+        meta: {
+          title: "粒子流动城市",
+          keywords: "three.js,粒子系统,城市流动",
+          description: "使用three.js创建粒子流动城市效果",
+        },
+      },
     ],
   },
   {
