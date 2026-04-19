@@ -19,8 +19,7 @@
   background: linear-gradient(180deg, rgba(10, 14, 26, 0.95) 0%, rgba(26, 31, 46, 0.9) 100%);
   backdrop-filter: blur(15px);
   border-right: 1px solid rgba(0, 212, 255, 0.2);
-  overflow-y: auto;
-  padding: 73px 0;
+  overflow-y: auto; 
 }
 
 .modern-sidebar-group {
@@ -166,6 +165,7 @@
   flex: 1;
   overflow-y: auto;
   background: linear-gradient(135deg, rgba(10, 14, 26, 0.6) 0%, rgba(26, 31, 46, 0.5) 100%);
+  margin-top: 60px; /* 为fixed header留出空间 */
 }
 
 /* 内容头部 */
@@ -177,8 +177,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 70px; /* 现在在内容区域顶部 */
+  position: fixed; 
+  top: 70px;
+  left: 320px;
+  right: 0;
   z-index: 90;
   margin: 0;
   box-sizing: border-box;
@@ -581,7 +583,10 @@
     flex-direction: column;
     gap: 16px;
     padding: 16px;
-    top: 0; /* 平板端也在内容区域顶部 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
   }
   
   .modern-stats {
