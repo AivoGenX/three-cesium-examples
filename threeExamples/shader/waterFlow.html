@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js水流效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #001122 0%, #003366 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00ccff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00ccff;
+      border: 1px solid #00ccff;
+      box-shadow: 0 0 20px #00ccff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">💧 水流效果着色器 - 实时渲染 🌊</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x001122);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(1,1,1)的位置观察场景
+    camera.position.set(0, 0, 4)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 创建平面几何体，作为水流效果的载体
+    const geometry = new THREE.PlaneGeometry(5, 5, 128, 128);
+
+    // 创建自定义着色器材质，实现水流效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让效果更亮
+      uniforms: {
+        uTime: { value: 0.0 },           // 时间变量
+        uFlowSpeed: { value: 1.5 },      // 水流速度
+        uWaveHeight: { value: 0.3 },     // 波浪高度
+        uWaveFrequency: { value: 3.0 },  // 波浪频率
+        uRippleSpeed: { value: 2.0 },    // 涟漪速度
+        uColor1: { value: new THREE.Color(0x0066cc) },    // 水流深色
+        uColor2: { value: new THREE.Color(0x00aaff) },    // 水流浅色
+        uColor3: { value: new THREE.Color(0x00ffff) },    // 水流高光
+        uIntensity: { value: 1.8 },      // 强度
+        uGlow: { value: 1.2 },           // 发光强度
+        uFoam: { value: 0.6 }            // 泡沫效果
+      },
+      // 顶点着色器：水流变形
+      vertexShader: `
+        uniform float uTime;
+        uniform float uFlowSpeed;
+        uniform float uWaveHeight;
+        uniform float uWaveFrequency;
+        uniform float uRippleSpeed;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vWave;
+        varying float vRipple;
+        
+        // 噪声函数
+        float noise(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+        
+        // 改进的噪声函数
+        float improvedNoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          
+          float a = noise(i);
+          float b = noise(i + vec2(1.0, 0.0));
+          float c = noise(i + vec2(0.0, 1.0));
+          float d = noise(i + vec2(1.0, 1.0));
+          
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          
+          return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
+        
+        void main() {
+          vUv = uv;
+          vPosition = position;
+          
+          // 计算波浪
+          vWave = sin(position.x * uWaveFrequency + uTime * uFlowSpeed) * 
+                  cos(position.y * uWaveFrequency * 0.8 + uTime * uFlowSpeed * 0.7);
+          
+          // 计算涟漪
+          float rippleDist = length(position.xy);
+          vRipple = sin(rippleDist * 8.0 - uTime * uRippleSpeed) * 0.5 + 0.5;
+          
+          // 水流变形
+          vec3 newPosition = position;
+          
+          // 波浪高度
+          newPosition.z += vWave * uWaveHeight;
+          
+          // 涟漪效果
+          newPosition.z += vRipple * 0.1;
+          
+          // 流动效果（轻微水平移动）
+          newPosition.x += sin(uTime * 0.5 + position.y * 2.0) * 0.05;
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+    `,
+      // 片段着色器：水流视觉效果
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uIntensity;
+        uniform float uGlow;
+        uniform float uFoam;
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform vec3 uColor3;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vWave;
+        varying float vRipple;
+        
+        void main() {
+          // 基础水流密度
+          float density = (vWave * 0.5 + 0.5) * 0.8 + vRipple * 0.2;
+          
+          // 动态效果
+          float timeEffect = sin(uTime * 2.0 + vPosition.x * 3.0) * 0.2 + 0.8;
+          density *= timeEffect;
+          
+          // 颜色渐变
+          float colorMix1 = (vWave * 0.5 + 0.5);
+          float colorMix2 = vRipple;
+          
+          vec3 colorA = mix(uColor1, uColor2, colorMix1);
+          vec3 colorB = mix(colorA, uColor3, colorMix2);
+          
+          vec3 finalColor = colorB;
+          
+          // 泡沫效果
+          float foam = sin(vPosition.x * 15.0 + uTime * 5.0) * 
+                      sin(vPosition.y * 12.0 + uTime * 4.0);
+          foam = max(0.0, foam) * uFoam;
+          finalColor += vec3(foam);
+          
+          // 发光效果
+          float glow = pow(density, 2.0) * uGlow;
+          finalColor *= 1.0 + glow;
+          
+          // 高光效果
+          float highlight = pow(vRipple, 3.0) * 0.5;
+          finalColor += vec3(highlight);
+          
+          // 计算最终颜色和透明度
+          finalColor *= density * uIntensity;
+          float alpha = density * uIntensity;
+          
+          // 确保透明度在合理范围内
+          alpha = clamp(alpha, 0.0, 0.85);
+          
+          gl_FragColor = vec4(finalColor, alpha);
+        }
+    `
+    });
+
+    // 创建网格对象，将几何体和材质组合，并添加到场景中
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 2
+    scene.add(mesh);
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+    scene.add(ambientLight);
+
+    // 创建图形界面控制器
+    const gui = new GUI()
+    const params = {
+      水流深色: '#0066cc',
+      水流浅色: '#00aaff',
+      水流高光: '#00ffff',
+      水流速度: 1.5,
+      波浪高度: 0.3,
+      波浪频率: 3.0,
+      涟漪速度: 2.0,
+      效果强度: 1.8,
+      发光强度: 1.2,
+      泡沫效果: 0.6
+    }
+
+    // 颜色控制
+    gui.addColor(params, '水流深色').onChange((value) => {
+      material.uniforms.uColor1.value.set(value);
+    });
+    gui.addColor(params, '水流浅色').onChange((value) => {
+      material.uniforms.uColor2.value.set(value);
+    });
+    gui.addColor(params, '水流高光').onChange((value) => {
+      material.uniforms.uColor3.value.set(value);
+    });
+
+    // 参数控制
+    gui.add(params, '水流速度', 0.5, 3.0).onChange((value) => {
+      material.uniforms.uFlowSpeed.value = value;
+    });
+    gui.add(params, '波浪高度', 0.1, 1.0).onChange((value) => {
+      material.uniforms.uWaveHeight.value = value;
+    });
+    gui.add(params, '波浪频率', 1.0, 6.0).onChange((value) => {
+      material.uniforms.uWaveFrequency.value = value;
+    });
+    gui.add(params, '涟漪速度', 0.5, 4.0).onChange((value) => {
+      material.uniforms.uRippleSpeed.value = value;
+    });
+    gui.add(params, '效果强度', 0.5, 3.0).onChange((value) => {
+      material.uniforms.uIntensity.value = value;
+    });
+    gui.add(params, '发光强度', 0.5, 2.5).onChange((value) => {
+      material.uniforms.uGlow.value = value;
+    });
+    gui.add(params, '泡沫效果', 0.0, 1.0).onChange((value) => {
+      material.uniforms.uFoam.value = value;
+    });
+
+    // 动画循环函数
+    animate()
+
+    function animate() {
+      requestAnimationFrame(animate)
+      controls.update()
+      renderer.render(scene, camera)
+      material.uniforms.uTime.value += 0.016;
+    }
+  </script>
+</body>
+</html>

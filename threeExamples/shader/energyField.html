@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js能量场效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #0a0a2a 0%, #1a1a3a 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00ff00;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00ff00;
+      border: 1px solid #00ff00;
+      box-shadow: 0 0 20px #00ff00;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">⚡ 能量场效果着色器 - 实时渲染 🔋</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x0a0a2a);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(1,1,1)的位置观察场景
+    camera.position.set(0, 0, 4)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 创建球体几何体，作为能量场的载体
+    const geometry = new THREE.SphereGeometry(2.5, 64, 64);
+
+    // 创建自定义着色器材质，实现能量场效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让效果更亮
+      uniforms: {
+        uTime: { value: 0.0 },           // 时间变量
+        uPulseSpeed: { value: 2.0 },     // 脉冲速度
+        uEnergyDensity: { value: 0.4 },  // 能量密度
+        uFieldStrength: { value: 1.5 },  // 场强度
+        uArcSpeed: { value: 1.8 },       // 电弧速度
+        uColor1: { value: new THREE.Color(0x00ff00) },    // 能量主色
+        uColor2: { value: new THREE.Color(0x00ffff) },    // 能量辅色
+        uColor3: { value: new THREE.Color(0xff00ff) },    // 能量高光
+        uIntensity: { value: 2.2 },      // 强度
+        uGlow: { value: 1.6 },           // 发光强度
+        uSpark: { value: 0.5 }           // 火花效果
+      },
+      // 顶点着色器：能量场变形
+      vertexShader: `
+        uniform float uTime;
+        uniform float uPulseSpeed;
+        uniform float uFieldStrength;
+        uniform float uArcSpeed;
+        uniform float uSpark;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vPulse;
+        varying float vArc;
+        varying float vDistance;
+        
+        // 噪声函数
+        float noise(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+        
+        void main() {
+          vUv = uv;
+          vPosition = position;
+          vDistance = length(position);
+          
+          // 脉冲效果
+          vPulse = sin(uTime * uPulseSpeed) * 0.5 + 0.5;
+          
+          // 电弧效果
+          vArc = sin(vDistance * 8.0 - uTime * uArcSpeed) * 0.5 + 0.5;
+          
+          // 能量场变形
+          vec3 newPosition = position;
+          
+          // 脉冲膨胀效果
+          newPosition *= 1.0 + vPulse * uFieldStrength * 0.1;
+          
+          // 电弧波动
+          newPosition += normalize(position) * (vArc - 0.5) * 0.2;
+          
+          // 火花效果
+          float spark = sin(position.x * 15.0 + uTime * 10.0) * uSpark * 0.05;
+          newPosition.x += spark;
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+    `,
+      // 片段着色器：能量场视觉效果
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uIntensity;
+        uniform float uGlow;
+        uniform float uEnergyDensity;
+        uniform float uSpark;
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform vec3 uColor3;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vPulse;
+        varying float vArc;
+        varying float vDistance;
+        
+        void main() {
+          // 基础能量密度
+          float density = (1.0 - smoothstep(0.0, 2.5, vDistance)) * uEnergyDensity;
+          
+          // 脉冲效果
+          density *= 1.0 + vPulse * 0.5;
+          
+          // 电弧效果
+          density *= vArc * 0.8 + 0.2;
+          
+          // 颜色渐变
+          float colorMix1 = sin(uTime * 1.5 + vDistance * 3.0) * 0.5 + 0.5;
+          float colorMix2 = vArc;
+          
+          vec3 colorA = mix(uColor1, uColor2, colorMix1);
+          vec3 colorB = mix(colorA, uColor3, colorMix2);
+          
+          vec3 finalColor = colorB;
+          
+          // 发光效果
+          float glow = pow(density, 2.0) * uGlow;
+          finalColor *= 1.0 + glow;
+          
+          // 火花效果
+          float spark = sin(vPosition.x * 20.0 + uTime * 12.0) * 
+                       sin(vPosition.y * 18.0 + uTime * 10.0);
+          spark = max(0.0, spark) * uSpark;
+          finalColor += vec3(spark);
+          
+          // 计算最终颜色和透明度
+          finalColor *= density * uIntensity;
+          float alpha = density * uIntensity;
+          
+          // 确保透明度在合理范围内
+          alpha = clamp(alpha, 0.0, 0.9);
+          
+          gl_FragColor = vec4(finalColor, alpha);
+        }
+    `
+    });
+
+    // 创建网格对象，将几何体和材质组合，并添加到场景中
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+    scene.add(ambientLight);
+
+    // 创建图形界面控制器
+    const gui = new GUI()
+    const params = {
+      能量主色: '#00ff00',
+      能量辅色: '#00ffff',
+      能量高光: '#ff00ff',
+      脉冲速度: 2.0,
+      能量密度: 0.4,
+      场强度: 1.5,
+      电弧速度: 1.8,
+      效果强度: 2.2,
+      发光强度: 1.6,
+      火花效果: 0.5
+    }
+
+    // 颜色控制
+    gui.addColor(params, '能量主色').onChange((value) => {
+      material.uniforms.uColor1.value.set(value);
+    });
+    gui.addColor(params, '能量辅色').onChange((value) => {
+      material.uniforms.uColor2.value.set(value);
+    });
+    gui.addColor(params, '能量高光').onChange((value) => {
+      material.uniforms.uColor3.value.set(value);
+    });
+
+    // 参数控制
+    gui.add(params, '脉冲速度', 0.5, 4.0).onChange((value) => {
+      material.uniforms.uPulseSpeed.value = value;
+    });
+    gui.add(params, '能量密度', 0.1, 0.8).onChange((value) => {
+      material.uniforms.uEnergyDensity.value = value;
+    });
+    gui.add(params, '场强度', 0.5, 3.0).onChange((value) => {
+      material.uniforms.uFieldStrength.value = value;
+    });
+    gui.add(params, '电弧速度', 0.5, 3.0).onChange((value) => {
+      material.uniforms.uArcSpeed.value = value;
+    });
+    gui.add(params, '效果强度', 0.5, 4.0).onChange((value) => {
+      material.uniforms.uIntensity.value = value;
+    });
+    gui.add(params, '发光强度', 0.5, 3.0).onChange((value) => {
+      material.uniforms.uGlow.value = value;
+    });
+    gui.add(params, '火花效果', 0.0, 1.0).onChange((value) => {
+      material.uniforms.uSpark.value = value;
+    });
+
+    // 动画循环函数
+    animate()
+
+    function animate() {
+      requestAnimationFrame(animate)
+      controls.update()
+      renderer.render(scene, camera)
+      material.uniforms.uTime.value += 0.016;
+    }
+  </script>
+</body>
+</html>

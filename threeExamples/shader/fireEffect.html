@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js火焰效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #000000 0%, #330000 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff3300;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff3300;
+      border: 1px solid #ff3300;
+      box-shadow: 0 0 20px #ff3300;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🔥 火焰效果着色器 - 实时渲染 🔥</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x000000);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(1,1,1)的位置观察场景
+    camera.position.set(0, 0, 4)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 创建平面几何体，作为火焰效果的载体
+    const geometry = new THREE.PlaneGeometry(4, 6, 64, 96);
+
+    // 创建自定义着色器材质，实现火焰效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让效果更亮
+      uniforms: {
+        uTime: { value: 0.0 },           // 时间变量
+        uSpeed: { value: 2.0 },          // 火焰速度
+        uTurbulence: { value: 3.0 },     // 湍流强度
+        uRiseSpeed: { value: 1.5 },      // 上升速度
+        uFlameHeight: { value: 2.0 },    // 火焰高度
+        uColor1: { value: new THREE.Color(0xff3300) },    // 火焰底部颜色
+        uColor2: { value: new THREE.Color(0xff9900) },    // 火焰中部颜色
+        uColor3: { value: new THREE.Color(0xffff00) },    // 火焰顶部颜色
+        uIntensity: { value: 2.0 },      // 强度
+        uGlow: { value: 1.5 },           // 发光强度
+        uSpark: { value: 0.5 }           // 火花效果
+      },
+      // 顶点着色器：火焰变形
+      vertexShader: `
+        uniform float uTime;
+        uniform float uSpeed;
+        uniform float uTurbulence;
+        uniform float uRiseSpeed;
+        uniform float uFlameHeight;
+        uniform float uSpark;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vNoise;
+        varying float vHeight;
+        
+        // 噪声函数
+        float noise(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+        
+        // 改进的噪声函数
+        float improvedNoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          
+          float a = noise(i);
+          float b = noise(i + vec2(1.0, 0.0));
+          float c = noise(i + vec2(0.0, 1.0));
+          float d = noise(i + vec2(1.0, 1.0));
+          
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          
+          return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
+        
+        void main() {
+          vUv = uv;
+          vPosition = position;
+          vHeight = uv.y;
+          
+          // 计算噪声
+          vec2 noiseCoord = uv * uTurbulence;
+          noiseCoord.y -= uTime * uRiseSpeed;
+          noiseCoord.x += uTime * uSpeed * 0.5;
+          
+          float noise1 = improvedNoise(noiseCoord);
+          float noise2 = improvedNoise(noiseCoord * 2.0 + 10.0);
+          
+          // 组合多层噪声
+          vNoise = noise1 * 0.7 + noise2 * 0.3;
+          
+          // 火焰变形
+          vec3 newPosition = position;
+          
+          // 火焰高度变化
+          newPosition.z += vNoise * uFlameHeight * (1.0 - uv.y);
+          
+          // 左右摆动
+          newPosition.x += sin(uTime * 3.0 + position.y * 5.0) * 0.2;
+          
+          // 火花效果
+          float spark = sin(position.x * 20.0 + uTime * 8.0) * uSpark * 0.1;
+          newPosition.z += spark;
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+    `,
+      // 片段着色器：火焰视觉效果
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uIntensity;
+        uniform float uGlow;
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform vec3 uColor3;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vNoise;
+        varying float vHeight;
+        
+        void main() {
+          // 基础火焰密度
+          float density = vNoise * (1.0 - vHeight);
+          
+          // 动态效果
+          float timeEffect = sin(uTime * 4.0 + vNoise * 8.0) * 0.3 + 0.7;
+          density *= timeEffect;
+          
+          // 颜色渐变（从底部到顶部）
+          vec3 finalColor;
+          if(vHeight < 0.3) {
+            finalColor = uColor1;
+          } else if(vHeight < 0.6) {
+            float mixFactor = (vHeight - 0.3) / 0.3;
+            finalColor = mix(uColor1, uColor2, mixFactor);
+          } else {
+            float mixFactor = (vHeight - 0.6) / 0.4;
+            finalColor = mix(uColor2, uColor3, mixFactor);
+          }
+          
+          // 发光效果
+          float glow = pow(density, 2.0) * uGlow;
+          finalColor *= 1.0 + glow;
+          
+          // 火花效果
+          float spark = sin(vPosition.x * 15.0 + uTime * 10.0) * 
+                       sin(vPosition.y * 12.0 + uTime * 8.0);
+          spark = max(0.0, spark) * 0.3;
+          finalColor += vec3(spark);
+          
+          // 计算最终颜色和透明度
+          finalColor *= density * uIntensity;
+          float alpha = density * uIntensity;
+          
+          // 确保透明度在合理范围内
+          alpha = clamp(alpha, 0.0, 0.9);
+          
+          gl_FragColor = vec4(finalColor, alpha);
+        }
+    `
+    });
+
+    // 创建网格对象，将几何体和材质组合，并添加到场景中
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 2
+    scene.add(mesh);
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+    scene.add(ambientLight);
+
+    // 创建图形界面控制器
+    const gui = new GUI()
+    const params = {
+      火焰底部色: '#ff3300',
+      火焰中部色: '#ff9900',
+      火焰顶部色: '#ffff00',
+      火焰速度: 2.0,
+      湍流强度: 3.0,
+      上升速度: 1.5,
+      火焰高度: 2.0,
+      效果强度: 2.0,
+      发光强度: 1.5,
+      火花效果: 0.5
+    }
+
+    // 颜色控制
+    gui.addColor(params, '火焰底部色').onChange((value) => {
+      material.uniforms.uColor1.value.set(value);
+    });
+    gui.addColor(params, '火焰中部色').onChange((value) => {
+      material.uniforms.uColor2.value.set(value);
+    });
+    gui.addColor(params, '火焰顶部色').onChange((value) => {
+      material.uniforms.uColor3.value.set(value);
+    });
+
+    // 参数控制
+    gui.add(params, '火焰速度', 0.5, 5.0).onChange((value) => {
+      material.uniforms.uSpeed.value = value;
+    });
+    gui.add(params, '湍流强度', 1.0, 8.0).onChange((value) => {
+      material.uniforms.uTurbulence.value = value;
+    });
+    gui.add(params, '上升速度', 0.5, 3.0).onChange((value) => {
+      material.uniforms.uRiseSpeed.value = value;
+    });
+    gui.add(params, '火焰高度', 0.5, 4.0).onChange((value) => {
+      material.uniforms.uFlameHeight.value = value;
+    });
+    gui.add(params, '效果强度', 0.5, 5.0).onChange((value) => {
+      material.uniforms.uIntensity.value = value;
+    });
+    gui.add(params, '发光强度', 0.5, 3.0).onChange((value) => {
+      material.uniforms.uGlow.value = value;
+    });
+    gui.add(params, '火花效果', 0.0, 1.0).onChange((value) => {
+      material.uniforms.uSpark.value = value;
+    });
+
+    // 动画循环函数
+    animate()
+
+    function animate() {
+      requestAnimationFrame(animate)
+      controls.update()
+      renderer.render(scene, camera)
+      material.uniforms.uTime.value += 0.016;
+    }
+  </script>
+</body>
+</html>
