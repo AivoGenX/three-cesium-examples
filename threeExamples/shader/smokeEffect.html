@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js烟雾特效演示</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1a1a2e;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">烟雾着色器特效 - 使用噪声函数模拟烟雾</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(50, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(1,1,1)的位置观察场景
+    camera.position.set(2, 2, 2)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 创建平面几何体，作为烟雾效果的载体
+    const geometry = new THREE.PlaneGeometry(3, 3, 64, 64);
+
+    // 创建自定义着色器材质，实现烟雾效果的核心部分
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,             // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让烟雾更柔和
+      uniforms: {
+        uTime: { value: 0.0 },           // 时间变量，控制烟雾动画
+        uNoiseScale: { value: 2.0 },     // 噪声缩放
+        uSpeed: { value: 0.5 },          // 烟雾移动速度
+        uDensity: { value: 0.8 },        // 烟雾密度
+        uRiseSpeed: { value: 0.3 },      // 烟雾上升速度
+        uColor: { value: new THREE.Color(0x87CEEB) },    // 烟雾颜色
+        uIntensity: { value: 1.0 },      // 烟雾强度
+        uTurbulence: { value: 0.5 }      // 烟雾湍流强度
+      },
+      // 顶点着色器：处理几何体顶点，实现烟雾变形
+      vertexShader: `
+        uniform float uTime;
+        uniform float uNoiseScale;
+        uniform float uSpeed;
+        uniform float uRiseSpeed;
+        uniform float uTurbulence;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vNoise;
+        
+        // 简单的噪声函数
+        float noise(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+        
+        // 改进的噪声函数（简化版）
+        float improvedNoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          
+          // 双线性插值
+          float a = noise(i);
+          float b = noise(i + vec2(1.0, 0.0));
+          float c = noise(i + vec2(0.0, 1.0));
+          float d = noise(i + vec2(1.0, 1.0));
+          
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          
+          return mix(a, b, u.x) + 
+                 (c - a) * u.y * (1.0 - u.x) + 
+                 (d - b) * u.x * u.y;
+        }
+        
+        void main() {
+          vUv = uv;
+          vPosition = position;
+          
+          // 计算噪声
+          vec2 noiseCoord = uv * uNoiseScale;
+          noiseCoord.y -= uTime * uRiseSpeed;
+          noiseCoord.x += uTime * uSpeed;
+          
+          float noise1 = improvedNoise(noiseCoord);
+          float noise2 = improvedNoise(noiseCoord * 2.0 + 10.0);
+          float noise3 = improvedNoise(noiseCoord * 4.0 + 20.0);
+          
+          // 组合多层噪声
+          vNoise = noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1;
+          
+          // 应用湍流效果
+          float turbulence = sin(vNoise * 10.0 + uTime * 3.0) * uTurbulence;
+          
+          // 计算顶点偏移
+          vec3 newPosition = position;
+          newPosition.z += vNoise * 0.5 + turbulence * 0.2;
+          
+          // 添加一些水平扰动
+          newPosition.x += turbulence * 0.1;
+          newPosition.y += turbulence * 0.05;
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+    `,
+      // 片段着色器：计算每个像素的颜色，实现烟雾视觉效果
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uDensity;
+        uniform float uIntensity;
+        uniform vec3 uColor;
+        
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        varying float vNoise;
+        
+        void main() {
+          // 基于噪声计算烟雾密度
+          float density = vNoise * uDensity;
+          
+          // 添加时间变化的动态效果
+          float timeEffect = sin(uTime * 2.0 + vNoise * 5.0) * 0.1 + 0.9;
+          density *= timeEffect;
+          
+          // 边缘衰减效果
+          float edgeFade = 1.0 - length(vUv - 0.5) * 2.0;
+          edgeFade = smoothstep(0.0, 1.0, edgeFade);
+          density *= edgeFade;
+          
+          // 计算烟雾颜色
+          vec3 smokeColor = uColor;
+          
+          // 添加颜色变化
+          float colorVariation = sin(uTime * 1.5 + vNoise * 3.0) * 0.1;
+          smokeColor.r += colorVariation;
+          smokeColor.g += colorVariation * 0.5;
+          
+          // 计算最终颜色和透明度
+          vec3 finalColor = smokeColor * density * uIntensity;
+          float alpha = density * uIntensity;
+          
+          // 确保透明度在合理范围内
+          alpha = clamp(alpha, 0.0, 0.8);
+          
+          gl_FragColor = vec4(finalColor, alpha);
+        }
+    `
+    });
+
+    // 创建网格对象，将几何体和材质组合，并添加到场景中
+    const mesh = new THREE.Mesh(geometry, material);
+    // 将平面旋转90度，使其水平放置
+    mesh.rotation.x = -Math.PI / 2
+    scene.add(mesh);
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+    scene.add(ambientLight);
+
+    // 添加方向光，增强烟雾的立体感
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    directionalLight.position.set(1, 2, 1);
+    scene.add(directionalLight);
+
+    // 创建图形界面控制器，允许用户交互调整参数
+    const gui = new GUI()
+    const params = {
+      smokeColor: '#87CEEB',         // 烟雾颜色
+      noiseScale: 2.0,               // 噪声缩放
+      speed: 0.5,                    // 移动速度
+      density: 0.8,                  // 烟雾密度
+      riseSpeed: 0.3,                // 上升速度
+      intensity: 1.0,                // 烟雾强度
+      turbulence: 0.5                // 湍流强度
+    }
+
+    // 添加颜色控制器
+    gui.addColor(params, 'smokeColor').onChange((value) => {
+      material.uniforms.uColor.value.set(value)
+    })
+
+    // 添加噪声缩放控制器
+    gui.add(params, 'noiseScale', 0.1, 5.0).onChange((value) => {
+      material.uniforms.uNoiseScale.value = value
+    })
+
+    // 添加速度控制器
+    gui.add(params, 'speed', 0.1, 2.0).onChange((value) => {
+      material.uniforms.uSpeed.value = value
+    })
+
+    // 添加密度控制器
+    gui.add(params, 'density', 0.1, 2.0).onChange((value) => {
+      material.uniforms.uDensity.value = value
+    })
+
+    // 添加上升速度控制器
+    gui.add(params, 'riseSpeed', 0.1, 1.0).onChange((value) => {
+      material.uniforms.uRiseSpeed.value = value
+    })
+
+    // 添加强度控制器
+    gui.add(params, 'intensity', 0.1, 3.0).onChange((value) => {
+      material.uniforms.uIntensity.value = value
+    })
+
+    // 添加湍流控制器
+    gui.add(params, 'turbulence', 0.0, 1.0).onChange((value) => {
+      material.uniforms.uTurbulence.value = value
+    })
+
+    // 动画循环函数，驱动整个场景的渲染和更新
+    animate()
+
+    function animate() {
+      // 请求下一帧动画
+      requestAnimationFrame(animate)
+      
+      // 更新控制器状态
+      controls.update()
+      
+      // 渲染场景
+      renderer.render(scene, camera)
+      
+      // 更新时间变量，驱动烟雾动画
+      material.uniforms.uTime.value += 0.016; // 约60fps
+    }
+  </script>
+</body>
+</html>

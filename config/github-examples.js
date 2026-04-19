@@ -38,8 +38,10 @@ export default [
                 githubUrl: 'https://github.com/maptalks/maptalks.three',
                 openUrl: 'https://maptalks.org/maptalks.three/docs/dist/',
                 name: 'maptalks',
+                author: 'maptalks',
                 image: HOST + 'threeExamples/openSource/maptalks.jpg'
             },
+            
             {
                 id: 'mapbox',
                 author: 'mapbox',

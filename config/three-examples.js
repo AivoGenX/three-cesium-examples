@@ -834,13 +834,50 @@ export default [
       {
         id: "waterRipple",
         name: "水波纹扩散",
-        author: "AI Assistant",
+        author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/waterRipple.html",
         image: HOST + "threeExamples/shader/waterRipple.jpg",
         meta: {
           title: "水波纹扩散效果",
           keywords: "three.js,水波纹,着色器,交互效果",
           description: "使用three.js实现交互式水波纹扩散着色器效果",
+        },
+      },
+      {
+        id: "smokeEffect",
+        name: "烟雾特效",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/smokeEffect.html",
+        image: HOST + "threeExamples/shader/smokeEffect.jpg",
+        meta: {
+          title: "烟雾着色器特效",
+          keywords: "three.js,烟雾,着色器,噪声,粒子效果",
+          description: "使用three.js实现基于噪声函数的动态烟雾着色器效果",
+        },
+      },
+    
+      {
+        id: "awesomeSmoke",
+        name: "超酷烟雾",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/awesomeSmoke.html",
+        image: HOST + "threeExamples/shader/awesomeSmoke.png",
+        meta: {
+          title: "超酷烟雾特效",
+          keywords: "three.js,烟雾,发光,渐变,闪烁,简单效果",
+          description: "使用three.js实现简单但效果明显的烟雾着色器效果",
+        },
+      },
+      {
+        id: "epicSmokeFixed",
+        name: "史诗级烟雾",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/epicSmokeFixed.html",
+        image: HOST + "threeExamples/shader/epicSmokeFixed.png",
+        meta: {
+          title: "史诗级烟雾特效修复版",
+          keywords: "three.js,烟雾,发光,脉冲,闪烁,酷炫效果",
+          description: "使用three.js实现修复后的史诗级烟雾着色器效果",
         },
       },
     ],
