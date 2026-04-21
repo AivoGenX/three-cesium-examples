@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js宇宙弦理论效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #330033 0%, #110011 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff66ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff66ff;
+      border: 1px solid #ff66ff;
+      box-shadow: 0 0 20px #ff66ff;
+    }
+    .cosmic-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #66ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #66ffff;
+      border: 1px solid #66ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🌌 宇宙弦理论效果 - 实时渲染 🌌</div>
+  <div class="cosmic-info" id="cosmicInfo">弦振动: 高频 | 维度: 11维</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变弦理论效果<br>
+    • 实时交互：体验高维物理
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x330033);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 宇宙弦理论效果参数
+    const cosmicParams = {
+      stringVibration: 0.8,
+      dimensionCount: 0.7,
+      quantumField: 0.6,
+      glowIntensity: 1.2,
+      spacetimeCurvature: 0.8,
+      cosmicType: 0,
+      showParticles: true
+    };
+
+    // 创建复杂几何体，作为弦理论的载体
+    const geometry = new THREE.TorusKnotGeometry(2, 0.5, 100, 16);
+
+    // 顶点着色器代码 - 宇宙弦理论效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uStringVibration;
+      uniform float uDimensionCount;
+      uniform float uSpacetimeCurvature;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 弦振动效果
+        float vibration = sin(position.x * 3.0 + uTime * uStringVibration) * 
+                         cos(position.y * 4.0 + uTime * uStringVibration * 0.8) *
+                         sin(position.z * 3.0 + uTime * uStringVibration * 0.6);
+        
+        // 维度效果
+        float dimension = sin(position.x * 5.0 + uTime * uDimensionCount * 2.0) *
+                         cos(position.z * 5.0 + uTime * uDimensionCount * 2.0);
+        
+        // 时空曲率
+        float curvature = sin(position.x * uSpacetimeCurvature * 6.0) *
+                         cos(position.y * uSpacetimeCurvature * 8.0);
+        
+        vec3 newPosition = position + normal * (vibration + dimension * 0.5 + curvature * 0.3) * 0.15;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 宇宙弦理论效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uStringVibration;
+      uniform float uDimensionCount;
+      uniform float uQuantumField;
+      uniform float uGlowIntensity;
+      uniform float uSpacetimeCurvature;
+      uniform int uCosmicType;
+      uniform bool uShowParticles;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 弦理论效果
+      float stringTheory(vec2 uv, float vibration) {
+        float stringField = 0.0;
+        
+        // 多层弦振动
+        stringField += sin(uv.x * 4.0 + uTime * 0.3) * 
+                      cos(uv.y * 6.0 + uTime * 0.5);
+        stringField += sin(uv.x * 6.0 + uTime * 0.7) * 
+                      cos(uv.y * 8.0 + uTime * 0.9) * 0.7;
+        stringField += sin(uv.x * 8.0 + uTime * 1.1) * 
+                      cos(uv.y * 10.0 + uTime * 1.3) * 0.4;
+        
+        return stringField * vibration;
+      }
+      
+      // 量子场效果
+      float quantumField(vec2 uv, float intensity) {
+        float field = 0.0;
+        for(int i = 0; i < 25; i++) {
+          vec2 fieldPos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, fieldPos);
+          float fieldSize = noise(vec2(float(i) * 0.789, 0.123)) * 0.04 + 0.02;
+          float fieldLife = mod(uTime * 1.5 + float(i) * 8.0, 6.28);
+          float fieldIntensity = sin(fieldLife) * 0.7 + 0.3;
+          field += exp(-dist * 45.0) * fieldIntensity * intensity;
+        }
+        return field;
+      }
+      
+      // 维度效果
+      float dimensions(vec2 uv, float count) {
+        float dimensionField = 0.0;
+        
+        // 多维空间效果
+        dimensionField += sin(uv.x * 8.0 * count) * 
+                         cos(uv.y * 8.0 * count) * 0.3;
+        
+        // 高维振动
+        dimensionField += sin(uv.x * 12.0 + uTime * count * 2.0) * 
+                         cos(uv.y * 12.0 + uTime * count * 2.0) * 0.2;
+        
+        return dimensionField;
+      }
+      
+      // 宇宙类型
+      vec3 getCosmicType(int type) {
+        if(type == 0) {
+          // 紫色宇宙
+          return vec3(0.8, 0.2, 1.0);
+        } else if(type == 1) {
+          // 蓝色宇宙
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 绿色宇宙
+          return vec3(0.2, 1.0, 0.4);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 弦理论效果
+        float stringField = stringTheory(uv, uStringVibration);
+        
+        // 量子场效果
+        float quantumFieldValue = quantumField(uv, uQuantumField);
+        
+        // 维度效果
+        float dimensionField = dimensions(uv, uDimensionCount);
+        
+        // 颜色计算
+        vec3 baseColor = getCosmicType(uCosmicType);
+        vec3 finalColor = baseColor * (stringField * 0.5 + quantumFieldValue * 0.3 + dimensionField * 0.2) * uGlowIntensity;
+        
+        // 弦振动效果
+        float vibrationEffect = sin(uTime * uStringVibration) * 0.3 + 0.7;
+        finalColor *= vibrationEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uStringVibration: { value: cosmicParams.stringVibration },
+        uDimensionCount: { value: cosmicParams.dimensionCount },
+        uQuantumField: { value: cosmicParams.quantumField },
+        uGlowIntensity: { value: cosmicParams.glowIntensity },
+        uSpacetimeCurvature: { value: cosmicParams.spacetimeCurvature },
+        uCosmicType: { value: cosmicParams.cosmicType },
+        uShowParticles: { value: cosmicParams.showParticles }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const cosmicKnot = new THREE.Mesh(geometry, material);
+    scene.add(cosmicKnot);
+
+    // 更新宇宙信息显示
+    function updateCosmicInfo() {
+      const cosmicElement = document.getElementById('cosmicInfo');
+      let vibration = "低频";
+      if(cosmicParams.stringVibration > 0.5) vibration = "中频";
+      if(cosmicParams.stringVibration > 0.8) vibration = "高频";
+      
+      let dimension = "3维";
+      if(cosmicParams.dimensionCount > 0.4) dimension = "7维";
+      if(cosmicParams.dimensionCount > 0.7) dimension = "11维";
+      
+      cosmicElement.textContent = `弦振动: ${vibration} | 维度: ${dimension}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 宇宙参数控制
+    const cosmicFolder = gui.addFolder('宇宙效果参数');
+    cosmicFolder.add(cosmicParams, 'stringVibration', 0.1, 1.2).name('弦振动');
+    cosmicFolder.add(cosmicParams, 'dimensionCount', 0.1, 1.0).name('维度数');
+    cosmicFolder.add(cosmicParams, 'quantumField', 0.1, 0.9).name('量子场');
+    cosmicFolder.add(cosmicParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    cosmicFolder.add(cosmicParams, 'spacetimeCurvature', 0.1, 0.9).name('时空曲率');
+    cosmicFolder.add(cosmicParams, 'showParticles').name('显示粒子');
+    
+    // 宇宙类型控制
+    const cosmicTypes = {
+      "紫色宇宙": 0,
+      "蓝色宇宙": 1,
+      "绿色宇宙": 2
+    };
+    cosmicFolder.add(cosmicParams, 'cosmicType', cosmicTypes).name('宇宙类型');
+    
+    cosmicFolder.open();
+
+    // 参数变化时更新材质和宇宙信息
+    gui.onChange(() => {
+      material.uniforms.uStringVibration.value = cosmicParams.stringVibration;
+      material.uniforms.uDimensionCount.value = cosmicParams.dimensionCount;
+      material.uniforms.uQuantumField.value = cosmicParams.quantumField;
+      material.uniforms.uGlowIntensity.value = cosmicParams.glowIntensity;
+      material.uniforms.uSpacetimeCurvature.value = cosmicParams.spacetimeCurvature;
+      material.uniforms.uCosmicType.value = cosmicParams.cosmicType;
+      material.uniforms.uShowParticles.value = cosmicParams.showParticles;
+      
+      updateCosmicInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转宇宙结
+      cosmicKnot.rotation.y += cosmicParams.stringVibration * 0.01;
+      cosmicKnot.rotation.x += cosmicParams.stringVibration * 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化宇宙信息显示
+    updateCosmicInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js对称和图案 - 三维对称物体</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #0a0a2a 0%, #1a1a3a 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00b4d8;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00b4d8;
+      border: 1px solid #00b4d8;
+      box-shadow: 0 0 20px #00b4d8;
+    }
+    .symmetry-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #90e0ef;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #90e0ef;
+      border: 1px solid #90e0ef;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🔺 对称和图案 - 三维对称物体展示 🔺</div>
+  <div class="symmetry-info" id="symmetryInfo">对称类型：旋转对称 | 对称阶数：4 | 图案：立方体</div>
+  <div class="help">
+    🎯 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 切换对称类型：观察不同对称<br>
+    • 调整阶数：改变对称复杂度<br>
+    • 显示对称轴：观察对称元素
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x0a0a2a);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,5,10)的位置观察场景
+    camera.position.set(0, 5, 10)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+
+    // 添加平行光
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 10, 5);
+    scene.add(directionalLight);
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 对称和图案参数
+    // ============================================================================
+    let symmetryPattern = null;
+    let symmetryAxes = null;
+    
+    const symmetryParameters = {
+      symmetryType: 0, // 0=旋转对称, 1=反射对称, 2=平移对称, 3=组合对称
+      patternType: 0, // 0=立方体, 1=球体, 2=四面体, 3=八面体, 4=二十面体
+      order: 4, // 对称阶数
+      axisCount: 1, // 对称轴数量
+      showPattern: true,
+      showAxes: true,
+      showGrid: true,
+      patternSize: 1.0,
+      axisLength: 3.0,
+      gridSize: 5,
+      animationSpeed: 0.5,
+      animate: true
+    };
+
+    // ============================================================================
+    // 创建对称图案
+    // ============================================================================
+    function createSymmetryPattern() {
+      // 移除之前的对称图案
+      if (symmetryPattern) scene.remove(symmetryPattern);
+      if (symmetryAxes) scene.remove(symmetryAxes);
+
+      const patternGroup = new THREE.Group();
+      const axesGroup = new THREE.Group();
+      
+      // 根据对称类型创建不同的对称图案
+      switch(symmetryParameters.symmetryType) {
+        case 0: // 旋转对称
+          createRotationalSymmetry(patternGroup, axesGroup);
+          break;
+        case 1: // 反射对称
+          createReflectionSymmetry(patternGroup, axesGroup);
+          break;
+        case 2: // 平移对称
+          createTranslationSymmetry(patternGroup, axesGroup);
+          break;
+        case 3: // 组合对称
+          createCombinedSymmetry(patternGroup, axesGroup);
+          break;
+      }
+
+      if (symmetryParameters.showPattern) {
+        scene.add(patternGroup);
+      }
+      if (symmetryParameters.showAxes) {
+        scene.add(axesGroup);
+      }
+      
+      symmetryPattern = patternGroup;
+      symmetryAxes = axesGroup;
+    }
+
+    // ============================================================================
+    // 创建旋转对称
+    // ============================================================================
+    function createRotationalSymmetry(patternGroup, axesGroup) {
+      const order = symmetryParameters.order;
+      const angleStep = (2 * Math.PI) / order;
+      
+      // 创建对称轴
+      if (symmetryParameters.showAxes) {
+        const axisMaterial = new THREE.LineBasicMaterial({ 
+          color: 0xffff00,
+          linewidth: 2
+        });
+        
+        const axisGeometry = new THREE.BufferGeometry();
+        const axisPoints = [
+          new THREE.Vector3(0, -symmetryParameters.axisLength, 0),
+          new THREE.Vector3(0, symmetryParameters.axisLength, 0)
+        ];
+        axisGeometry.setFromPoints(axisPoints);
+        const axis = new THREE.Line(axisGeometry, axisMaterial);
+        axesGroup.add(axis);
+      }
+      
+      // 创建旋转对称图案
+      for (let i = 0; i < order; i++) {
+        const angle = i * angleStep;
+        const pattern = createBasicPattern(symmetryParameters.patternType);
+        
+        // 应用旋转变换
+        pattern.rotation.y = angle;
+        
+        patternGroup.add(pattern);
+      }
+    }
+
+    // ============================================================================
+    // 创建反射对称
+    // ============================================================================
+    function createReflectionSymmetry(patternGroup, axesGroup) {
+      const axisCount = symmetryParameters.axisCount;
+      const angleStep = Math.PI / axisCount;
+      
+      // 创建反射对称轴
+      if (symmetryParameters.showAxes) {
+        const axisMaterial = new THREE.LineBasicMaterial({ 
+          color: 0xff6b6b,
+          linewidth: 2
+        });
+        
+        for (let i = 0; i < axisCount; i++) {
+          const angle = i * angleStep;
+          const axisLength = symmetryParameters.axisLength;
+          
+          const axisGeometry = new THREE.BufferGeometry();
+          const axisPoints = [
+            new THREE.Vector3(-axisLength * Math.cos(angle), 0, -axisLength * Math.sin(angle)),
+            new THREE.Vector3(axisLength * Math.cos(angle), 0, axisLength * Math.sin(angle))
+          ];
+          axisGeometry.setFromPoints(axisPoints);
+          const axis = new THREE.Line(axisGeometry, axisMaterial);
+          axesGroup.add(axis);
+        }
+      }
+      
+      // 创建反射对称图案
+      for (let i = 0; i < axisCount; i++) {
+        const angle = i * angleStep;
+        
+        // 原始图案
+        const pattern1 = createBasicPattern(symmetryParameters.patternType);
+        pattern1.position.set(2 * Math.cos(angle), 0, 2 * Math.sin(angle));
+        patternGroup.add(pattern1);
+        
+        // 反射图案
+        const pattern2 = createBasicPattern(symmetryParameters.patternType);
+        pattern2.position.set(-2 * Math.cos(angle), 0, -2 * Math.sin(angle));
+        patternGroup.add(pattern2);
+      }
+    }
+
+    // ============================================================================
+    // 创建平移对称
+    // ============================================================================
+    function createTranslationSymmetry(patternGroup, axesGroup) {
+      const gridSize = symmetryParameters.gridSize;
+      
+      // 创建平移网格
+      if (symmetryParameters.showGrid) {
+        const gridHelper = new THREE.GridHelper(gridSize * 2, gridSize, 0xffffff, 0x333333);
+        axesGroup.add(gridHelper);
+      }
+      
+      // 创建平移对称图案
+      for (let x = -gridSize; x <= gridSize; x += 2) {
+        for (let z = -gridSize; z <= gridSize; z += 2) {
+          const pattern = createBasicPattern(symmetryParameters.patternType);
+          pattern.position.set(x, 0, z);
+          patternGroup.add(pattern);
+        }
+      }
+    }
+
+    // ============================================================================
+    // 创建组合对称
+    // ============================================================================
+    function createCombinedSymmetry(patternGroup, axesGroup) {
+      const order = symmetryParameters.order;
+      const angleStep = (2 * Math.PI) / order;
+      
+      // 创建旋转对称轴
+      if (symmetryParameters.showAxes) {
+        const axisMaterial = new THREE.LineBasicMaterial({ 
+          color: 0xffff00,
+          linewidth: 2
+        });
+        
+        const axisGeometry = new THREE.BufferGeometry();
+        const axisPoints = [
+          new THREE.Vector3(0, -symmetryParameters.axisLength, 0),
+          new THREE.Vector3(0, symmetryParameters.axisLength, 0)
+        ];
+        axisGeometry.setFromPoints(axisPoints);
+        const axis = new THREE.Line(axisGeometry, axisMaterial);
+        axesGroup.add(axis);
+      }
+      
+      // 创建组合对称图案（旋转+反射）
+      for (let i = 0; i < order; i++) {
+        const angle = i * angleStep;
+        
+        // 旋转对称图案
+        const pattern1 = createBasicPattern(symmetryParameters.patternType);
+        pattern1.rotation.y = angle;
+        pattern1.position.set(2 * Math.cos(angle), 1, 2 * Math.sin(angle));
+        patternGroup.add(pattern1);
+        
+        // 反射对称图案
+        const pattern2 = createBasicPattern(symmetryParameters.patternType);
+        pattern2.rotation.y = angle + Math.PI;
+        pattern2.position.set(2 * Math.cos(angle), -1, 2 * Math.sin(angle));
+        patternGroup.add(pattern2);
+      }
+    }
+
+    // ============================================================================
+    // 创建基本图案
+    // ============================================================================
+    function createBasicPattern(patternType) {
+      let geometry;
+      
+      switch(patternType) {
+        case 0: // 立方体
+          geometry = new THREE.BoxGeometry(
+            symmetryParameters.patternSize, 
+            symmetryParameters.patternSize, 
+            symmetryParameters.patternSize
+          );
+          break;
+        case 1: // 球体
+          geometry = new THREE.SphereGeometry(symmetryParameters.patternSize, 16, 16);
+          break;
+        case 2: // 四面体
+          geometry = new THREE.TetrahedronGeometry(symmetryParameters.patternSize);
+          break;
+        case 3: // 八面体
+          geometry = new THREE.OctahedronGeometry(symmetryParameters.patternSize);
+          break;
+        case 4: // 二十面体
+          geometry = new THREE.IcosahedronGeometry(symmetryParameters.patternSize);
+          break;
+      }
+
+      const material = new THREE.MeshPhongMaterial({ 
+        color: getRandomColor(),
+        transparent: true,
+        opacity: 0.8,
+        shininess: 100
+      });
+
+      return new THREE.Mesh(geometry, material);
+    }
+
+    // ============================================================================
+    // 获取随机颜色
+    // ============================================================================
+    function getRandomColor() {
+      const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0x96ceb4, 0xfeca57, 0xff9ff3];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    // ============================================================================
+    // 对称信息显示更新函数
+    // ============================================================================
+    function updateSymmetryInfo() {
+      const infoElement = document.getElementById('symmetryInfo');
+      const symType = symmetryParameters.symmetryType;
+      const patternType = symmetryParameters.patternType;
+      
+      const symNames = ["旋转对称", "反射对称", "平移对称", "组合对称"];
+      const patternNames = ["立方体", "球体", "四面体", "八面体", "二十面体"];
+      
+      const symName = symNames[symType];
+      const patternName = patternNames[patternType];
+      
+      let details = '';
+      if(symType == 0 || symType == 3) {
+        details = ` | 对称阶数：${symmetryParameters.order}`;
+      } else if(symType == 1) {
+        details = ` | 对称轴数：${symmetryParameters.axisCount}`;
+      }
+      
+      infoElement.textContent = `对称类型：${symName}${details} | 图案：${patternName}`;
+    }
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 对称类型控制
+    const symTypes = {
+      "旋转对称": 0,
+      "反射对称": 1,
+      "平移对称": 2,
+      "组合对称": 3
+    };
+    
+    const symController = gui.add(symmetryParameters, 'symmetryType', symTypes).name('对称类型');
+    symController.onChange(() => {
+      updateSymmetryInfo();
+      createSymmetryPattern();
+    });
+    
+    // 图案类型控制
+    const patternTypes = {
+      "立方体": 0,
+      "球体": 1,
+      "四面体": 2,
+      "八面体": 3,
+      "二十面体": 4
+    };
+    
+    const patternController = gui.add(symmetryParameters, 'patternType', patternTypes).name('图案类型');
+    patternController.onChange(() => {
+      updateSymmetryInfo();
+      createSymmetryPattern();
+    });
+    
+    // 对称参数控制
+    const paramsFolder = gui.addFolder('对称参数');
+    const orderController = paramsFolder.add(symmetryParameters, 'order', 2, 12, 1).name('对称阶数');
+    const axisController = paramsFolder.add(symmetryParameters, 'axisCount', 1, 6, 1).name('对称轴数');
+    const gridController = paramsFolder.add(symmetryParameters, 'gridSize', 3, 10, 1).name('网格大小');
+    
+    // 参数变化时更新对称图案
+    [orderController, axisController, gridController].forEach(controller => {
+      controller.onChange(() => {
+        updateSymmetryInfo();
+        createSymmetryPattern();
+      });
+    });
+    
+    paramsFolder.open();
+    
+    // 显示设置
+    const displayFolder = gui.addFolder('显示设置');
+    displayFolder.add(symmetryParameters, 'showPattern').name('显示图案');
+    displayFolder.add(symmetryParameters, 'showAxes').name('显示对称轴');
+    displayFolder.add(symmetryParameters, 'showGrid').name('显示网格');
+    displayFolder.add(symmetryParameters, 'patternSize', 0.3, 2.0).name('图案大小');
+    displayFolder.add(symmetryParameters, 'axisLength', 1.0, 5.0).name('对称轴长度');
+    displayFolder.add(symmetryParameters, 'animate').name('启用动画');
+    displayFolder.add(symmetryParameters, 'animationSpeed', 0.1, 2.0).name('动画速度');
+    
+    displayFolder.open();
+
+    // ============================================================================
+    // 初始化场景
+    // ============================================================================
+    createSymmetryPattern();
+    updateSymmetryInfo();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新对称图案动画
+      if (symmetryParameters.animate && symmetryPattern) {
+        symmetryPattern.rotation.y += 0.01 * symmetryParameters.animationSpeed;
+      }
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js等离子风暴着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #330066 0%, #000033 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff00ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff00ff;
+      border: 1px solid #ff00ff;
+      box-shadow: 0 0 20px #ff00ff;
+    }
+    .storm-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #00ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #00ffff;
+      border: 1px solid #00ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff00;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff00;
+      border: 1px solid #ffff00;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">⚡ 等离子风暴 - 实时渲染 ⚡</div>
+  <div class="storm-info" id="stormInfo">风暴强度: 中等 | 能量等级: 高</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变风暴效果<br>
+    • 实时交互：体验等离子风暴
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x330066);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(75, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 等离子风暴参数
+    const plasmaParams = {
+      stormIntensity: 1.5,
+      energyDensity: 0.8,
+      turbulence: 1.2,
+      glowEffect: 1.0,
+      lightningFrequency: 0.7,
+      colorMode: 0,
+      showArcs: true
+    };
+
+    // 创建球体几何体，作为等离子风暴的载体
+    const geometry = new THREE.SphereGeometry(2, 64, 64);
+
+    // 顶点着色器代码 - 等离子风暴效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uStormIntensity;
+      uniform float uTurbulence;
+      uniform float uLightningFrequency;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 等离子湍流效果
+        float turbulence = sin(position.x * 3.0 + uTime * uTurbulence) * 
+                          cos(position.y * 3.0 + uTime * uTurbulence) *
+                          sin(position.z * 3.0 + uTime * uTurbulence);
+        
+        // 闪电效果
+        float lightning = sin(position.y * 8.0 + uTime * uLightningFrequency * 5.0);
+        
+        vec3 newPosition = position + normal * (turbulence + lightning) * 0.2 * uStormIntensity;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 等离子风暴效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uStormIntensity;
+      uniform float uEnergyDensity;
+      uniform float uTurbulence;
+      uniform float uGlowEffect;
+      uniform float uLightningFrequency;
+      uniform int uColorMode;
+      uniform bool uShowArcs;
+      
+      // 等离子体效果
+      float plasma(vec2 uv, float density) {
+        float plasmaField = 0.0;
+        
+        // 多层等离子体
+        plasmaField += sin(uv.x * 10.0 + uTime * 2.0) * 
+                      cos(uv.y * 10.0 + uTime * 2.0);
+        plasmaField += sin(uv.x * 15.0 + uTime * 3.0) * 
+                      cos(uv.y * 15.0 + uTime * 3.0) * 0.5;
+        
+        return plasmaField * density;
+      }
+      
+      // 电弧效果
+      float lightningArcs(vec2 uv, float frequency) {
+        if(!uShowArcs) return 0.0;
+        
+        float arcs = 0.0;
+        for(int i = 0; i < 5; i++) {
+          float angle = float(i) * 3.14159 / 2.5 + uTime * frequency * 2.0;
+          float arc = sin(uv.x * 20.0 * cos(angle) + uv.y * 20.0 * sin(angle) + uTime * 5.0);
+          arcs += abs(arc) * 0.2;
+        }
+        return arcs;
+      }
+      
+      // 颜色模式
+      vec3 getColorMode(int mode) {
+        if(mode == 0) {
+          // 紫色等离子
+          return vec3(0.8, 0.2, 1.0);
+        } else if(mode == 1) {
+          // 蓝色等离子
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 红色等离子
+          return vec3(1.0, 0.2, 0.2);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv * 2.0 - 1.0;
+        
+        // 等离子体效果
+        float plasmaField = plasma(uv, uEnergyDensity);
+        
+        // 电弧效果
+        float arcs = lightningArcs(uv, uLightningFrequency);
+        
+        // 湍流效果
+        float turbulence = sin(length(uv) * 8.0 + uTime * uTurbulence);
+        
+        // 颜色计算
+        vec3 baseColor = getColorMode(uColorMode);
+        vec3 finalColor = baseColor * (plasmaField * 0.5 + arcs * 0.3 + turbulence * 0.2) * uStormIntensity;
+        
+        // 发光效果
+        float glow = 1.0 - length(uv) * 0.7;
+        finalColor *= glow * uGlowEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uStormIntensity: { value: plasmaParams.stormIntensity },
+        uEnergyDensity: { value: plasmaParams.energyDensity },
+        uTurbulence: { value: plasmaParams.turbulence },
+        uGlowEffect: { value: plasmaParams.glowEffect },
+        uLightningFrequency: { value: plasmaParams.lightningFrequency },
+        uColorMode: { value: plasmaParams.colorMode },
+        uShowArcs: { value: plasmaParams.showArcs }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const plasmaSphere = new THREE.Mesh(geometry, material);
+    scene.add(plasmaSphere);
+
+    // 更新风暴信息显示
+    function updateStormInfo() {
+      const stormElement = document.getElementById('stormInfo');
+      let intensity = "低";
+      if(plasmaParams.stormIntensity > 1.0) intensity = "中等";
+      if(plasmaParams.stormIntensity > 2.0) intensity = "高";
+      
+      let energy = "低";
+      if(plasmaParams.energyDensity > 0.5) energy = "中等";
+      if(plasmaParams.energyDensity > 0.8) energy = "高";
+      
+      stormElement.textContent = `风暴强度: ${intensity} | 能量等级: ${energy}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 等离子风暴参数控制
+    const plasmaFolder = gui.addFolder('等离子风暴参数');
+    plasmaFolder.add(plasmaParams, 'stormIntensity', 0.1, 3.0).name('风暴强度');
+    plasmaFolder.add(plasmaParams, 'energyDensity', 0.1, 1.5).name('能量密度');
+    plasmaFolder.add(plasmaParams, 'turbulence', 0.1, 2.0).name('湍流强度');
+    plasmaFolder.add(plasmaParams, 'glowEffect', 0.1, 2.0).name('发光效果');
+    plasmaFolder.add(plasmaParams, 'lightningFrequency', 0.1, 1.5).name('闪电频率');
+    plasmaFolder.add(plasmaParams, 'showArcs').name('显示电弧');
+    
+    // 颜色模式控制
+    const colorModes = {
+      "紫色风暴": 0,
+      "蓝色风暴": 1,
+      "红色风暴": 2
+    };
+    plasmaFolder.add(plasmaParams, 'colorMode', colorModes).name('颜色模式');
+    
+    plasmaFolder.open();
+
+    // 参数变化时更新材质和风暴信息
+    gui.onChange(() => {
+      material.uniforms.uStormIntensity.value = plasmaParams.stormIntensity;
+      material.uniforms.uEnergyDensity.value = plasmaParams.energyDensity;
+      material.uniforms.uTurbulence.value = plasmaParams.turbulence;
+      material.uniforms.uGlowEffect.value = plasmaParams.glowEffect;
+      material.uniforms.uLightningFrequency.value = plasmaParams.lightningFrequency;
+      material.uniforms.uColorMode.value = plasmaParams.colorMode;
+      material.uniforms.uShowArcs.value = plasmaParams.showArcs;
+      
+      updateStormInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转等离子球
+      plasmaSphere.rotation.x += 0.005;
+      plasmaSphere.rotation.y += 0.008;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化风暴信息显示
+    updateStormInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

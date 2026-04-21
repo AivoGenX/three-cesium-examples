@@ -1,0 +1,41 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="neuralBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#330033;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#110011;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="neuralGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ff66ff;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#66ffff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#66ff66;stop-opacity:0.7" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#neuralBg)"/>
+  
+  <!-- 神经网络 -->
+  <polygon points="150,60 180,90 150,120 120,90" fill="url(#neuralGradient)" opacity="0.8">
+    <animate attributeName="opacity" dur="3s" repeatCount="indefinite" values="0.6;0.9;0.6"/>
+  </polygon>
+  
+  <!-- 突触连接 -->
+  <line x1="150" y1="60" x2="150" y2="40" stroke="#66ffff" stroke-width="3" opacity="0.7">
+    <animate attributeName="y2" dur="2s" repeatCount="indefinite" values="40;30;40"/>
+  </line>
+  <line x1="180" y1="90" x2="200" y2="90" stroke="#66ffff" stroke-width="3" opacity="0.7">
+    <animate attributeName="x2" dur="2s" repeatCount="indefinite" values="200;210;200"/>
+  </line>
+  
+  <!-- 神经元 -->
+  <circle cx="150" cy="60" r="2" fill="#ffffff" opacity="0.8">
+    <animate attributeName="opacity" dur="1.5s" repeatCount="indefinite" values="0.3;0.9;0.3"/>
+  </circle>
+  <circle cx="180" cy="90" r="1.5" fill="#ffffff" opacity="0.7">
+    <animate attributeName="opacity" dur="2s" repeatCount="indefinite" values="0.4;0.8;0.4"/>
+  </circle>
+  
+  <!-- 标题 -->
+  <text x="150" y="180" text-anchor="middle" fill="#ff66ff" font-family="Arial" font-size="14" font-weight="bold">
+    神经突触效果
+  </text>
+</svg>

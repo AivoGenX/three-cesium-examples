@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js魔法符文效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #220033 0%, #110022 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff66cc;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff66cc;
+      border: 1px solid #ff66cc;
+      box-shadow: 0 0 20px #ff66cc;
+    }
+    .rune-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #66ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #66ffff;
+      border: 1px solid #66ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🔮 魔法符文效果 - 实时渲染 🔮</div>
+  <div class="rune-info" id="runeInfo">符文强度: 中等 | 激活状态: 活跃</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变符文效果<br>
+    • 实时交互：体验魔法力量
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x220033);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 魔法符文效果参数
+    const runeParams = {
+      runePower: 0.8,
+      activationSpeed: 0.6,
+      glowIntensity: 1.2,
+      patternComplexity: 0.7,
+      energyFlow: 0.8,
+      runeType: 0,
+      showParticles: true
+    };
+
+    // 创建圆环几何体，作为符文的载体
+    const geometry = new THREE.TorusGeometry(2.5, 0.5, 32, 64);
+
+    // 顶点着色器代码 - 魔法符文效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uRunePower;
+      uniform float uActivationSpeed;
+      uniform float uPatternComplexity;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 符文激活效果
+        float activation = sin(position.x * 4.0 + uTime * uActivationSpeed) * 
+                          cos(position.y * 5.0 + uTime * uActivationSpeed * 0.8) *
+                          sin(position.z * 4.0 + uTime * uActivationSpeed * 0.6);
+        
+        // 符文图案效果
+        float pattern = sin(position.x * uPatternComplexity * 8.0) *
+                       cos(position.y * uPatternComplexity * 10.0) *
+                       sin(position.z * uPatternComplexity * 8.0);
+        
+        // 能量流动效果
+        float energy = sin(position.x * 6.0 + uTime * uActivationSpeed * 2.0) *
+                      cos(position.z * 6.0 + uTime * uActivationSpeed * 2.0);
+        
+        vec3 newPosition = position + normal * (activation + pattern * 0.3 + energy * 0.2) * uRunePower * 0.1;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 魔法符文效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uRunePower;
+      uniform float uActivationSpeed;
+      uniform float uGlowIntensity;
+      uniform float uPatternComplexity;
+      uniform float uEnergyFlow;
+      uniform int uRuneType;
+      uniform bool uShowParticles;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 符文效果
+      float rune(vec2 uv, float power) {
+        float runeField = 0.0;
+        
+        // 多层符文图案
+        runeField += sin(uv.x * 6.0 + uTime * 0.3) * 
+                    cos(uv.y * 8.0 + uTime * 0.5);
+        runeField += sin(uv.x * 8.0 + uTime * 0.7) * 
+                    cos(uv.y * 10.0 + uTime * 0.9) * 0.7;
+        runeField += sin(uv.x * 10.0 + uTime * 1.1) * 
+                    cos(uv.y * 12.0 + uTime * 1.3) * 0.4;
+        
+        return runeField * power;
+      }
+      
+      // 符文图案
+      float runePattern(vec2 uv, float complexity) {
+        float pattern = 0.0;
+        
+        // 圆形符文
+        float circle1 = 1.0 - distance(uv, vec2(0.5, 0.5)) * 2.0;
+        pattern += circle1 * 0.5;
+        
+        // 星形符文
+        float star = sin(atan(uv.y - 0.5, uv.x - 0.5) * 8.0) * 0.3 + 0.7;
+        pattern += star * 0.3;
+        
+        // 复杂图案
+        float complex = sin(uv.x * complexity * 12.0) * 
+                       cos(uv.y * complexity * 12.0);
+        pattern += complex * 0.2;
+        
+        return pattern;
+      }
+      
+      // 粒子效果
+      float particles(vec2 uv, float density) {
+        if(!uShowParticles) return 0.0;
+        
+        float particleField = 0.0;
+        for(int i = 0; i < 20; i++) {
+          vec2 particlePos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, particlePos);
+          float particleSize = noise(vec2(float(i) * 0.789, 0.123)) * 0.05 + 0.03;
+          float particleLife = mod(uTime * 2.0 + float(i) * 6.0, 6.28);
+          float particleIntensity = sin(particleLife) * 0.8 + 0.2;
+          particleField += exp(-dist * 50.0) * particleIntensity * density;
+        }
+        return particleField;
+      }
+      
+      // 能量流动效果
+      float energyFlow(vec2 uv, float flow) {
+        float energy = 0.0;
+        
+        // 能量波纹
+        energy += sin(uv.x * 8.0 + uTime * flow * 3.0) * 
+                 cos(uv.y * 8.0 + uTime * flow * 2.5);
+        
+        // 能量脉冲
+        energy += sin(uTime * flow * 4.0) * 0.3;
+        
+        return energy * 0.4;
+      }
+      
+      // 符文类型
+      vec3 getRuneType(int type) {
+        if(type == 0) {
+          // 紫色符文
+          return vec3(0.8, 0.2, 1.0);
+        } else if(type == 1) {
+          // 蓝色符文
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 绿色符文
+          return vec3(0.2, 1.0, 0.4);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 符文效果
+        float runeField = rune(uv, uRunePower);
+        
+        // 符文图案
+        float patternField = runePattern(uv, uPatternComplexity);
+        
+        // 粒子效果
+        float particleField = particles(uv, 0.3);
+        
+        // 能量流动效果
+        float energyField = energyFlow(uv, uEnergyFlow);
+        
+        // 颜色计算
+        vec3 baseColor = getRuneType(uRuneType);
+        vec3 finalColor = baseColor * (runeField * 0.4 + patternField * 0.3 + particleField * 0.2 + energyField * 0.1) * uGlowIntensity;
+        
+        // 激活效果
+        float activationEffect = sin(uTime * uActivationSpeed) * 0.2 + 0.8;
+        finalColor *= activationEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uRunePower: { value: runeParams.runePower },
+        uActivationSpeed: { value: runeParams.activationSpeed },
+        uGlowIntensity: { value: runeParams.glowIntensity },
+        uPatternComplexity: { value: runeParams.patternComplexity },
+        uEnergyFlow: { value: runeParams.energyFlow },
+        uRuneType: { value: runeParams.runeType },
+        uShowParticles: { value: runeParams.showParticles }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const runeTorus = new THREE.Mesh(geometry, material);
+    scene.add(runeTorus);
+
+    // 更新符文信息显示
+    function updateRuneInfo() {
+      const runeElement = document.getElementById('runeInfo');
+      let power = "弱";
+      if(runeParams.runePower > 0.5) power = "中等";
+      if(runeParams.runePower > 0.8) power = "强";
+      
+      let activation = "休眠";
+      if(runeParams.activationSpeed > 0.3) activation = "活跃";
+      if(runeParams.activationSpeed > 0.6) activation = "超活跃";
+      
+      runeElement.textContent = `符文强度: ${power} | 激活状态: ${activation}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 符文参数控制
+    const runeFolder = gui.addFolder('符文效果参数');
+    runeFolder.add(runeParams, 'runePower', 0.1, 1.2).name('符文强度');
+    runeFolder.add(runeParams, 'activationSpeed', 0.1, 1.0).name('激活速度');
+    runeFolder.add(runeParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    runeFolder.add(runeParams, 'patternComplexity', 0.1, 1.0).name('图案复杂度');
+    runeFolder.add(runeParams, 'energyFlow', 0.1, 1.0).name('能量流动');
+    runeFolder.add(runeParams, 'showParticles').name('显示粒子');
+    
+    // 符文类型控制
+    const runeTypes = {
+      "紫色符文": 0,
+      "蓝色符文": 1,
+      "绿色符文": 2
+    };
+    runeFolder.add(runeParams, 'runeType', runeTypes).name('符文类型');
+    
+    runeFolder.open();
+
+    // 参数变化时更新材质和符文信息
+    gui.onChange(() => {
+      material.uniforms.uRunePower.value = runeParams.runePower;
+      material.uniforms.uActivationSpeed.value = runeParams.activationSpeed;
+      material.uniforms.uGlowIntensity.value = runeParams.glowIntensity;
+      material.uniforms.uPatternComplexity.value = runeParams.patternComplexity;
+      material.uniforms.uEnergyFlow.value = runeParams.energyFlow;
+      material.uniforms.uRuneType.value = runeParams.runeType;
+      material.uniforms.uShowParticles.value = runeParams.showParticles;
+      
+      updateRuneInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转符文
+      runeTorus.rotation.y += runeParams.activationSpeed * 0.01;
+      runeTorus.rotation.x += runeParams.activationSpeed * 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化符文信息显示
+    updateRuneInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

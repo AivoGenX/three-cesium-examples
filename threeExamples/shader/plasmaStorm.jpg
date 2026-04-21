@@ -1,0 +1,15 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="plasmaGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ff00ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#330033;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="#330066"/>
+  <circle cx="200" cy="150" r="80" fill="url(#plasmaGradient)" opacity="0.8"/>
+  <circle cx="200" cy="150" r="60" fill="#ff66ff" opacity="0.7"/>
+  <circle cx="200" cy="150" r="40" fill="#ffffff" opacity="0.9"/>
+  <line x1="150" y1="100" x2="250" y2="200" stroke="#ffff00" stroke-width="2"/>
+  <line x1="250" y1="100" x2="150" y2="200" stroke="#ffff00" stroke-width="2"/>
+  <text x="200" y="280" text-anchor="middle" fill="#ff00ff" font-family="Arial" font-size="16">等离子风暴</text>
+</svg>

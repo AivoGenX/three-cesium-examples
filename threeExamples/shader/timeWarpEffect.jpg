@@ -1,0 +1,46 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="timeBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1a0033;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a001a;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="timeGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ff66ff;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#66ffff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#66ff66;stop-opacity:0.7" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#timeBg)"/>
+  
+  <!-- 时间扭曲球体 -->
+  <circle cx="150" cy="100" r="60" fill="url(#timeGradient)" opacity="0.9">
+    <animate attributeName="r" dur="2s" repeatCount="indefinite" values="60;65;60"/>
+  </circle>
+  
+  <!-- 时间扭曲效果 -->
+  <path d="M90,100 Q120,80 150,100 T210,100" fill="none" stroke="#ff66ff" stroke-width="8" stroke-linecap="round" opacity="0.8">
+    <animate attributeName="d" dur="3s" repeatCount="indefinite" 
+             values="M90,100 Q120,80 150,100 T210,100; M90,100 Q120,120 150,100 T210,100; M90,100 Q120,80 150,100 T210,100"/>
+  </path>
+  
+  <!-- 时间粒子效果 -->
+  <circle cx="130" cy="85" r="2" fill="#ffffff" opacity="0.7">
+    <animate attributeName="cy" dur="1.5s" repeatCount="indefinite" values="85;75;85"/>
+    <animate attributeName="opacity" dur="1.5s" repeatCount="indefinite" values="0.3;0.9;0.3"/>
+  </circle>
+  <circle cx="170" cy="115" r="1.5" fill="#ffffff" opacity="0.6">
+    <animate attributeName="cy" dur="2s" repeatCount="indefinite" values="115;105;115"/>
+    <animate attributeName="opacity" dur="2s" repeatCount="indefinite" values="0.2;0.8;0.2"/>
+  </circle>
+  
+  <!-- 旋转效果 -->
+  <path d="M150,30 L155,35 L150,40 L145,35 Z" fill="#66ffff" opacity="0.6">
+    <animateTransform attributeName="transform" type="rotate" from="0 150 100" to="360 150 100" dur="6s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- 标题 -->
+  <text x="150" y="180" text-anchor="middle" fill="#ff66ff" font-family="Arial" font-size="14" font-weight="bold">
+    时间扭曲效果
+  </text>
+</svg>

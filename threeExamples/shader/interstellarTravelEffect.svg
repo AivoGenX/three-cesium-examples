@@ -1,0 +1,13 @@
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="travelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#000066;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#000033;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" fill="url(#travelGradient)"/>
+  <circle cx="150" cy="100" r="8" fill="#66ccff" opacity="0.9"/>
+  <circle cx="150" cy="100" r="15" stroke="#66ccff" stroke-width="2" fill="none" opacity="0.6"/>
+  <circle cx="150" cy="100" r="25" stroke="#66ccff" stroke-width="1" fill="none" opacity="0.4"/>
+  <text x="150" y="180" text-anchor="middle" fill="white" font-family="Arial" font-size="14" font-weight="bold">星际旅行效果</text>
+</svg>

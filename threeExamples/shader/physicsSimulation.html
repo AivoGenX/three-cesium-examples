@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js物理模拟着色器效果</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #0f0f23 0%, #1e1e3f 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      box-shadow: 0 0 20px #ff6b6b;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">⚛️ 物理模拟着色器效果 - 实时渲染 ⚛️</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x0f0f23);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,5)的位置观察场景
+    camera.position.set(0, 0, 5)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 创建几何体和材质
+    // ============================================================================
+    
+    // 创建平面几何体，作为物理模拟效果的载体
+    // 参数：宽度，高度，宽度分段数，高度分段数
+    const geometry = new THREE.PlaneGeometry(12, 12, 512, 512);
+
+    // 创建自定义着色器材质，实现多种物理模拟效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让效果更亮
+      uniforms: {
+        // 时间变量，用于动画效果
+        uTime: { value: 0.0 },
+        // 物理模拟类型选择：0=波动方程, 1=热传导, 2=流体动力学, 3=弹性力学, 4=电磁场
+        uPhysicsType: { value: 0 },
+        // 物理参数
+        uWaveSpeed: { value: 1.0 },    // 波速
+        uViscosity: { value: 0.1 },    // 粘度
+        uElasticity: { value: 0.5 },   // 弹性系数
+        uGravity: { value: 9.8 },      // 重力加速度
+        uDamping: { value: 0.1 },      // 阻尼系数
+        // 颜色参数
+        uColor1: { value: new THREE.Color(0xff6b6b) }, // 主色
+        uColor2: { value: new THREE.Color(0x4ecdc4) }, // 辅色
+        uColor3: { value: new THREE.Color(0x45b7d1) }, // 高光色
+        // 效果参数
+        uIntensity: { value: 1.0 },    // 效果强度
+        uResolution: { value: new THREE.Vector2(512, 512) }, // 分辨率
+      },
+      
+      // ============================================================================
+      // 顶点着色器：处理顶点位置和变形
+      // ============================================================================
+      vertexShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform float uWaveSpeed;      // 波速
+        uniform float uViscosity;      // 粘度
+        uniform float uElasticity;     // 弹性系数
+        uniform float uGravity;        // 重力加速度
+        uniform float uDamping;        // 阻尼系数
+        uniform int uPhysicsType;      // 物理类型
+        
+        // 传递到片元着色器的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vPhysicsValue;   // 物理计算值
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 二维波动方程：模拟波在二维介质中的传播
+        // 方程：∂²u/∂t² = c²(∂²u/∂x² + ∂²u/∂y²)
+        // 特点：周期性波动，能量守恒
+        // ============================================================================
+        float waveEquation(vec2 pos) {
+          // 计算到中心的距离
+          float r = length(pos);
+          
+          // 波动方程解：u(r,t) = A * sin(kr - ωt) / r
+          float k = 10.0; // 波数
+          float omega = uWaveSpeed * k; // 角频率
+          
+          // 避免除以零
+          if(r < 0.01) r = 0.01;
+          
+          return sin(k * r - omega * uTime) / r;
+        }
+        
+        // ============================================================================
+        // 热传导方程：模拟热量在介质中的扩散
+        // 方程：∂u/∂t = α(∂²u/∂x² + ∂²u/∂y²)
+        // 特点：热量从高温向低温扩散，最终趋于均匀
+        // ============================================================================
+        float heatConduction(vec2 pos) {
+          // 初始热源：中心点热源
+          float initialHeat = exp(-length(pos) * 5.0);
+          
+          // 热扩散：随时间扩散
+          float diffusion = 1.0 / (1.0 + uTime * 2.0);
+          
+          // 热传导方程近似解
+          return initialHeat * exp(-length(pos) * length(pos) / (4.0 * uViscosity * uTime + 0.1)) * diffusion;
+        }
+        
+        // ============================================================================
+        // 流体动力学：模拟不可压缩流体的运动
+        // 方程：Navier-Stokes方程
+        // 特点：涡旋、湍流等复杂流体现象
+        // ============================================================================
+        float fluidDynamics(vec2 pos) {
+          // 涡旋场：多个涡旋叠加
+          float vorticity = 0.0;
+          
+          // 添加多个涡旋源
+          for(int i = 0; i < 3; i++) {
+            float angle = float(i) * 2.0944; // 120度间隔
+            vec2 vortexCenter = vec2(cos(angle), sin(angle)) * 0.5;
+            vec2 relativePos = pos - vortexCenter;
+            float vortexStrength = sin(uTime * 0.5 + float(i)) * 2.0;
+            
+            // 涡旋速度场：与距离成反比
+            vorticity += vortexStrength * sin(atan(relativePos.y, relativePos.x) * 3.0 + uTime * 2.0) / (length(relativePos) + 0.1);
+          }
+          
+          return vorticity;
+        }
+        
+        // ============================================================================
+        // 弹性力学：模拟弹性材料的变形
+        // 方程：胡克定律 + 波动方程
+        // 特点：弹性振动，能量耗散
+        // ============================================================================
+        float elasticity(vec2 pos) {
+          // 弹性变形：基于距离的衰减振动
+          float r = length(pos);
+          
+          // 弹性波：阻尼振动
+          float amplitude = exp(-uDamping * uTime); // 振幅衰减
+          float frequency = 5.0 * uElasticity; // 频率与弹性系数相关
+          
+          return amplitude * sin(frequency * r - uTime * 3.0) * exp(-r * 3.0);
+        }
+        
+        // ============================================================================
+        // 电磁场：模拟电场和磁场的相互作用
+        // 方程：麦克斯韦方程组
+        // 特点：电磁波传播，偏振现象
+        // ============================================================================
+        float electromagneticField(vec2 pos) {
+          // 电磁波：横波传播
+          float kx = 8.0; // x方向波数
+          float ky = 6.0; // y方向波数
+          float omega = 3.0; // 角频率
+          
+          // 电场分量
+          float Ex = sin(kx * pos.x + ky * pos.y - omega * uTime);
+          
+          // 磁场分量（与电场垂直）
+          float By = cos(kx * pos.x + ky * pos.y - omega * uTime);
+          
+          // 电磁场强度
+          return sqrt(Ex * Ex + By * By);
+        }
+        
+        // ============================================================================
+        // 主顶点着色器函数
+        // ============================================================================
+        void main() {
+          // 传递UV坐标到片元着色器
+          vUv = uv;
+          vPosition = position;
+          
+          // 计算到中心的距离
+          vDistance = length(position.xy);
+          
+          // 根据物理类型选择不同的物理模拟
+          float physicsValue = 0.0;
+          
+          if(uPhysicsType == 0) {
+            // 波动方程：波传播
+            physicsValue = waveEquation(position.xy);
+          } else if(uPhysicsType == 1) {
+            // 热传导：热量扩散
+            physicsValue = heatConduction(position.xy);
+          } else if(uPhysicsType == 2) {
+            // 流体动力学：涡旋流动
+            physicsValue = fluidDynamics(position.xy);
+          } else if(uPhysicsType == 3) {
+            // 弹性力学：弹性振动
+            physicsValue = elasticity(position.xy);
+          } else {
+            // 电磁场：电磁波传播
+            physicsValue = electromagneticField(position.xy);
+          }
+          
+          vPhysicsValue = physicsValue;
+          
+          // 根据物理值对顶点位置进行变形
+          vec3 newPosition = position;
+          newPosition.z += physicsValue * 0.8;
+          
+          // 设置最终顶点位置
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      
+      // ============================================================================
+      // 片元着色器：处理像素颜色
+      // ============================================================================
+      fragmentShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform vec3 uColor1;          // 主色
+        uniform vec3 uColor2;          // 辅色
+        uniform vec3 uColor3;          // 高光色
+        uniform float uIntensity;      // 效果强度
+        
+        // 从顶点着色器传递的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vPhysicsValue;   // 物理计算值
+        varying float vDistance;       // 到中心距离
+        
+        void main() {
+          // 基础颜色计算：根据物理值进行颜色插值
+          float normalizedValue = (vPhysicsValue + 1.0) * 0.5;
+          vec3 baseColor = mix(uColor1, uColor2, normalizedValue);
+          
+          // 添加高光效果：在物理值较高的区域添加高光色
+          float highlight = smoothstep(0.6, 0.9, abs(vPhysicsValue));
+          baseColor = mix(baseColor, uColor3, highlight);
+          
+          // 添加径向渐变效果
+          float radialFade = 1.0 - smoothstep(0.0, 1.0, vDistance * 0.4);
+          baseColor *= radialFade;
+          
+          // 添加等值线效果：显示物理场的等高线
+          float contour = fract(vPhysicsValue * 8.0);
+          contour = smoothstep(0.0, 0.1, contour) - smoothstep(0.9, 1.0, contour);
+          baseColor = mix(baseColor, vec3(1.0, 1.0, 1.0), contour * 0.3);
+          
+          // 添加时间动画效果
+          float timeEffect = sin(uTime * 0.4) * 0.1 + 0.9;
+          baseColor *= timeEffect * uIntensity;
+          
+          // 根据UV坐标添加边缘渐变效果
+          float edgeFade = 1.0 - length(vUv - 0.5) * 2.0;
+          edgeFade = smoothstep(0.0, 0.3, edgeFade);
+          
+          // 最终颜色输出
+          gl_FragColor = vec4(baseColor, edgeFade);
+        }
+      `
+    });
+
+    // 创建网格对象并添加到场景
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 物理类型控制
+    const physicsTypes = {
+      "波动方程": 0,
+      "热传导": 1,
+      "流体动力学": 2,
+      "弹性力学": 3,
+      "电磁场": 4
+    };
+    
+    gui.add(material.uniforms.uPhysicsType, 'value', physicsTypes).name('物理类型');
+    gui.add(material.uniforms.uWaveSpeed, 'value', 0.1, 3.0).name('波速');
+    gui.add(material.uniforms.uViscosity, 'value', 0.01, 1.0).name('粘度');
+    gui.add(material.uniforms.uElasticity, 'value', 0.1, 2.0).name('弹性系数');
+    gui.add(material.uniforms.uDamping, 'value', 0.01, 0.5).name('阻尼系数');
+    gui.add(material.uniforms.uIntensity, 'value', 0.1, 3.0).name('效果强度');
+    
+    // 颜色控制
+    const colorFolder = gui.addFolder('颜色设置');
+    colorFolder.addColor(material.uniforms.uColor1, 'value').name('主色');
+    colorFolder.addColor(material.uniforms.uColor2, 'value').name('辅色');
+    colorFolder.addColor(material.uniforms.uColor3, 'value').name('高光色');
+    colorFolder.open();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间变量，驱动动画效果
+      material.uniforms.uTime.value += 0.01;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

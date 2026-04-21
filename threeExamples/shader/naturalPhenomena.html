@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js自然现象着色器效果</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #0a0a2a 0%, #1a1a3a 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00b4d8;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00b4d8;
+      border: 1px solid #00b4d8;
+      box-shadow: 0 0 20px #00b4d8;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🌊 自然现象着色器效果 - 实时渲染 🌊</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x0a0a2a);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,5)的位置观察场景
+    camera.position.set(0, 0, 5)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 创建几何体和材质
+    // ============================================================================
+    
+    // 创建平面几何体，作为自然现象效果的载体
+    // 参数：宽度，高度，宽度分段数，高度分段数
+    const geometry = new THREE.PlaneGeometry(14, 14, 512, 512);
+
+    // 创建自定义着色器材质，实现多种自然现象效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让效果更亮
+      uniforms: {
+        // 时间变量，用于动画效果
+        uTime: { value: 0.0 },
+        // 自然现象类型选择：0=海洋波浪, 1=云层流动, 2=火焰燃烧, 3=极光效果, 4=闪电效果
+        uPhenomenonType: { value: 0 },
+        // 自然现象参数
+        uWaveHeight: { value: 0.5 },   // 波浪高度
+        uWindSpeed: { value: 0.3 },    // 风速
+        uFireIntensity: { value: 1.0 }, // 火焰强度
+        uAuroraSpeed: { value: 0.2 },  // 极光速度
+        uLightningFrequency: { value: 0.5 }, // 闪电频率
+        // 颜色参数
+        uOceanColor: { value: new THREE.Color(0x00b4d8) }, // 海洋色
+        uCloudColor: { value: new THREE.Color(0xffffff) }, // 云层色
+        uFireColor: { value: new THREE.Color(0xff6b6b) },  // 火焰色
+        uAuroraColor: { value: new THREE.Color(0x4ecdc4) }, // 极光色
+        uLightningColor: { value: new THREE.Color(0x90e0ef) }, // 闪电色
+        // 效果参数
+        uDetail: { value: 0.5 },       // 细节程度
+        uTurbulence: { value: 0.3 },   // 湍流强度
+      },
+      
+      // ============================================================================
+      // 顶点着色器：处理顶点位置和变形
+      // ============================================================================
+      vertexShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform float uWaveHeight;     // 波浪高度
+        uniform float uWindSpeed;      // 风速
+        uniform float uFireIntensity;  // 火焰强度
+        uniform float uAuroraSpeed;    // 极光速度
+        uniform float uLightningFrequency; // 闪电频率
+        uniform int uPhenomenonType;   // 现象类型
+        
+        // 传递到片元着色器的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vPhenomenonValue; // 现象计算值
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 海洋波浪：模拟海洋表面的波浪运动
+        // 原理：基于正弦波和噪声的叠加
+        // 特点：周期性波动，波浪起伏
+        // ============================================================================
+        float oceanWaves(vec2 pos) {
+          // 基础波浪：多个正弦波叠加
+          float wave1 = sin(pos.x * 3.0 + uTime * uWindSpeed) * 0.5;
+          float wave2 = sin(pos.y * 2.0 + uTime * uWindSpeed * 1.3) * 0.3;
+          float wave3 = sin((pos.x + pos.y) * 4.0 + uTime * uWindSpeed * 0.7) * 0.2;
+          
+          // 添加噪声扰动，模拟波浪的复杂性
+          float noise = sin(pos.x * 8.0 + pos.y * 6.0 + uTime * 2.0) * 0.1;
+          
+          return (wave1 + wave2 + wave3 + noise) * uWaveHeight;
+        }
+        
+        // ============================================================================
+        // 云层流动：模拟云层的动态变化
+        // 原理：基于分形噪声的流动效果
+        // 特点：柔软、流动、不断变化
+        // ============================================================================
+        float cloudMovement(vec2 pos) {
+          // 多层噪声叠加，模拟云层细节
+          float cloud = 0.0;
+          
+          // 第一层：基础云层形状
+          cloud += sin(pos.x * 2.0 + uTime * uWindSpeed) * 0.4;
+          cloud += sin(pos.y * 1.5 + uTime * uWindSpeed * 0.8) * 0.3;
+          
+          // 第二层：细节噪声
+          cloud += sin((pos.x + pos.y) * 6.0 + uTime * 1.5) * 0.2;
+          cloud += sin(pos.x * 10.0 - pos.y * 8.0 + uTime * 2.0) * 0.1;
+          
+          // 平滑处理
+          cloud = (cloud + 1.0) * 0.5;
+          
+          return cloud;
+        }
+        
+        // ============================================================================
+        // 火焰燃烧：模拟火焰的跳动和燃烧
+        // 原理：基于湍流和上升运动的噪声
+        // 特点：跳动、上升、热浪效果
+        // ============================================================================
+        float fireEffect(vec2 pos) {
+          // 火焰基础形状：向上运动
+          float fire = (1.0 - pos.y) * 2.0; // 底部火焰更强烈
+          
+          // 湍流效果：模拟火焰的跳动
+          float turbulence = sin(pos.x * 8.0 + uTime * 3.0) * 0.3;
+          turbulence += sin(pos.x * 12.0 + uTime * 4.0) * 0.2;
+          turbulence += sin(pos.x * 16.0 + uTime * 5.0) * 0.1;
+          
+          // 火焰上升效果
+          float rise = uTime * 2.0 - pos.y * 3.0;
+          
+          return (fire + turbulence) * sin(rise) * uFireIntensity;
+        }
+        
+        // ============================================================================
+        // 极光效果：模拟极光的流动和发光
+        // 原理：基于正弦波的带状流动
+        // 特点：带状流动、发光、色彩渐变
+        // ============================================================================
+        float auroraEffect(vec2 pos) {
+          // 极光带状结构
+          float aurora = 0.0;
+          
+          // 多条极光带
+          for(int i = 0; i < 3; i++) {
+            float bandPosition = float(i) * 0.3 - 0.3;
+            float band = sin((pos.x + bandPosition) * 6.0 + uTime * uAuroraSpeed) * 0.5;
+            band = exp(-abs(pos.y - band) * 10.0); // 高斯分布
+            aurora += band;
+          }
+          
+          // 流动效果
+          aurora *= sin(pos.y * 4.0 + uTime * 0.5) * 0.5 + 0.5;
+          
+          return aurora;
+        }
+        
+        // ============================================================================
+        // 闪电效果：模拟闪电的随机放电
+        // 原理：基于随机噪声的突发效果
+        // 特点：突发、随机、强烈发光
+        // ============================================================================
+        float lightningEffect(vec2 pos) {
+          // 闪电基础：垂直放电
+          float lightning = 0.0;
+          
+          // 随机闪电发生
+          float lightningChance = sin(uTime * uLightningFrequency * 10.0);
+          if(lightningChance > 0.8) {
+            // 闪电主干
+            float mainBolt = exp(-abs(pos.x) * 20.0); // 中心闪电
+            
+            // 闪电分支
+            float branch1 = exp(-abs(pos.x - 0.2) * 30.0) * 0.5;
+            float branch2 = exp(-abs(pos.x + 0.2) * 30.0) * 0.5;
+            
+            lightning = (mainBolt + branch1 + branch2) * (1.0 - pos.y);
+          }
+          
+          return lightning;
+        }
+        
+        // ============================================================================
+        // 主顶点着色器函数
+        // ============================================================================
+        void main() {
+          // 传递UV坐标到片元着色器
+          vUv = uv;
+          vPosition = position;
+          
+          // 计算到中心的距离
+          vDistance = length(position.xy);
+          
+          // 根据现象类型选择不同的自然现象
+          float phenomenonValue = 0.0;
+          
+          if(uPhenomenonType == 0) {
+            // 海洋波浪：周期性波动
+            phenomenonValue = oceanWaves(position.xy);
+          } else if(uPhenomenonType == 1) {
+            // 云层流动：柔软流动
+            phenomenonValue = cloudMovement(position.xy);
+          } else if(uPhenomenonType == 2) {
+            // 火焰燃烧：跳动上升
+            phenomenonValue = fireEffect(position.xy);
+          } else if(uPhenomenonType == 3) {
+            // 极光效果：带状流动
+            phenomenonValue = auroraEffect(position.xy);
+          } else {
+            // 闪电效果：随机放电
+            phenomenonValue = lightningEffect(position.xy);
+          }
+          
+          vPhenomenonValue = phenomenonValue;
+          
+          // 根据现象值对顶点位置进行变形
+          vec3 newPosition = position;
+          newPosition.z += phenomenonValue * 1.5;
+          
+          // 设置最终顶点位置
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      
+      // ============================================================================
+      // 片元着色器：处理像素颜色
+      // ============================================================================
+      fragmentShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform vec3 uOceanColor;      // 海洋色
+        uniform vec3 uCloudColor;      // 云层色
+        uniform vec3 uFireColor;       // 火焰色
+        uniform vec3 uAuroraColor;     // 极光色
+        uniform vec3 uLightningColor;  // 闪电色
+        uniform int uPhenomenonType;   // 现象类型
+        
+        // 从顶点着色器传递的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vPhenomenonValue; // 现象计算值
+        varying float vDistance;       // 到中心距离
+        
+        void main() {
+          // 根据现象类型选择不同的颜色
+          vec3 baseColor;
+          if(uPhenomenonType == 0) {
+            baseColor = uOceanColor;   // 海洋色
+          } else if(uPhenomenonType == 1) {
+            baseColor = uCloudColor;   // 云层色
+          } else if(uPhenomenonType == 2) {
+            baseColor = uFireColor;    // 火焰色
+          } else if(uPhenomenonType == 3) {
+            baseColor = uAuroraColor;  // 极光色
+          } else {
+            baseColor = uLightningColor; // 闪电色
+          }
+          
+          // 根据现象值调整颜色强度
+          baseColor *= vPhenomenonValue * 2.0;
+          
+          // 添加发光效果
+          float glow = smoothstep(0.3, 0.8, vPhenomenonValue);
+          baseColor += glow * 0.5;
+          
+          // 添加径向渐变效果
+          float radialFade = 1.0 - smoothstep(0.0, 1.0, vDistance * 0.3);
+          baseColor *= radialFade;
+          
+          // 特殊效果：根据现象类型添加特定效果
+          if(uPhenomenonType == 0) {
+            // 海洋：添加泡沫效果
+            float foam = sin(vPosition.x * 20.0 + uTime * 5.0) * 0.1;
+            foam = smoothstep(0.4, 0.6, foam + vPhenomenonValue);
+            baseColor = mix(baseColor, vec3(1.0), foam * 0.3);
+          } else if(uPhenomenonType == 2) {
+            // 火焰：添加热浪扭曲效果
+            float heatDistortion = sin(vPosition.x * 15.0 + uTime * 3.0) * 0.05;
+            baseColor.r += heatDistortion;
+          } else if(uPhenomenonType == 3) {
+            // 极光：添加色彩渐变
+            float colorShift = sin(vPosition.y * 8.0 + uTime) * 0.3;
+            baseColor.g += colorShift;
+            baseColor.b += colorShift * 0.5;
+          }
+          
+          // 添加时间动画效果
+          float timeEffect = sin(uTime * 0.3) * 0.1 + 0.9;
+          baseColor *= timeEffect;
+          
+          // 根据UV坐标添加边缘渐变效果
+          float edgeFade = 1.0 - length(vUv - 0.5) * 2.0;
+          edgeFade = smoothstep(0.0, 0.3, edgeFade);
+          
+          // 最终颜色输出
+          gl_FragColor = vec4(baseColor, edgeFade);
+        }
+      `
+    });
+
+    // 创建网格对象并添加到场景
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 现象类型控制
+    const phenomenonTypes = {
+      "海洋波浪": 0,
+      "云层流动": 1,
+      "火焰燃烧": 2,
+      "极光效果": 3,
+      "闪电效果": 4
+    };
+    
+    gui.add(material.uniforms.uPhenomenonType, 'value', phenomenonTypes).name('现象类型');
+    gui.add(material.uniforms.uWaveHeight, 'value', 0.1, 2.0).name('波浪高度');
+    gui.add(material.uniforms.uWindSpeed, 'value', 0.1, 1.0).name('风速');
+    gui.add(material.uniforms.uFireIntensity, 'value', 0.1, 3.0).name('火焰强度');
+    gui.add(material.uniforms.uAuroraSpeed, 'value', 0.1, 1.0).name('极光速度');
+    gui.add(material.uniforms.uLightningFrequency, 'value', 0.1, 2.0).name('闪电频率');
+    
+    // 颜色控制
+    const colorFolder = gui.addFolder('颜色设置');
+    colorFolder.addColor(material.uniforms.uOceanColor, 'value').name('海洋色');
+    colorFolder.addColor(material.uniforms.uCloudColor, 'value').name('云层色');
+    colorFolder.addColor(material.uniforms.uFireColor, 'value').name('火焰色');
+    colorFolder.addColor(material.uniforms.uAuroraColor, 'value').name('极光色');
+    colorFolder.addColor(material.uniforms.uLightningColor, 'value').name('闪电色');
+    colorFolder.open();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间变量，驱动动画效果
+      material.uniforms.uTime.value += 0.01;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,47 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="crystalBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#001133;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#000022;stop-opacity:1" />
+    </radialGradient>
+    <linearGradient id="crystalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#66ccff;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#ff66cc;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#66ffcc;stop-opacity:0.9" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#crystalBg)"/>
+  
+  <!-- 水晶八面体 -->
+  <polygon points="150,60 180,90 150,120 120,90" fill="url(#crystalGradient)" opacity="0.8">
+    <animate attributeName="opacity" dur="3s" repeatCount="indefinite" values="0.6;0.9;0.6"/>
+  </polygon>
+  
+  <!-- 水晶生长效果 -->
+  <line x1="150" y1="60" x2="150" y2="40" stroke="#66ffff" stroke-width="3" opacity="0.7">
+    <animate attributeName="y2" dur="2s" repeatCount="indefinite" values="40;30;40"/>
+  </line>
+  <line x1="180" y1="90" x2="200" y2="90" stroke="#66ffff" stroke-width="3" opacity="0.7">
+    <animate attributeName="x2" dur="2s" repeatCount="indefinite" values="200;210;200"/>
+  </line>
+  <line x1="150" y1="120" x2="150" y2="140" stroke="#66ffff" stroke-width="3" opacity="0.7">
+    <animate attributeName="y2" dur="2s" repeatCount="indefinite" values="140;150;140"/>
+  </line>
+  <line x1="120" y1="90" x2="100" y2="90" stroke="#66ffff" stroke-width="3" opacity="0.7">
+    <animate attributeName="x2" dur="2s" repeatCount="indefinite" values="100;90;100"/>
+  </line>
+  
+  <!-- 闪光效果 -->
+  <circle cx="150" cy="60" r="2" fill="#ffffff" opacity="0.8">
+    <animate attributeName="opacity" dur="1.5s" repeatCount="indefinite" values="0.3;0.9;0.3"/>
+  </circle>
+  <circle cx="180" cy="90" r="1.5" fill="#ffffff" opacity="0.7">
+    <animate attributeName="opacity" dur="2s" repeatCount="indefinite" values="0.4;0.8;0.4"/>
+  </circle>
+  
+  <!-- 标题 -->
+  <text x="150" y="180" text-anchor="middle" fill="#66ccff" font-family="Arial" font-size="14" font-weight="bold">
+    水晶生长效果
+  </text>
+</svg>

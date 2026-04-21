@@ -13,6 +13,11 @@ export default [
         image: HOST + "/threeExamples/openSource/threeexamples.png",
         tag: "官方", // 标签
         bgcolor: "rgb(0, 150, 136)", // 背景颜色
+        meta: {
+          title: "Three.js官方示例 - WebGL三维图形库完整案例集合",
+          keywords: "Three.js,WebGL,3D图形,三维可视化,JavaScript,3D渲染,开源示例",
+          description: "Three.js官方提供的完整WebGL三维图形库示例集合，包含各种3D渲染、动画和交互效果的实战案例"
+        }
       },
       {
         id: "cesiumAuthor", // Cesium作者
@@ -23,6 +28,11 @@ export default [
         image: HOST + "/threeExamples/openSource/sandcastle.png",
         tag: "官方", // 标签
         bgcolor: "rgb(63, 81, 181)", // 背景颜色
+        meta: {
+          title: "Cesium官方示例 - 三维地球和地理信息系统开发案例",
+          keywords: "Cesium,三维地球,WebGL,GIS,地理可视化,卫星影像,三维地图",
+          description: "Cesium官方提供的三维地球和地理信息系统开发示例，包含地形、影像、矢量数据等完整的三维地图应用案例"
+        }
       },
       {
         id: "ThreeChineseExamples", // 官方示例
@@ -33,6 +43,11 @@ export default [
         image: HOST + "/threeExamples/openSource/ThreeChineseExamples.png",
         tag: "官网优化", // 标签
         bgcolor: "rgb(181, 28, 34)", // 背景颜色
+        meta: {
+          title: "Three.js中文优化版示例 - 三维可视化开发实战案例",
+          keywords: "Three.js中文,三维可视化,WebGL开发,3D案例,中文文档,三维图形",
+          description: "Three.js官网实例的中文优化版本，提供详细的中文文档和实战案例，适合三维可视化开发学习"
+        }
       },
       {
         id: "editor",
@@ -42,6 +57,11 @@ export default [
         image: HOST + "/threeExamples/openSource/ThreeEditX.png",
         tag: "编辑器", // 标签
         bgcolor: "rgb(0 206 249)", // 背景颜色
+        meta: {
+          title: "Three.js在线编辑器Vue版 - 三维场景可视化编辑工具",
+          keywords: "Three.js编辑器,Vue,三维场景编辑,在线工具,3D可视化,WebGL编辑器",
+          description: "基于Vue.js开发的Three.js在线编辑器，提供三维场景的可视化编辑功能，支持实时预览和代码生成"
+        }
       },
 
       {
@@ -52,6 +72,11 @@ export default [
         image: HOST + "/threeExamples/openSource/trilab.png",
         tag: "轻量级", // 标签
         bgcolor: "rgb(255 136 130)", // 背景颜色
+        meta: {
+          title: "轻量级三维地图引擎 - 基于Three.js的地理可视化平台",
+          keywords: "轻量级地图引擎,Three.js地图,三维地理可视化,WebGL地图,3DGIS",
+          description: "基于Three.js开发的轻量级三维地图引擎，提供高性能的地理数据可视化和三维地图渲染功能"
+        }
       },
       {
         id: "tool",
@@ -63,6 +88,11 @@ export default [
         image: FILE_HOST + "images/tool.png",
         tag: "下载器", // 标签
         bgcolor: "rgb(193 136 0)", // 背景颜色
+        meta: {
+          title: "三维地图数据下载工具 - 支持多种地图源的数据采集",
+          keywords: "地图下载器,三维地图数据,地理数据采集,地图瓦片下载,3D地图工具",
+          description: "专业的三维地图数据下载工具，支持多种地图源的数据采集和瓦片下载，为三维可视化开发提供数据支持"
+        }
       },
     ],
   },
@@ -76,6 +106,11 @@ export default [
         author: "nico",
         codeUrl: HOST + "threeExamples/shader/shader_planet.html",
         image: HOST + "threeExamples/shader/shader_planet.jpg",
+        meta: {
+          title: "Three.js着色器行星效果 - 自定义GLSL着色器3D行星渲染",
+          keywords: "Three.js着色器,GLSL,行星渲染,3D星球,WebGL着色器,自定义着色器",
+          description: "使用Three.js和自定义GLSL着色器实现的3D行星效果，包含大气层、云层和动态光照的三维渲染技术"
+        }
       },
 
       {
@@ -84,6 +119,11 @@ export default [
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/mosaicShader.html",
         image: HOST + "threeExamples/shader/mosaicShader.jpg",
+        meta: {
+          title: "Three.js马赛克着色器 - 像素化渲染和动态颜色变换效果",
+          keywords: "Three.js马赛克,像素化着色器,颜色变换,WebGL特效,3D渲染",
+          description: "基于Three.js实现的马赛克着色器效果，通过像素化处理和动态颜色变换实现独特的视觉风格"
+        }
       },
       {
         id: "mushroom",
@@ -91,6 +131,11 @@ export default [
         author: "bubinyang",
         codeUrl: HOST + "threeExamples/shader/mushroom.html",
         image: HOST + "threeExamples/shader/mushroom.jpg",
+        meta: {
+          title: "Three.js蘑菇着色器 - 有机生物形态的3D渲染效果",
+          keywords: "Three.js蘑菇,有机着色器,生物形态,3D渲染,WebGL特效",
+          description: "使用Three.js实现的蘑菇形态着色器效果，模拟有机生物的三维渲染和材质表现"
+        }
       },
       {
         id: "circleRotate",
@@ -98,6 +143,11 @@ export default [
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/circleRotate.html",
         image: HOST + "threeExamples/shader/circleRotate.jpg",
+        meta: {
+          title: "Three.js旋转圆形着色器 - 动态几何图形的3D动画效果",
+          keywords: "Three.js旋转圆,几何着色器,动态图形,3D动画,WebGL渲染",
+          description: "基于Three.js实现的旋转圆形着色器效果，展示动态几何图形的3D动画和渲染技术"
+        }
       },
       {
         id: "blobShader",
@@ -239,9 +289,9 @@ export default [
         codeUrl: HOST + "/threeExamples/shader/dissolveAnimate.html",
         image: HOST + "/threeExamples/shader/dissolveAnimate.jpg",
         meta: {
-          title: "溶解动画",
-          keywords: "three.js,溶解动画",
-          description: "使用three.js溶解动画",
+          title: "Three.js溶解动画着色器 - 物体渐隐渐现的3D特效",
+          keywords: "Three.js溶解动画,渐隐渐现,3D特效,着色器动画,WebGL渲染,三维可视化",
+          description: "使用Three.js实现的溶解动画着色器效果，实现物体渐隐渐现的三维特效和动态材质变化",
         },
       },
       {
@@ -251,9 +301,9 @@ export default [
         codeUrl: HOST + "/threeExamples/shader/waveShader.html",
         image: HOST + "/threeExamples/shader/waveShader.jpg",
         meta: {
-          title: "图像波动",
-          keywords: "three.js,图像波动",
-          description: "使用three.js图像波动",
+          title: "Three.js图像波动着色器 - 动态波纹效果的3D渲染",
+          keywords: "Three.js图像波动,波纹效果,动态着色器,3D渲染,WebGL特效,三维动画",
+          description: "基于Three.js实现的图像波动着色器效果，创建动态波纹和波动效果的三维渲染技术",
         },
       },
       {
@@ -262,6 +312,11 @@ export default [
         author: "hafly",
         codeUrl: HOST + "/threeExamples/shader/reliefImage.html",
         image: HOST + "/threeExamples/shader/reliefImage.jpg",
+        meta: {
+          title: "Three.js浮雕图像着色器 - 立体浮雕效果的3D渲染",
+          keywords: "Three.js浮雕图像,立体效果,3D渲染,浮雕着色器,WebGL特效,三维图形",
+          description: "使用Three.js实现的浮雕图像着色器效果，将平面图像转换为立体浮雕的三维渲染技术"
+        }
       },
       {
         id: "rasterGrid",
@@ -270,9 +325,9 @@ export default [
         codeUrl: HOST + "/threeExamples/shader/rasterGrid.html",
         image: HOST + "/threeExamples/shader/rasterGrid.jpg",
         meta: {
-          title: "栅格网格",
-          keywords: "three.js,栅格网格",
-          description: "使用three.js栅格网格",
+          title: "Three.js栅格网格着色器 - 几何图案的3D可视化效果",
+          keywords: "Three.js栅格网格,几何着色器,3D可视化,网格图案,WebGL渲染,三维图形",
+          description: "使用Three.js实现的栅格网格着色器效果，展示几何图案的三维可视化和网格渲染技术",
         },
       },
       {
@@ -610,6 +665,126 @@ export default [
         },
       },
       {
+        id: "quantumEnergyField",
+        name: "量子能量场",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/quantumEnergyField.html",
+        image: HOST + "threeExamples/shader/quantumEnergyField.png",
+        meta: {
+          title: "量子能量场着色器效果",
+          keywords: "three.js,量子,能量场,脉冲,发光,粒子效果",
+          description: "使用three.js实现动态量子能量场着色器效果",
+        },
+      },
+      {
+        id: "holographicDataStream",
+        name: "全息数据流",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/holographicDataStream.html",
+        image: HOST + "threeExamples/shader/holographicDataStream.png",
+        meta: {
+          title: "全息数据流着色器效果",
+          keywords: "three.js,全息,数据流,传输,网格,科技效果",
+          description: "使用three.js实现全息数据流传输着色器效果",
+        },
+      },
+      {
+        id: "neuralPulseNetwork",
+        name: "神经脉冲网络",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/neuralPulseNetwork.html",
+        image: HOST + "threeExamples/shader/neuralPulseNetwork.png",
+        meta: {
+          title: "神经脉冲网络着色器效果",
+          keywords: "three.js,神经,脉冲,网络,连接,生物效果",
+          description: "使用three.js实现神经脉冲网络着色器效果",
+        },
+      },
+      {
+        id: "timeSpaceTunnel",
+        name: "时空扭曲隧道",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/timeSpaceTunnel.html",
+        image: HOST + "threeExamples/shader/timeSpaceTunnel.png",
+        meta: {
+          title: "时空扭曲隧道着色器效果",
+          keywords: "three.js,时空,扭曲,隧道,螺旋,宇宙效果",
+          description: "使用three.js实现时空扭曲隧道着色器效果",
+        },
+      },
+      {
+        id: "crystalMatrixGrowth",
+        name: "晶体矩阵生长",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/crystalMatrixGrowth.html",
+        image: HOST + "threeExamples/shader/crystalMatrixGrowth.png",
+        meta: {
+          title: "晶体矩阵生长着色器效果",
+          keywords: "three.js,晶体,矩阵,生长,折射,晶格效果",
+          description: "使用three.js实现晶体矩阵生长着色器效果",
+        },
+      },
+      {
+        id: "plasmaStorm",
+        name: "等离子风暴",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/plasmaStorm.html",
+        image: HOST + "threeExamples/shader/plasmaStorm.png",
+        meta: {
+          title: "等离子风暴着色器效果",
+          keywords: "three.js,等离子,风暴,闪电,湍流,能量效果",
+          description: "使用three.js实现等离子风暴着色器效果",
+        },
+      },
+      {
+        id: "digitalMatrixRain",
+        name: "数字矩阵雨",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/digitalMatrixRain.html",
+        image: HOST + "threeExamples/shader/digitalMatrixRain.png",
+        meta: {
+          title: "数字矩阵雨着色器效果",
+          keywords: "three.js,数字,矩阵,雨,字符,科技效果",
+          description: "使用three.js实现数字矩阵雨着色器效果",
+        },
+      },
+      {
+        id: "cosmicNebula",
+        name: "宇宙星云",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/cosmicNebula.html",
+        image: HOST + "threeExamples/shader/cosmicNebula.png",
+        meta: {
+          title: "宇宙星云着色器效果",
+          keywords: "three.js,宇宙,星云,星星,演化,天文效果",
+          description: "使用three.js实现宇宙星云着色器效果",
+        },
+      },
+      {
+        id: "liquidMetal",
+        name: "液态金属",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/liquidMetal.html",
+        image: HOST + "threeExamples/shader/liquidMetal.png",
+        meta: {
+          title: "液态金属着色器效果",
+          keywords: "three.js,液态,金属,流动,反射,涟漪效果",
+          description: "使用three.js实现液态金属着色器效果",
+        },
+      },
+      {
+        id: "energyShield",
+        name: "能量护盾",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/energyShield.html",
+        image: HOST + "threeExamples/shader/energyShield.png",
+        meta: {
+          title: "能量护盾着色器效果",
+          keywords: "three.js,能量,护盾,脉冲,六边形,防护效果",
+          description: "使用three.js实现能量护盾着色器效果",
+        },
+      },
+      {
         id: "starField",
         name: "星空粒子场",
         author: "AivoGenX",
@@ -644,19 +819,7 @@ export default [
           keywords: "three.js,水流,波浪,涟漪,液体效果",
           description: "使用three.js实现动态水流着色器效果",
         },
-      },
-      {
-        id: "auroraEffect",
-        name: "极光效果",
-        author: "AivoGenX",
-        codeUrl: HOST + "threeExamples/shader/auroraEffect.html",
-        image: HOST + "threeExamples/shader/auroraEffect.jpg",
-        meta: {
-          title: "极光效果着色器",
-          keywords: "three.js,极光,流动,发光,宇宙效果",
-          description: "使用three.js实现动态极光着色器效果",
-        },
-      },
+      }, 
       {
         id: "energyField",
         name: "能量场效果",
@@ -681,6 +844,491 @@ export default [
           description: "使用three.js实现动态闪电着色器效果",
         },
       },
+    ],
+  },
+  // ========== 新增的着色器效果分类 ==========
+  {
+    pid: "advanced_shader",
+    name: "高级着色器效果",
+    children: [
+      {
+        id: "algorithmNoise",
+        name: "算法噪声着色器",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/algorithmNoise.html",
+        image: HOST + "threeExamples/shader/algorithmNoise.png",
+        tag: "优质",
+        bgcolor: "rgb(255, 107, 107)",
+        meta: {
+          title: "算法噪声着色器效果",
+          keywords: "three.js,着色器,噪声算法,白噪声,值噪声,柏林噪声,分形噪声",
+          description:
+            "使用three.js实现多种噪声算法的着色器效果，包括白噪声、值噪声、柏林噪声和分形噪声",
+        },
+      },
+      {
+        id: "mathFunctions",
+        name: "数学函数着色器",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/mathFunctions.html",
+        image: HOST + "threeExamples/shader/mathFunctions.png",
+        tag: "优质",
+        bgcolor: "rgb(0, 180, 216)",
+        meta: {
+          title: "数学函数着色器效果",
+          keywords:
+            "three.js,着色器,数学函数,正弦波,余弦波,指数函数,对数函数,高斯函数",
+          description:
+            "使用three.js实现多种数学函数的可视化着色器效果，包括三角函数、指数函数和对数函数",
+        },
+      },
+      {
+        id: "physicsSimulation",
+        name: "物理模拟着色器",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/physicsSimulation.html",
+        image: HOST + "threeExamples/shader/physicsSimulation.png",
+        tag: "优质",
+        bgcolor: "rgb(78, 205, 196)",
+        meta: {
+          title: "物理模拟着色器效果",
+          keywords:
+            "three.js,着色器,物理模拟,波动方程,热传导,流体动力学,弹性力学,电磁场",
+          description:
+            "使用three.js实现多种物理现象的着色器模拟，包括波动、热传导、流体和电磁场",
+        },
+      },
+      {
+        id: "naturalPhenomena",
+        name: "自然现象着色器",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/naturalPhenomena.html",
+        image: HOST + "threeExamples/shader/naturalPhenomena.png",
+        tag: "优质",
+        bgcolor: "rgb(69, 183, 209)",
+        meta: {
+          title: "自然现象着色器效果",
+          keywords:
+            "three.js,着色器,自然现象,海洋波浪,云层流动,火焰燃烧,极光效果,闪电效果",
+          description:
+            "使用three.js实现多种自然现象的着色器效果，包括海洋、云层、火焰、极光和闪电",
+        },
+      },
+      {
+        id: "abstractArt",
+        name: "抽象艺术着色器",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/abstractArt.html",
+        image: HOST + "threeExamples/shader/abstractArt.png",
+        tag: "优质",
+        bgcolor: "rgb(255, 193, 7)",
+        meta: {
+          title: "抽象艺术着色器效果",
+          keywords:
+            "three.js,着色器,抽象艺术,几何抽象,色彩抽象,动态抽象,分形抽象,光影抽象",
+          description:
+            "使用three.js实现多种抽象艺术风格的着色器效果，探索艺术与技术的结合",
+        },
+      },
+      {
+        id: "interactiveShader",
+        name: "交互式着色器",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/interactiveShader.html",
+        image: HOST + "threeExamples/shader/interactiveShader.png",
+        tag: "优质",
+        bgcolor: "rgb(156, 39, 176)",
+        meta: {
+          title: "交互式着色器效果",
+          keywords:
+            "three.js,着色器,交互式,鼠标交互,触摸交互,涟漪效果,粒子跟随,画笔效果",
+          description:
+            "使用three.js实现多种交互式着色器效果，支持鼠标和触摸交互，包括涟漪、粒子跟随、画笔等效果",
+        },
+      },
+      {
+        id: "auroraEffect",
+        name: "极光效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/auroraEffect.html",
+        image: HOST + "threeExamples/shader/auroraEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(0, 191, 255)",
+        meta: {
+          title: "极光效果着色器",
+          keywords: "three.js,极光,北极光,星空,流动,自然现象",
+          description: "使用three.js实现极光效果着色器，模拟北极光的流动和发光效果",
+        },
+      },
+      {
+        id: "lavaFlowEffect",
+        name: "熔岩流动效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/lavaFlowEffect.html",
+        image: HOST + "threeExamples/shader/lavaFlowEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(255, 87, 34)",
+        meta: {
+          title: "熔岩流动效果着色器",
+          keywords: "three.js,熔岩,火山,流动,高温,气泡,岩浆",
+          description: "使用three.js实现熔岩流动效果着色器，模拟火山岩浆的流动和气泡效果",
+        },
+      },
+      {
+        id: "crystalGrowthEffect",
+        name: "水晶生长效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/crystalGrowthEffect.html",
+        image: HOST + "threeExamples/shader/crystalGrowthEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(63, 81, 181)",
+        meta: {
+          title: "水晶生长效果着色器",
+          keywords: "three.js,水晶,生长,晶体,闪光,折射,宝石",
+          description: "使用three.js实现水晶生长效果着色器，模拟晶体生长和闪光折射效果",
+        },
+      },
+      {
+        id: "galacticVortexEffect",
+        name: "银河漩涡效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/galacticVortexEffect.html",
+        image: HOST + "threeExamples/shader/galacticVortexEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(103, 58, 183)",
+        meta: {
+          title: "银河漩涡效果着色器",
+          keywords: "three.js,银河,漩涡,星空,旋转,星云,宇宙",
+          description: "使用three.js实现银河漩涡效果着色器，模拟宇宙星系的旋转和漩涡效果",
+        },
+      },
+      {
+        id: "magicRuneEffect",
+        name: "魔法符文效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/magicRuneEffect.html",
+        image: HOST + "threeExamples/shader/magicRuneEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(233, 30, 99)",
+        meta: {
+          title: "魔法符文效果着色器",
+          keywords: "three.js,魔法,符文,能量,激活,粒子,神秘",
+          description: "使用three.js实现魔法符文效果着色器，模拟神秘符文能量的激活和流动效果",
+        },
+      },
+      {
+        id: "timeWarpEffect",
+        name: "时间扭曲效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/timeWarpEffect.html",
+        image: HOST + "threeExamples/shader/timeWarpEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(156, 39, 176)",
+        meta: {
+          title: "时间扭曲效果着色器",
+          keywords: "three.js,时间扭曲,时空,相对论,时间流动,扭曲效果",
+          description: "使用three.js实现时间扭曲效果着色器，模拟爱因斯坦相对论中的时空扭曲和时间流动效果",
+        },
+      },
+      {
+        id: "quantumEntanglementEffect",
+        name: "量子纠缠效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/quantumEntanglementEffect.html",
+        image: HOST + "threeExamples/shader/quantumEntanglementEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(0, 150, 136)",
+        meta: {
+          title: "量子纠缠效果着色器",
+          keywords: "three.js,量子纠缠,量子力学,粒子纠缠,量子态,量子计算",
+          description: "使用three.js实现量子纠缠效果着色器，模拟量子力学中粒子纠缠的奇妙现象",
+        },
+      },
+      {
+        id: "blackHoleGravityEffect",
+        name: "黑洞引力效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/blackHoleGravityEffect.html",
+        image: HOST + "threeExamples/shader/blackHoleGravityEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(33, 33, 33)",
+        meta: {
+          title: "黑洞引力效果着色器",
+          keywords: "three.js,黑洞,引力,吸积盘,事件视界,时空曲率",
+          description: "使用three.js实现黑洞引力效果着色器，模拟黑洞强大的引力和吸积盘效果",
+        },
+      },
+      {
+        id: "neuralSynapseEffect",
+        name: "神经突触效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/neuralSynapseEffect.html",
+        image: HOST + "threeExamples/shader/neuralSynapseEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(233, 30, 99)",
+        meta: {
+          title: "神经突触效果着色器",
+          keywords: "three.js,神经网络,突触,神经元,大脑活动,生物计算",
+          description: "使用three.js实现神经突触效果着色器，模拟大脑神经网络中神经元和突触的活动",
+        },
+      },
+      {
+        id: "holographicProjectionEffect",
+        name: "全息投影效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/holographicProjectionEffect.html",
+        image: HOST + "threeExamples/shader/holographicProjectionEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(0, 191, 255)",
+        meta: {
+          title: "全息投影效果着色器",
+          keywords: "three.js,全息投影,未来科技,数据可视化,三维投影,激光扫描",
+          description: "使用three.js实现全息投影效果着色器，模拟未来科技中的三维全息投影技术",
+        },
+      },
+      {
+        id: "cosmicStringTheoryEffect",
+        name: "宇宙弦理论效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/cosmicStringTheoryEffect.html",
+        image: HOST + "threeExamples/shader/cosmicStringTheoryEffect.png",
+        tag: "优质",
+        bgcolor: "rgb(103, 58, 183)",
+        meta: {
+          title: "宇宙弦理论效果着色器",
+          keywords: "three.js,弦理论,高维空间,量子场,多维宇宙,基础物理",
+          description: "使用three.js实现宇宙弦理论效果着色器，探索弦理论中的高维空间和量子场概念",
+        },
+      },
+      // ========== 新增的10个酷炫着色器效果 ==========
+      {
+        id: "electromagneticFieldEffect",
+        name: "电磁场效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/electromagneticFieldEffect.html",
+        image: HOST + "threeExamples/shader/electromagneticFieldEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(0, 100, 204)",
+        meta: {
+          title: "电磁场效果着色器",
+          keywords: "three.js,电磁场,电场,磁场,物理模拟,场线效果,科学可视化",
+          description: "使用three.js实现电磁场效果着色器，模拟电场和磁场的物理现象和场线分布",
+        },
+      },
+      {
+        id: "bioluminescenceEffect",
+        name: "生物发光效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/bioluminescenceEffect.html",
+        image: HOST + "threeExamples/shader/bioluminescenceEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(0, 204, 102)",
+        meta: {
+          title: "生物发光效果着色器",
+          keywords: "three.js,生物发光,自然现象,有机发光,生物活性,生态模拟",
+          description: "使用three.js实现生物发光效果着色器，模拟自然界中生物发光现象和有机光效",
+        },
+      },
+      {
+        id: "crystalGrowthEffect",
+        name: "晶体生长效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/crystalGrowthEffect.html",
+        image: HOST + "threeExamples/shader/crystalGrowthEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(153, 51, 204)",
+        meta: {
+          title: "晶体生长效果着色器",
+          keywords: "three.js,晶体生长,晶格结构,折射效果,矿物学,材料科学",
+          description: "使用three.js实现晶体生长效果着色器，模拟晶体形成过程和晶格结构特征",
+        },
+      },
+      {
+        id: "fluidDynamicsEffect",
+        name: "流体动力学效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/fluidDynamicsEffect.html",
+        image: HOST + "threeExamples/shader/fluidDynamicsEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(0, 153, 204)",
+        meta: {
+          title: "流体动力学效果着色器",
+          keywords: "three.js,流体动力学,湍流,涡旋,流速模拟,物理流体",
+          description: "使用three.js实现流体动力学效果着色器，模拟流体运动和湍流涡旋现象",
+        },
+      },
+      {
+        id: "plasmaEffect",
+        name: "等离子体效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/plasmaEffect.html",
+        image: HOST + "threeExamples/shader/plasmaEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(204, 0, 0)",
+        meta: {
+          title: "等离子体效果着色器",
+          keywords: "three.js,等离子体,高温物理,电弧放电,能量模拟,物理状态",
+          description: "使用three.js实现等离子体效果着色器，模拟高温等离子体物理现象和能量状态",
+        },
+      },
+      {
+        id: "quantumFieldEffect",
+        name: "量子场效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/quantumFieldEffect.html",
+        image: HOST + "threeExamples/shader/quantumFieldEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(0, 102, 204)",
+        meta: {
+          title: "量子场效果着色器",
+          keywords: "three.js,量子场论,粒子物理,量子态,场强度,基础物理",
+          description: "使用three.js实现量子场效果着色器，探索量子场论和粒子物理的微观世界",
+        },
+      },
+      {
+        id: "gravitationalWaveEffect",
+        name: "引力波效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/gravitationalWaveEffect.html",
+        image: HOST + "threeExamples/shader/gravitationalWaveEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(102, 51, 153)",
+        meta: {
+          title: "引力波效果着色器",
+          keywords: "three.js,引力波,时空扭曲,爱因斯坦,相对论,宇宙学",
+          description: "使用three.js实现引力波效果着色器，模拟爱因斯坦相对论中的时空涟漪现象",
+        },
+      },
+      {
+        id: "nanotechnologyEffect",
+        name: "纳米技术效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/nanotechnologyEffect.html",
+        image: HOST + "threeExamples/shader/nanotechnologyEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(0, 153, 0)",
+        meta: {
+          title: "纳米技术效果着色器",
+          keywords: "three.js,纳米技术,分子组装,微观世界,精密工程,材料科学",
+          description: "使用three.js实现纳米技术效果着色器，模拟纳米尺度的分子组装和精密工程",
+        },
+      },
+      {
+        id: "interstellarTravelEffect",
+        name: "星际旅行效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/interstellarTravelEffect.html",
+        image: HOST + "threeExamples/shader/interstellarTravelEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(0, 51, 102)",
+        meta: {
+          title: "星际旅行效果着色器",
+          keywords: "three.js,星际旅行,曲速航行,宇宙探索,时间膨胀,太空科技",
+          description: "使用three.js实现星际旅行效果着色器，模拟宇宙航行和星际探索的壮丽景象",
+        },
+      },
+      {
+        id: "virtualRealityEffect",
+        name: "虚拟现实效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/virtualRealityEffect.html",
+        image: HOST + "threeExamples/shader/virtualRealityEffect.svg",
+        tag: "优质",
+        bgcolor: "rgb(102, 51, 102)",
+        meta: {
+          title: "虚拟现实效果着色器",
+          keywords: "three.js,虚拟现实,数字世界,沉浸体验,像素技术,人机交互",
+          description: "使用three.js实现虚拟现实效果着色器，模拟数字世界的沉浸式体验和交互技术",
+        },
+      },
+    ],
+  },
+  // ========== 数学运算分类 ==========
+  {
+    pid: "math_operations",
+    name: "数学运算",
+    children: [
+      {
+        id: "middleSchoolMath3D",
+        name: "初中数学函数可视化",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/mathematical/middleSchoolMath3D.html",
+        image: HOST + "threeExamples/mathematical/middleSchoolMath3D.png",
+        tag: "优质",
+        bgcolor: "rgb(255, 107, 107)",
+        meta: {
+          title: "初中数学函数可视化 - 三维场景",
+          keywords:
+            "three.js,三维场景,初中数学,函数可视化,一次函数,二次函数,三角函数,反比例函数,绝对值函数",
+          description:
+            "使用three.js实现初中数学函数可视化三维场景，包括一次函数、二次函数、三角函数、反比例函数和绝对值函数的立体图像展示",
+        },
+      },
+      {
+        id: "geometryTransform3D",
+        name: "几何图形变换",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/mathematical/geometryTransform3D.html",
+        image: HOST + "threeExamples/mathematical/geometryTransform3D.png",
+        tag: "优质",
+        bgcolor: "rgb(0, 180, 216)",
+        meta: {
+          title: "几何图形变换 - 三维物体变换",
+          keywords:
+            "three.js,三维场景,初中数学,几何变换,平移,旋转,缩放,对称,组合变换",
+          description:
+            "使用three.js实现几何图形变换三维场景，包括平移、旋转、缩放、对称和组合变换的立体展示",
+        },
+      },
+      {
+        id: "coordinateSystem3D",
+        name: "坐标系和函数图像",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/mathematical/coordinateSystem3D.html",
+        image: HOST + "threeExamples/mathematical/coordinateSystem3D.png",
+        tag: "优质",
+        bgcolor: "rgb(78, 205, 196)",
+        meta: {
+          title: "坐标系和函数图像 - 三维坐标系",
+          keywords:
+            "three.js,三维场景,初中数学,坐标系,直角坐标系,极坐标系,柱坐标,球坐标,函数图像",
+          description:
+            "使用three.js实现坐标系和函数图像三维场景，展示直角坐标系、极坐标系、柱坐标系和球坐标系下的立体函数图像特征",
+        },
+      },
+      {
+        id: "probabilityStatistics3D",
+        name: "概率统计可视化",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/mathematical/probabilityStatistics3D.html",
+        image: HOST + "threeExamples/mathematical/probabilityStatistics3D.png",
+        tag: "优质",
+        bgcolor: "rgb(69, 183, 209)",
+        meta: {
+          title: "概率统计可视化 - 三维图表",
+          keywords:
+            "three.js,三维场景,初中数学,概率统计,均匀分布,正态分布,二项分布,泊松分布,指数分布",
+          description:
+            "使用three.js实现概率统计可视化三维场景，包括正态分布、泊松分布、指数分布、二项分布和均匀分布的立体图表展示",
+        },
+      },
+      {
+        id: "symmetryPattern3D",
+        name: "对称和图案",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/mathematical/symmetryPattern3D.html",
+        image: HOST + "threeExamples/mathematical/symmetryPattern3D.png",
+        tag: "优质",
+        bgcolor: "rgb(255, 193, 7)",
+        meta: {
+          title: "对称和图案 - 三维对称物体",
+          keywords:
+            "three.js,三维场景,初中数学,对称,轴对称,中心对称,旋转对称,平移对称,图案",
+          description:
+            "使用three.js实现对称和图案三维场景，展示轴对称、中心对称、旋转对称和平移对称的立体图案概念",
+        },
+      },
+        
     ],
   },
   {
@@ -1748,6 +2396,13 @@ export default [
         openUrl: "https://polyhaven.com/hdris/skies",
         image: HOST + "threeExamples/tools/skyBox_image.jpg",
       },
+    ],
+  },
+
+  {
+    pid: "tools",
+    name: "相关工具",
+    children: [
       {
         id: "gltf_report",
         name: "gltf在线draco压缩工具",

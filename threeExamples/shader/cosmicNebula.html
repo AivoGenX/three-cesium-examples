@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js宇宙星云着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #000044 0%, #000011 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff9900;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff9900;
+      border: 1px solid #ff9900;
+      box-shadow: 0 0 20px #ff9900;
+    }
+    .nebula-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #00ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #00ffff;
+      border: 1px solid #00ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ff00ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff00ff;
+      border: 1px solid #ff00ff;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🌌 宇宙星云 - 实时渲染 🌌</div>
+  <div class="nebula-info" id="nebulaInfo">星云密度: 中等 | 演化速度: 慢</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变星云效果<br>
+    • 实时交互：体验宇宙星云
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x000044);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(75, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 宇宙星云参数
+    const nebulaParams = {
+      nebulaDensity: 1.2,
+      evolutionSpeed: 0.5,
+      turbulence: 0.8,
+      glowEffect: 1.5,
+      starDensity: 0.7,
+      nebulaType: 0,
+      showStars: true
+    };
+
+    // 创建球体几何体，作为星云的载体
+    const geometry = new THREE.SphereGeometry(3, 64, 64);
+
+    // 顶点着色器代码 - 宇宙星云效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uNebulaDensity;
+      uniform float uEvolutionSpeed;
+      uniform float uTurbulence;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 星云演化效果
+        float evolution = sin(position.x * 2.0 + uTime * uEvolutionSpeed) * 
+                         cos(position.y * 2.0 + uTime * uEvolutionSpeed) *
+                         sin(position.z * 2.0 + uTime * uEvolutionSpeed);
+        
+        // 湍流效果
+        float turbulence = sin(position.x * 3.0 + uTime * uTurbulence) * 
+                          cos(position.z * 3.0 + uTime * uTurbulence);
+        
+        vec3 newPosition = position + normal * (evolution + turbulence) * 0.3 * uNebulaDensity;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 宇宙星云效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uNebulaDensity;
+      uniform float uEvolutionSpeed;
+      uniform float uTurbulence;
+      uniform float uGlowEffect;
+      uniform float uStarDensity;
+      uniform int uNebulaType;
+      uniform bool uShowStars;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 星云效果
+      float nebula(vec2 uv, float density) {
+        float nebulaField = 0.0;
+        
+        // 多层星云
+        nebulaField += sin(uv.x * 6.0 + uTime * 0.3) * 
+                      cos(uv.y * 6.0 + uTime * 0.3);
+        nebulaField += sin(uv.x * 8.0 + uTime * 0.5) * 
+                      cos(uv.y * 8.0 + uTime * 0.5) * 0.7;
+        nebulaField += sin(uv.x * 12.0 + uTime * 0.7) * 
+                      cos(uv.y * 12.0 + uTime * 0.7) * 0.4;
+        
+        return nebulaField * density;
+      }
+      
+      // 星星效果
+      float stars(vec2 uv, float density) {
+        if(!uShowStars) return 0.0;
+        
+        float starField = 0.0;
+        for(int i = 0; i < 20; i++) {
+          vec2 starPos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, starPos);
+          float twinkle = sin(uTime * 2.0 + float(i) * 10.0) * 0.5 + 0.5;
+          starField += exp(-dist * 30.0) * twinkle * density;
+        }
+        return starField;
+      }
+      
+      // 星云类型
+      vec3 getNebulaType(int type) {
+        if(type == 0) {
+          // 猎户座星云 - 红色
+          return vec3(1.0, 0.3, 0.2);
+        } else if(type == 1) {
+          // 蟹状星云 - 蓝色
+          return vec3(0.2, 0.5, 1.0);
+        } else {
+          // 猫眼星云 - 绿色
+          return vec3(0.3, 1.0, 0.4);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv * 2.0 - 1.0;
+        
+        // 星云效果
+        float nebulaField = nebula(uv, uNebulaDensity);
+        
+        // 星星效果
+        float starField = stars(uv, uStarDensity);
+        
+        // 湍流效果
+        float turbulence = sin(length(uv) * 5.0 + uTime * uTurbulence);
+        
+        // 颜色计算
+        vec3 baseColor = getNebulaType(uNebulaType);
+        vec3 finalColor = baseColor * (nebulaField * 0.6 + starField * 0.3 + turbulence * 0.1) * uGlowEffect;
+        
+        // 径向发光效果
+        float radialGlow = 1.0 - length(uv) * 0.6;
+        finalColor *= radialGlow;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uNebulaDensity: { value: nebulaParams.nebulaDensity },
+        uEvolutionSpeed: { value: nebulaParams.evolutionSpeed },
+        uTurbulence: { value: nebulaParams.turbulence },
+        uGlowEffect: { value: nebulaParams.glowEffect },
+        uStarDensity: { value: nebulaParams.starDensity },
+        uNebulaType: { value: nebulaParams.nebulaType },
+        uShowStars: { value: nebulaParams.showStars }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const nebulaSphere = new THREE.Mesh(geometry, material);
+    scene.add(nebulaSphere);
+
+    // 更新星云信息显示
+    function updateNebulaInfo() {
+      const nebulaElement = document.getElementById('nebulaInfo');
+      let density = "低";
+      if(nebulaParams.nebulaDensity > 0.8) density = "中等";
+      if(nebulaParams.nebulaDensity > 1.2) density = "高";
+      
+      let speed = "慢";
+      if(nebulaParams.evolutionSpeed > 0.5) speed = "中等";
+      if(nebulaParams.evolutionSpeed > 0.8) speed = "快";
+      
+      nebulaElement.textContent = `星云密度: ${density} | 演化速度: ${speed}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 星云参数控制
+    const nebulaFolder = gui.addFolder('宇宙星云参数');
+    nebulaFolder.add(nebulaParams, 'nebulaDensity', 0.1, 2.0).name('星云密度');
+    nebulaFolder.add(nebulaParams, 'evolutionSpeed', 0.1, 1.2).name('演化速度');
+    nebulaFolder.add(nebulaParams, 'turbulence', 0.1, 1.5).name('湍流强度');
+    nebulaFolder.add(nebulaParams, 'glowEffect', 0.1, 2.0).name('发光效果');
+    nebulaFolder.add(nebulaParams, 'starDensity', 0.1, 1.2).name('星星密度');
+    nebulaFolder.add(nebulaParams, 'showStars').name('显示星星');
+    
+    // 星云类型控制
+    const nebulaTypes = {
+      "猎户座星云": 0,
+      "蟹状星云": 1,
+      "猫眼星云": 2
+    };
+    nebulaFolder.add(nebulaParams, 'nebulaType', nebulaTypes).name('星云类型');
+    
+    nebulaFolder.open();
+
+    // 参数变化时更新材质和星云信息
+    gui.onChange(() => {
+      material.uniforms.uNebulaDensity.value = nebulaParams.nebulaDensity;
+      material.uniforms.uEvolutionSpeed.value = nebulaParams.evolutionSpeed;
+      material.uniforms.uTurbulence.value = nebulaParams.turbulence;
+      material.uniforms.uGlowEffect.value = nebulaParams.glowEffect;
+      material.uniforms.uStarDensity.value = nebulaParams.starDensity;
+      material.uniforms.uNebulaType.value = nebulaParams.nebulaType;
+      material.uniforms.uShowStars.value = nebulaParams.showStars;
+      
+      updateNebulaInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转星云
+      nebulaSphere.rotation.x += 0.003;
+      nebulaSphere.rotation.y += 0.004;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化星云信息显示
+    updateNebulaInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

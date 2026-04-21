@@ -1,0 +1,47 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="galaxyBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#000033;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#000011;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="galaxyGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#9966ff;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#66ffff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#66ff66;stop-opacity:0.7" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#galaxyBg)"/>
+  
+  <!-- 银河漩涡 -->
+  <circle cx="150" cy="100" r="70" fill="none" stroke="url(#galaxyGradient)" stroke-width="15" opacity="0.8">
+    <animate attributeName="r" dur="3s" repeatCount="indefinite" values="70;75;70"/>
+  </circle>
+  
+  <!-- 螺旋臂 -->
+  <path d="M150,100 Q180,70 210,100 T270,100" fill="none" stroke="#9966ff" stroke-width="8" stroke-linecap="round" opacity="0.7">
+    <animate attributeName="d" dur="4s" repeatCount="indefinite" 
+             values="M150,100 Q180,70 210,100 T270,100; M150,100 Q180,130 210,100 T270,100; M150,100 Q180,70 210,100 T270,100"/>
+  </path>
+  
+  <!-- 星星效果 -->
+  <circle cx="120" cy="80" r="1.5" fill="#ffffff" opacity="0.8">
+    <animate attributeName="opacity" dur="2s" repeatCount="indefinite" values="0.3;0.9;0.3"/>
+  </circle>
+  <circle cx="180" cy="120" r="1" fill="#ffffff" opacity="0.7">
+    <animate attributeName="opacity" dur="1.5s" repeatCount="indefinite" values="0.4;0.8;0.4"/>
+  </circle>
+  <circle cx="200" cy="70" r="2" fill="#ffffff" opacity="0.9">
+    <animate attributeName="opacity" dur="2.5s" repeatCount="indefinite" values="0.2;0.7;0.2"/>
+  </circle>
+  
+  <!-- 旋转效果 -->
+  <path d="M150,30 L155,35 L150,40 L145,35 Z" fill="#66ffff" opacity="0.6">
+    <animateTransform attributeName="transform" type="rotate" from="0 150 100" to="360 150 100" dur="8s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- 标题 -->
+  <text x="150" y="180" text-anchor="middle" fill="#9966ff" font-family="Arial" font-size="14" font-weight="bold">
+    银河漩涡效果
+  </text>
+</svg>

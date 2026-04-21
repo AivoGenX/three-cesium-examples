@@ -1,0 +1,42 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="cosmicBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#330033;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#110011;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="cosmicGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ff66ff;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#66ffff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#66ff66;stop-opacity:0.7" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#cosmicBg)"/>
+  
+  <!-- 宇宙结 -->
+  <path d="M150,60 Q180,80 150,100 Q120,120 150,140 Q180,160 150,180" fill="none" stroke="url(#cosmicGradient)" stroke-width="8" stroke-linecap="round" opacity="0.9">
+    <animate attributeName="d" dur="4s" repeatCount="indefinite" 
+             values="M150,60 Q180,80 150,100 Q120,120 150,140 Q180,160 150,180; M150,60 Q120,80 150,100 Q180,120 150,140 Q120,160 150,180; M150,60 Q180,80 150,100 Q120,120 150,140 Q180,160 150,180"/>
+  </path>
+  
+  <!-- 弦振动 -->
+  <circle cx="150" cy="60" r="3" fill="#ffffff" opacity="0.8">
+    <animate attributeName="r" dur="2s" repeatCount="indefinite" values="2;4;2"/>
+  </circle>
+  <circle cx="150" cy="180" r="2.5" fill="#ffffff" opacity="0.7">
+    <animate attributeName="r" dur="1.5s" repeatCount="indefinite" values="1.5;3.5;1.5"/>
+  </circle>
+  
+  <!-- 维度效果 -->
+  <circle cx="130" cy="100" r="1" fill="#66ffff" opacity="0.6">
+    <animate attributeName="opacity" dur="1s" repeatCount="indefinite" values="0.3;0.8;0.3"/>
+  </circle>
+  <circle cx="170" cy="140" r="1.5" fill="#66ff66" opacity="0.5">
+    <animate attributeName="opacity" dur="1.2s" repeatCount="indefinite" values="0.2;0.7;0.2"/>
+  </circle>
+  
+  <!-- 标题 -->
+  <text x="150" y="190" text-anchor="middle" fill="#ff66ff" font-family="Arial" font-size="14" font-weight="bold">
+    宇宙弦理论效果
+  </text>
+</svg>

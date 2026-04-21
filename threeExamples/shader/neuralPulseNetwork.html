@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js神经脉冲网络着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1a0033 0%, #000000 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff00aa;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff00aa;
+      border: 1px solid #ff00aa;
+      box-shadow: 0 0 20px #ff00aa;
+    }
+    .network-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #00ffaa;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #00ffaa;
+      border: 1px solid #00ffaa;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff00;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff00;
+      border: 1px solid #ffff00;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🧠 神经脉冲网络 - 实时渲染 🧠</div>
+  <div class="network-info" id="networkInfo">神经元激活: 87% | 脉冲频率: 120Hz</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变神经网络效果<br>
+    • 实时交互：体验神经脉冲传输
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a0033);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,6)的位置观察场景
+    camera.position.set(0, 0, 6)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 神经脉冲网络参数
+    const neuralParams = {
+      pulseSpeed: 1.5,
+      neuronDensity: 0.8,
+      connectionStrength: 1.2,
+      glowIntensity: 1.0,
+      networkSize: 0.7,
+      activationThreshold: 0.5,
+      colorScheme: 0
+    };
+
+    // 创建球体几何体，作为神经网络的载体
+    const geometry = new THREE.SphereGeometry(2.5, 96, 96);
+
+    // 顶点着色器代码 - 神经脉冲网络效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uPulseSpeed;
+      uniform float uNetworkSize;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 神经网络脉冲效果
+        float neuralPulse = sin(position.x * 8.0 + uTime * uPulseSpeed) * 
+                          cos(position.y * 8.0 + uTime * uPulseSpeed) *
+                          sin(position.z * 8.0 + uTime * uPulseSpeed);
+        
+        // 神经元激活变形
+        vec3 newPosition = position + normal * neuralPulse * 0.15 * uNetworkSize;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 神经脉冲网络效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uPulseSpeed;
+      uniform float uNeuronDensity;
+      uniform float uConnectionStrength;
+      uniform float uGlowIntensity;
+      uniform float uActivationThreshold;
+      uniform int uColorScheme;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 神经元效果
+      float neurons(vec2 uv, float density) {
+        float neuronActivation = 0.0;
+        for(int i = 0; i < 15; i++) {
+          vec2 neuronPos = vec2(
+            noise(vec2(float(i) * 0.234, 0.567)) * 2.0 - 1.0,
+            noise(vec2(float(i) * 0.567, 0.891)) * 2.0 - 1.0
+          );
+          float dist = distance(uv, neuronPos);
+          float pulse = sin(uTime * uPulseSpeed + float(i) * 0.5) * 0.5 + 0.5;
+          neuronActivation += exp(-dist * 12.0) * pulse * density;
+        }
+        return neuronActivation;
+      }
+      
+      // 神经连接效果
+      float neuralConnections(vec2 uv, float strength) {
+        float connections = 0.0;
+        for(int i = 0; i < 8; i++) {
+          float angle = float(i) * 3.14159 / 4.0 + uTime * 0.3;
+          vec2 dir = vec2(cos(angle), sin(angle));
+          float projection = dot(uv, dir);
+          float wave = sin(projection * 10.0 + uTime * uPulseSpeed * 2.0);
+          connections += abs(wave) * 0.1 * strength;
+        }
+        return connections;
+      }
+      
+      void main() {
+        vec2 uv = vUv * 2.0 - 1.0;
+        
+        // 基础神经网络场
+        float neuralField = sin(uv.x * 6.0 + uTime * uPulseSpeed) * 
+                           cos(uv.y * 6.0 + uTime * uPulseSpeed);
+        
+        // 神经元激活
+        float neuronActivation = neurons(uv, uNeuronDensity);
+        
+        // 神经连接
+        float connections = neuralConnections(uv, uConnectionStrength);
+        
+        // 激活阈值处理
+        float activation = step(uActivationThreshold, neuronActivation + neuralField * 0.3);
+        
+        // 颜色方案
+        vec3 color;
+        if(uColorScheme == 0) {
+          // 粉色神经脉冲
+          color = vec3(1.0, 0.2, 0.8);
+        } else if(uColorScheme == 1) {
+          // 青色神经脉冲
+          color = vec3(0.2, 1.0, 0.8);
+        } else {
+          // 黄色神经脉冲
+          color = vec3(1.0, 1.0, 0.2);
+        }
+        
+        // 最终颜色计算
+        vec3 finalColor = color * (neuralField * 0.2 + neuronActivation * 0.5 + connections * 0.3) * activation;
+        
+        // 发光效果
+        float glow = length(uv) * 1.2;
+        finalColor *= exp(-glow * 1.8) * uGlowIntensity;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uPulseSpeed: { value: neuralParams.pulseSpeed },
+        uNeuronDensity: { value: neuralParams.neuronDensity },
+        uConnectionStrength: { value: neuralParams.connectionStrength },
+        uGlowIntensity: { value: neuralParams.glowIntensity },
+        uNetworkSize: { value: neuralParams.networkSize },
+        uActivationThreshold: { value: neuralParams.activationThreshold },
+        uColorScheme: { value: neuralParams.colorScheme }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const neuralSphere = new THREE.Mesh(geometry, material);
+    scene.add(neuralSphere);
+
+    // 更新网络信息显示
+    function updateNetworkInfo() {
+      const networkElement = document.getElementById('networkInfo');
+      const activation = (neuralParams.neuronDensity * 100).toFixed(0);
+      const frequency = (neuralParams.pulseSpeed * 80).toFixed(0);
+      networkElement.textContent = `神经元激活: ${activation}% | 脉冲频率: ${frequency}Hz`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 神经网络参数控制
+    const neuralFolder = gui.addFolder('神经网络参数');
+    neuralFolder.add(neuralParams, 'pulseSpeed', 0.1, 3.0).name('脉冲速度');
+    neuralFolder.add(neuralParams, 'neuronDensity', 0.1, 1.5).name('神经元密度');
+    neuralFolder.add(neuralParams, 'connectionStrength', 0.1, 2.5).name('连接强度');
+    neuralFolder.add(neuralParams, 'glowIntensity', 0.1, 2.0).name('发光强度');
+    neuralFolder.add(neuralParams, 'networkSize', 0.1, 1.5).name('网络大小');
+    neuralFolder.add(neuralParams, 'activationThreshold', 0.1, 0.9).name('激活阈值');
+    
+    // 颜色方案控制
+    const colorSchemes = {
+      "粉色神经": 0,
+      "青色神经": 1,
+      "黄色神经": 2
+    };
+    neuralFolder.add(neuralParams, 'colorScheme', colorSchemes).name('颜色方案');
+    
+    neuralFolder.open();
+
+    // 参数变化时更新材质和网络信息
+    gui.onChange(() => {
+      material.uniforms.uPulseSpeed.value = neuralParams.pulseSpeed;
+      material.uniforms.uNeuronDensity.value = neuralParams.neuronDensity;
+      material.uniforms.uConnectionStrength.value = neuralParams.connectionStrength;
+      material.uniforms.uGlowIntensity.value = neuralParams.glowIntensity;
+      material.uniforms.uNetworkSize.value = neuralParams.networkSize;
+      material.uniforms.uActivationThreshold.value = neuralParams.activationThreshold;
+      material.uniforms.uColorScheme.value = neuralParams.colorScheme;
+      
+      updateNetworkInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转球体
+      neuralSphere.rotation.x += 0.003;
+      neuralSphere.rotation.y += 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化网络信息显示
+    updateNetworkInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

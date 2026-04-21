@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js时空扭曲隧道着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #000033 0%, #000000 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6600;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6600;
+      border: 1px solid #ff6600;
+      box-shadow: 0 0 20px #ff6600;
+    }
+    .tunnel-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #00ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #00ffff;
+      border: 1px solid #00ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ff00ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff00ff;
+      border: 1px solid #ff00ff;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🌀 时空扭曲隧道 - 实时渲染 🌀</div>
+  <div class="tunnel-info" id="tunnelInfo">时空曲率: 0.8 | 扭曲强度: 中等</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变隧道效果<br>
+    • 实时交互：体验时空扭曲
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x000033);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(75, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,10)的位置观察场景
+    camera.position.set(0, 0, 10)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 时空隧道参数
+    const tunnelParams = {
+      tunnelSpeed: 2.0,
+      distortionStrength: 1.5,
+      spiralIntensity: 0.8,
+      glowEffect: 1.2,
+      timeWarp: 0.7,
+      colorShift: 0,
+      showStars: true
+    };
+
+    // 创建圆柱几何体，作为时空隧道的载体
+    const geometry = new THREE.CylinderGeometry(0.5, 3, 20, 64, 128, true);
+
+    // 顶点着色器代码 - 时空隧道效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      
+      uniform float uTime;
+      uniform float uTunnelSpeed;
+      uniform float uDistortionStrength;
+      uniform float uSpiralIntensity;
+      uniform float uTimeWarp;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        
+        // 时空扭曲效果
+        float timeWarp = sin(position.y * 0.5 + uTime * uTimeWarp) * uDistortionStrength;
+        
+        // 螺旋扭曲
+        float spiral = sin(position.y * uSpiralIntensity * 3.0 + uTime * uTunnelSpeed) * 
+                      cos(position.x * uSpiralIntensity * 3.0 + uTime * uTunnelSpeed);
+        
+        // 隧道推进效果
+        float tunnelFlow = mod(position.y + uTime * uTunnelSpeed, 4.0) - 2.0;
+        
+        vec3 newPosition = position;
+        newPosition.x += spiral * 0.3 + timeWarp * 0.1;
+        newPosition.z += spiral * 0.3 + timeWarp * 0.1;
+        newPosition.y = tunnelFlow;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 时空隧道效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      
+      uniform float uTime;
+      uniform float uTunnelSpeed;
+      uniform float uDistortionStrength;
+      uniform float uSpiralIntensity;
+      uniform float uGlowEffect;
+      uniform int uColorShift;
+      uniform bool uShowStars;
+      
+      // 随机数生成
+      float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+      }
+      
+      // 星星效果
+      float stars(vec2 uv, float density) {
+        float starField = 0.0;
+        for(int i = 0; i < 30; i++) {
+          vec2 starPos = vec2(
+            random(vec2(float(i) * 0.345, 0.678)),
+            random(vec2(float(i) * 0.678, 0.901))
+          );
+          float dist = distance(uv, starPos);
+          float twinkle = sin(uTime * 2.0 + float(i) * 10.0) * 0.5 + 0.5;
+          starField += exp(-dist * 50.0) * twinkle * density;
+        }
+        return starField;
+      }
+      
+      // 颜色偏移函数
+      vec3 colorShift(vec3 color, int shift) {
+        if(shift == 0) {
+          // 橙色时空隧道
+          return vec3(1.0, 0.4, 0.0);
+        } else if(shift == 1) {
+          // 蓝色时空隧道
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 紫色时空隧道
+          return vec3(0.8, 0.2, 1.0);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vec2(vUv.x * 2.0 - 1.0, vPosition.y * 0.1);
+        
+        // 基础隧道纹理
+        float tunnel = sin(uv.x * 8.0 + uTime * uTunnelSpeed) * 
+                      cos(uv.y * 6.0 + uTime * uTunnelSpeed);
+        
+        // 螺旋效果
+        float spiral = sin(atan(uv.x, uv.y) * 8.0 + uTime * uSpiralIntensity * 3.0);
+        
+        // 星星效果
+        float starField = uShowStars ? stars(uv, 0.3) : 0.0;
+        
+        // 颜色计算
+        vec3 baseColor = colorShift(vec3(1.0), uColorShift);
+        vec3 finalColor = baseColor * (tunnel * 0.4 + spiral * 0.3 + starField * 0.3) * uDistortionStrength;
+        
+        // 径向发光效果
+        float radialGlow = length(uv) * 1.5;
+        finalColor *= exp(-radialGlow * 2.0) * uGlowEffect;
+        
+        // 深度衰减
+        float depth = 1.0 - abs(vPosition.y) / 10.0;
+        finalColor *= depth;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uTunnelSpeed: { value: tunnelParams.tunnelSpeed },
+        uDistortionStrength: { value: tunnelParams.distortionStrength },
+        uSpiralIntensity: { value: tunnelParams.spiralIntensity },
+        uGlowEffect: { value: tunnelParams.glowEffect },
+        uTimeWarp: { value: tunnelParams.timeWarp },
+        uColorShift: { value: tunnelParams.colorShift },
+        uShowStars: { value: tunnelParams.showStars }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const tunnel = new THREE.Mesh(geometry, material);
+    scene.add(tunnel);
+
+    // 更新隧道信息显示
+    function updateTunnelInfo() {
+      const tunnelElement = document.getElementById('tunnelInfo');
+      const curvature = tunnelParams.distortionStrength.toFixed(1);
+      let strength = "低";
+      if(tunnelParams.distortionStrength > 1.0) strength = "中等";
+      if(tunnelParams.distortionStrength > 2.0) strength = "高";
+      tunnelElement.textContent = `时空曲率: ${curvature} | 扭曲强度: ${strength}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 隧道参数控制
+    const tunnelFolder = gui.addFolder('时空隧道参数');
+    tunnelFolder.add(tunnelParams, 'tunnelSpeed', 0.1, 5.0).name('隧道速度');
+    tunnelFolder.add(tunnelParams, 'distortionStrength', 0.1, 3.0).name('扭曲强度');
+    tunnelFolder.add(tunnelParams, 'spiralIntensity', 0.1, 2.0).name('螺旋强度');
+    tunnelFolder.add(tunnelParams, 'glowEffect', 0.1, 2.5).name('发光效果');
+    tunnelFolder.add(tunnelParams, 'timeWarp', 0.1, 1.5).name('时间扭曲');
+    tunnelFolder.add(tunnelParams, 'showStars').name('显示星星');
+    
+    // 颜色偏移控制
+    const colorShifts = {
+      "橙色隧道": 0,
+      "蓝色隧道": 1,
+      "紫色隧道": 2
+    };
+    tunnelFolder.add(tunnelParams, 'colorShift', colorShifts).name('颜色模式');
+    
+    tunnelFolder.open();
+
+    // 参数变化时更新材质和隧道信息
+    gui.onChange(() => {
+      material.uniforms.uTunnelSpeed.value = tunnelParams.tunnelSpeed;
+      material.uniforms.uDistortionStrength.value = tunnelParams.distortionStrength;
+      material.uniforms.uSpiralIntensity.value = tunnelParams.spiralIntensity;
+      material.uniforms.uGlowEffect.value = tunnelParams.glowEffect;
+      material.uniforms.uTimeWarp.value = tunnelParams.timeWarp;
+      material.uniforms.uColorShift.value = tunnelParams.colorShift;
+      material.uniforms.uShowStars.value = tunnelParams.showStars;
+      
+      updateTunnelInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转隧道
+      tunnel.rotation.y += 0.01;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化隧道信息显示
+    updateTunnelInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

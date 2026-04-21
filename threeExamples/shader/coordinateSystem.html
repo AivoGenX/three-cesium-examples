@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js坐标系和函数图像着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      box-shadow: 0 0 20px #ff6b6b;
+    }
+    .coordinate-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #4ecdc4;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #4ecdc4;
+      border: 1px solid #4ecdc4;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">📐 坐标系和函数图像着色器 - 初中数学教育 📐</div>
+  <div class="coordinate-info" id="coordinateInfo">坐标系：直角坐标系 | 函数：y = x²</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,5)的位置观察场景
+    camera.position.set(0, 0, 5)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 创建几何体和材质
+    // ============================================================================
+    
+    // 创建平面几何体，作为坐标系和函数图像的载体
+    // 参数：宽度，高度，宽度分段数，高度分段数
+    const geometry = new THREE.PlaneGeometry(12, 12, 512, 512);
+
+    // 创建自定义着色器材质，实现坐标系和函数图像效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      uniforms: {
+        // 时间变量，用于动画效果
+        uTime: { value: 0.0 },
+        // 坐标系类型选择：0=直角坐标系, 1=极坐标系, 2=三维坐标系
+        uCoordinateType: { value: 0 },
+        // 函数类型选择：0=一次函数, 1=二次函数, 2=三角函数, 3=反比例函数, 4=绝对值函数
+        uFunctionType: { value: 0 },
+        // 函数参数
+        uA: { value: 1.0 },           // 一次项系数
+        uB: { value: 0.0 },           // 常数项
+        uC: { value: 1.0 },           // 二次项系数
+        uK: { value: 1.0 },           // 反比例系数
+        // 坐标系参数
+        uGridDensity: { value: 0.5 }, // 网格密度
+        uAxisLabels: { value: true }, // 显示坐标轴标签
+        uQuadrantLabels: { value: true }, // 显示象限标签
+        // 颜色参数
+        uAxisColor: { value: new THREE.Color(0xff6b6b) },    // 坐标轴颜色
+        uGridColor: { value: new THREE.Color(0x4ecdc4) },    // 网格颜色
+        uFunctionColor: { value: new THREE.Color(0x45b7d1) }, // 函数颜色
+        uLabelColor: { value: new THREE.Color(0x90e0ef) },   // 标签颜色
+        // 显示参数
+        uShowGrid: { value: true },    // 显示网格
+        uShowFunction: { value: true }, // 显示函数图像
+        uShowPoints: { value: true },  // 显示关键点
+      },
+      
+      // ============================================================================
+      // 顶点着色器：处理顶点位置和变形
+      // ============================================================================
+      vertexShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform int uCoordinateType;   // 坐标系类型
+        uniform int uFunctionType;     // 函数类型
+        uniform float uA;              // 一次项系数
+        uniform float uB;              // 常数项
+        uniform float uC;              // 二次项系数
+        uniform float uK;              // 反比例系数
+        
+        // 传递到片元着色器的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying vec2 vCoord;           // 坐标值
+        varying float vFunctionValue;  // 函数计算值
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 直角坐标系转换
+        // 初中数学知识点：直角坐标系、x轴、y轴、原点
+        // 教育价值：理解平面直角坐标系的基本概念
+        // ============================================================================
+        vec2 cartesianToCoordinate(vec2 pos) {
+          // 将位置转换为坐标值（-5到5的范围）
+          return pos * 5.0;
+        }
+        
+        // ============================================================================
+        // 极坐标系转换
+        // 初中数学知识点：极坐标系、极径、极角
+        // 教育价值：理解极坐标系的基本概念
+        // ============================================================================
+        vec2 polarToCoordinate(vec2 pos) {
+          float r = length(pos) * 5.0; // 极径
+          float theta = atan(pos.y, pos.x); // 极角
+          return vec2(r, theta);
+        }
+        
+        // ============================================================================
+        // 一次函数：y = ax + b
+        // 初中数学知识点：斜率、截距、直线性质
+        // 教育价值：理解线性函数的图像特征
+        // ============================================================================
+        float linearFunction(float x) {
+          return uA * x + uB;
+        }
+        
+        // ============================================================================
+        // 二次函数：y = ax² + bx + c
+        // 初中数学知识点：抛物线、顶点、对称轴
+        // 教育价值：理解二次函数的图像特征
+        // ============================================================================
+        float quadraticFunction(float x) {
+          return uC * x * x + uA * x + uB;
+        }
+        
+        // ============================================================================
+        // 三角函数：y = sin(x) 或 y = cos(x)
+        // 初中数学知识点：周期性、振幅
+        // 教育价值：理解三角函数的图像特征
+        // ============================================================================
+        float trigonometricFunction(float x) {
+          if(uA > 0.5) {
+            return sin(x * uK); // 正弦函数
+          } else {
+            return cos(x * uK); // 余弦函数
+          }
+        }
+        
+        // ============================================================================
+        // 反比例函数：y = k/x
+        // 初中数学知识点：反比例关系、渐近线
+        // 教育价值：理解反比例函数的图像特征
+        // ============================================================================
+        float inverseProportionFunction(float x) {
+          if(abs(x) < 0.01) return 0.0;
+          return uK / x;
+        }
+        
+        // ============================================================================
+        // 绝对值函数：y = |x|
+        // 初中数学知识点：绝对值概念、V形图像
+        // 教育价值：理解绝对值函数的图像特征
+        // ============================================================================
+        float absoluteValueFunction(float x) {
+          return abs(x);
+        }
+        
+        // ============================================================================
+        // 主顶点着色器函数
+        // ============================================================================
+        void main() {
+          // 传递UV坐标到片元着色器
+          vUv = uv;
+          vPosition = position;
+          
+          // 计算到中心的距离
+          vDistance = length(position.xy);
+          
+          // 根据坐标系类型转换坐标
+          if(uCoordinateType == 0) {
+            // 直角坐标系
+            vCoord = cartesianToCoordinate(position.xy);
+          } else if(uCoordinateType == 1) {
+            // 极坐标系
+            vCoord = polarToCoordinate(position.xy);
+          } else {
+            // 三维坐标系（简化版）
+            vCoord = position.xy * 5.0;
+          }
+          
+          // 根据函数类型计算函数值
+          float functionValue = 0.0;
+          
+          if(uFunctionType == 0) {
+            // 一次函数
+            functionValue = linearFunction(vCoord.x);
+          } else if(uFunctionType == 1) {
+            // 二次函数
+            functionValue = quadraticFunction(vCoord.x);
+          } else if(uFunctionType == 2) {
+            // 三角函数
+            functionValue = trigonometricFunction(vCoord.x);
+          } else if(uFunctionType == 3) {
+            // 反比例函数
+            functionValue = inverseProportionFunction(vCoord.x);
+          } else {
+            // 绝对值函数
+            functionValue = absoluteValueFunction(vCoord.x);
+          }
+          
+          vFunctionValue = functionValue;
+          
+          // 根据函数值对顶点位置进行变形（仅用于视觉效果）
+          vec3 newPosition = position;
+          if(uCoordinateType == 0) {
+            // 直角坐标系：函数图像高度
+            newPosition.z += smoothstep(-0.1, 0.1, abs(vCoord.y - functionValue)) * 0.3;
+          }
+          
+          // 设置最终顶点位置
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      
+      // ============================================================================
+      // 片元着色器：处理像素颜色
+      // ============================================================================
+      fragmentShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform vec3 uAxisColor;       // 坐标轴颜色
+        uniform vec3 uGridColor;       // 网格颜色
+        uniform vec3 uFunctionColor;   // 函数颜色
+        uniform vec3 uLabelColor;      // 标签颜色
+        uniform bool uShowGrid;        // 显示网格
+        uniform bool uShowFunction;    // 显示函数图像
+        uniform bool uShowPoints;      // 显示关键点
+        uniform float uGridDensity;    // 网格密度
+        uniform bool uAxisLabels;      // 显示坐标轴标签
+        uniform bool uQuadrantLabels;  // 显示象限标签
+        uniform int uCoordinateType;   // 坐标系类型
+        uniform int uFunctionType;     // 函数类型
+        
+        // 从顶点着色器传递的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying vec2 vCoord;           // 坐标值
+        varying float vFunctionValue;  // 函数计算值
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 绘制坐标轴
+        // ============================================================================
+        float drawAxes(vec2 coord) {
+          float axisWidth = 0.1;
+          float xAxis = 1.0 - smoothstep(0.0, axisWidth, abs(coord.y));
+          float yAxis = 1.0 - smoothstep(0.0, axisWidth, abs(coord.x));
+          return max(xAxis, yAxis);
+        }
+        
+        // ============================================================================
+        // 绘制网格
+        // ============================================================================
+        float drawGrid(vec2 coord, float density) {
+          vec2 gridPos = fract(coord / density);
+          float gridLine = step(0.98, gridPos.x) + step(0.98, gridPos.y);
+          return min(gridLine, 1.0);
+        }
+        
+        // ============================================================================
+        // 绘制函数图像
+        // ============================================================================
+        float drawFunction(vec2 coord, float funcValue) {
+          float curveWidth = 0.1;
+          return 1.0 - smoothstep(0.0, curveWidth, abs(coord.y - funcValue));
+        }
+        
+        // ============================================================================
+        // 绘制关键点（零点、顶点、交点等）
+        // ============================================================================
+        float drawKeyPoints(vec2 coord, int funcType) {
+          float pointSize = 0.2;
+          float point = 0.0;
+          
+          // 原点
+          point = max(point, 1.0 - smoothstep(0.0, pointSize, length(coord)));
+          
+          // 根据函数类型添加特定关键点
+          if(funcType == 0) {
+            // 一次函数：零点
+            float zeroX = -uB / uA;
+            point = max(point, 1.0 - smoothstep(0.0, pointSize, length(coord - vec2(zeroX, 0.0))));
+          } else if(funcType == 1) {
+            // 二次函数：顶点
+            float vertexX = -uA / (2.0 * uC);
+            float vertexY = uC * vertexX * vertexX + uA * vertexX + uB;
+            point = max(point, 1.0 - smoothstep(0.0, pointSize, length(coord - vec2(vertexX, vertexY))));
+          }
+          
+          return point;
+        }
+        
+        // ============================================================================
+        // 绘制坐标轴标签
+        // ============================================================================
+        float drawAxisLabels(vec2 coord) {
+          float labelSize = 0.3;
+          float label = 0.0;
+          
+          // x轴标签（整数点）
+          for(int i = -4; i <= 4; i++) {
+            if(i != 0) {
+              label = max(label, 1.0 - smoothstep(0.0, labelSize, length(coord - vec2(float(i), 0.0))));
+            }
+          }
+          
+          // y轴标签（整数点）
+          for(int i = -4; i <= 4; i++) {
+            if(i != 0) {
+              label = max(label, 1.0 - smoothstep(0.0, labelSize, length(coord - vec2(0.0, float(i)))));
+            }
+          }
+          
+          return label;
+        }
+        
+        // ============================================================================
+        // 绘制象限标签
+        // ============================================================================
+        float drawQuadrantLabels(vec2 coord) {
+          float quadrantSize = 1.5;
+          float quadrant = 0.0;
+          
+          // 第一象限
+          if(coord.x > quadrantSize && coord.y > quadrantSize) {
+            quadrant = 1.0 - smoothstep(0.0, 0.5, length(coord - vec2(3.0, 3.0)));
+          }
+          // 第二象限
+          else if(coord.x < -quadrantSize && coord.y > quadrantSize) {
+            quadrant = 1.0 - smoothstep(0.0, 0.5, length(coord - vec2(-3.0, 3.0)));
+          }
+          // 第三象限
+          else if(coord.x < -quadrantSize && coord.y < -quadrantSize) {
+            quadrant = 1.0 - smoothstep(0.0, 0.5, length(coord - vec2(-3.0, -3.0)));
+          }
+          // 第四象限
+          else if(coord.x > quadrantSize && coord.y < -quadrantSize) {
+            quadrant = 1.0 - smoothstep(0.0, 0.5, length(coord - vec2(3.0, -3.0)));
+          }
+          
+          return quadrant;
+        }
+        
+        void main() {
+          // 基础颜色（深色背景）
+          vec3 baseColor = vec3(0.1);
+          
+          // 绘制坐标轴
+          float axes = drawAxes(vCoord);
+          baseColor = mix(baseColor, uAxisColor, axes * 0.8);
+          
+          // 绘制网格
+          if(uShowGrid) {
+            float grid = drawGrid(vCoord, uGridDensity);
+            baseColor = mix(baseColor, uGridColor, grid * 0.3);
+          }
+          
+          // 绘制函数图像
+          if(uShowFunction && uCoordinateType == 0) {
+            float function = drawFunction(vCoord, vFunctionValue);
+            baseColor = mix(baseColor, uFunctionColor, function * 0.7);
+          }
+          
+          // 绘制关键点
+          if(uShowPoints) {
+            float points = drawKeyPoints(vCoord, uFunctionType);
+            baseColor = mix(baseColor, vec3(1.0, 1.0, 0.0), points * 0.9);
+          }
+          
+          // 绘制坐标轴标签
+          if(uAxisLabels) {
+            float labels = drawAxisLabels(vCoord);
+            baseColor = mix(baseColor, uLabelColor, labels * 0.6);
+          }
+          
+          // 绘制象限标签
+          if(uQuadrantLabels && uCoordinateType == 0) {
+            float quadrants = drawQuadrantLabels(vCoord);
+            baseColor = mix(baseColor, vec3(1.0, 0.5, 0.0), quadrants * 0.5);
+          }
+          
+          // 特殊效果：极坐标系下的径向线
+          if(uCoordinateType == 1) {
+            // 绘制极坐标的径向线
+            float radialLine = 1.0 - smoothstep(0.0, 0.05, mod(vCoord.y, 0.5236)); // 30度间隔
+            baseColor = mix(baseColor, uGridColor, radialLine * 0.2);
+          }
+          
+          // 根据距离添加边缘渐变效果
+          float edgeFade = 1.0 - smoothstep(0.0, 0.8, vDistance);
+          baseColor *= edgeFade;
+          
+          // 最终颜色输出
+          gl_FragColor = vec4(baseColor, 1.0);
+        }
+      `
+    });
+
+    // 创建网格对象并添加到场景
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    // ============================================================================
+    // 坐标系信息显示更新函数
+    // ============================================================================
+    function updateCoordinateInfo() {
+      const infoElement = document.getElementById('coordinateInfo');
+      const coordType = material.uniforms.uCoordinateType.value;
+      const funcType = material.uniforms.uFunctionType.value;
+      
+      const coordSystems = ["直角坐标系", "极坐标系", "三维坐标系"];
+      const functions = ["一次函数", "二次函数", "三角函数", "反比例函数", "绝对值函数"];
+      
+      const coordName = coordSystems[coordType];
+      const funcName = functions[funcType];
+      
+      let formula = '';
+      const a = material.uniforms.uA.value.toFixed(1);
+      const b = material.uniforms.uB.value.toFixed(1);
+      const c = material.uniforms.uC.value.toFixed(1);
+      const k = material.uniforms.uK.value.toFixed(1);
+      
+      switch(funcType) {
+        case 0: formula = `y = ${a}x ${b >= 0 ? '+' : ''} ${b}`; break;
+        case 1: formula = `y = ${c}x² ${a >= 0 ? '+' : ''} ${a}x ${b >= 0 ? '+' : ''} ${b}`; break;
+        case 2: formula = a > 0.5 ? `y = sin(${k}x)` : `y = cos(${k}x)`; break;
+        case 3: formula = `y = ${k}/x`; break;
+        case 4: formula = 'y = |x|'; break;
+      }
+      
+      infoElement.textContent = `坐标系：${coordName} | 函数：${formula}`;
+    }
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 坐标系类型控制
+    const coordTypes = {
+      "直角坐标系": 0,
+      "极坐标系": 1,
+      "三维坐标系": 2
+    };
+    
+    const coordController = gui.add(material.uniforms.uCoordinateType, 'value', coordTypes).name('坐标系类型');
+    coordController.onChange(updateCoordinateInfo);
+    
+    // 函数类型控制
+    const funcTypes = {
+      "一次函数": 0,
+      "二次函数": 1,
+      "三角函数": 2,
+      "反比例函数": 3,
+      "绝对值函数": 4
+    };
+    
+    const funcController = gui.add(material.uniforms.uFunctionType, 'value', funcTypes).name('函数类型');
+    funcController.onChange(updateCoordinateInfo);
+    
+    // 函数参数控制
+    const funcFolder = gui.addFolder('函数参数');
+    const aController = funcFolder.add(material.uniforms.uA, 'value', -3.0, 3.0).name('a系数');
+    const bController = funcFolder.add(material.uniforms.uB, 'value', -3.0, 3.0).name('b系数');
+    const cController = funcFolder.add(material.uniforms.uC, 'value', -2.0, 2.0).name('c系数');
+    const kController = funcFolder.add(material.uniforms.uK, 'value', 0.1, 5.0).name('k系数');
+    
+    // 参数变化时更新信息显示
+    [aController, bController, cController, kController].forEach(controller => {
+      controller.onChange(updateCoordinateInfo);
+    });
+    
+    funcFolder.open();
+    
+    // 坐标系设置
+    const coordFolder = gui.addFolder('坐标系设置');
+    coordFolder.add(material.uniforms.uShowGrid, 'value').name('显示网格');
+    coordFolder.add(material.uniforms.uGridDensity, 'value', 0.1, 2.0).name('网格密度');
+    coordFolder.add(material.uniforms.uAxisLabels, 'value').name('坐标轴标签');
+    coordFolder.add(material.uniforms.uQuadrantLabels, 'value').name('象限标签');
+    coordFolder.open();
+    
+    // 函数显示设置
+    const displayFolder = gui.addFolder('函数显示');
+    displayFolder.add(material.uniforms.uShowFunction, 'value').name('显示函数图像');
+    displayFolder.add(material.uniforms.uShowPoints, 'value').name('显示关键点');
+    displayFolder.open();
+    
+    // 颜色控制
+    const colorFolder = gui.addFolder('颜色设置');
+    colorFolder.addColor(material.uniforms.uAxisColor, 'value').name('坐标轴颜色');
+    colorFolder.addColor(material.uniforms.uGridColor, 'value').name('网格颜色');
+    colorFolder.addColor(material.uniforms.uFunctionColor, 'value').name('函数颜色');
+    colorFolder.addColor(material.uniforms.uLabelColor, 'value').name('标签颜色');
+    colorFolder.open();
+
+    // 初始更新信息显示
+    updateCoordinateInfo();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间变量，用于平滑动画
+      material.uniforms.uTime.value += 0.01;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

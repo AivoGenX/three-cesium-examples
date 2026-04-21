@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js数字矩阵雨着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #003300 0%, #000000 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00ff00;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00ff00;
+      border: 1px solid #00ff00;
+      box-shadow: 0 0 20px #00ff00;
+    }
+    .matrix-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #00ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #00ffff;
+      border: 1px solid #00ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff00;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff00;
+      border: 1px solid #ffff00;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">💻 数字矩阵雨 - 实时渲染 💻</div>
+  <div class="matrix-info" id="matrixInfo">数据流: 高速 | 字符密度: 中等</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变矩阵雨效果<br>
+    • 实时交互：体验数字矩阵雨
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x003300);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(75, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,10)的位置观察场景
+    camera.position.set(0, 0, 10)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 数字矩阵雨参数
+    const matrixParams = {
+      rainSpeed: 1.5,
+      characterDensity: 0.8,
+      trailLength: 1.2,
+      glowIntensity: 0.7,
+      matrixSize: 0.6,
+      colorScheme: 0,
+      showGrid: true
+    };
+
+    // 创建立方体几何体，作为矩阵雨的载体
+    const geometry = new THREE.BoxGeometry(6, 6, 0.1, 32, 32);
+
+    // 顶点着色器代码 - 数字矩阵雨效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uRainSpeed;
+      uniform float uMatrixSize;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 矩阵雨下落效果
+        float rainFlow = mod(position.y + uTime * uRainSpeed * 3.0, 2.0) - 1.0;
+        
+        // 轻微波动效果
+        float wave = sin(position.x * 4.0 + uTime * uRainSpeed) * 0.05;
+        
+        vec3 newPosition = position;
+        newPosition.y = rainFlow;
+        newPosition.x += wave;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 数字矩阵雨效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uRainSpeed;
+      uniform float uCharacterDensity;
+      uniform float uTrailLength;
+      uniform float uGlowIntensity;
+      uniform float uMatrixSize;
+      uniform int uColorScheme;
+      uniform bool uShowGrid;
+      
+      // 随机数生成
+      float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+      }
+      
+      // 字符效果
+      float characters(vec2 uv, float density) {
+        float charEffect = 0.0;
+        
+        // 创建字符矩阵
+        vec2 grid = floor(uv * 20.0 * uMatrixSize);
+        vec2 cell = fract(uv * 20.0 * uMatrixSize);
+        
+        // 每个单元格的随机字符
+        float char = random(grid + floor(uTime * uRainSpeed * 0.5));
+        
+        // 字符下落效果
+        float fall = mod(grid.y + uTime * uRainSpeed * 5.0, 20.0);
+        float trail = 1.0 - smoothstep(0.0, uTrailLength * 5.0, fall);
+        
+        charEffect = char * trail * density;
+        
+        return charEffect;
+      }
+      
+      // 网格效果
+      float gridLines(vec2 uv, float size) {
+        if(!uShowGrid) return 0.0;
+        
+        vec2 grid = fract(uv * size * 10.0);
+        float lines = 1.0 - smoothstep(0.0, 0.02, min(grid.x, grid.y));
+        return lines * 0.2;
+      }
+      
+      // 颜色方案
+      vec3 getColorScheme(int scheme) {
+        if(scheme == 0) {
+          // 经典绿色
+          return vec3(0.0, 1.0, 0.0);
+        } else if(scheme == 1) {
+          // 蓝色矩阵
+          return vec3(0.0, 0.5, 1.0);
+        } else {
+          // 紫色矩阵
+          return vec3(0.8, 0.0, 1.0);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv * 2.0 - 1.0;
+        
+        // 字符效果
+        float chars = characters(uv, uCharacterDensity);
+        
+        // 网格效果
+        float grid = gridLines(uv, uMatrixSize);
+        
+        // 颜色计算
+        vec3 baseColor = getColorScheme(uColorScheme);
+        vec3 finalColor = baseColor * (chars * 0.8 + grid * 0.2) * uGlowIntensity;
+        
+        // 边缘淡化
+        float edge = 1.0 - length(uv) * 0.8;
+        finalColor *= edge;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uRainSpeed: { value: matrixParams.rainSpeed },
+        uCharacterDensity: { value: matrixParams.characterDensity },
+        uTrailLength: { value: matrixParams.trailLength },
+        uGlowIntensity: { value: matrixParams.glowIntensity },
+        uMatrixSize: { value: matrixParams.matrixSize },
+        uColorScheme: { value: matrixParams.colorScheme },
+        uShowGrid: { value: matrixParams.showGrid }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const matrixPlane = new THREE.Mesh(geometry, material);
+    scene.add(matrixPlane);
+
+    // 更新矩阵信息显示
+    function updateMatrixInfo() {
+      const matrixElement = document.getElementById('matrixInfo');
+      let speed = "低速";
+      if(matrixParams.rainSpeed > 1.0) speed = "中速";
+      if(matrixParams.rainSpeed > 2.0) speed = "高速";
+      
+      let density = "低";
+      if(matrixParams.characterDensity > 0.5) density = "中等";
+      if(matrixParams.characterDensity > 0.8) density = "高";
+      
+      matrixElement.textContent = `数据流: ${speed} | 字符密度: ${density}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 矩阵雨参数控制
+    const matrixFolder = gui.addFolder('数字矩阵雨参数');
+    matrixFolder.add(matrixParams, 'rainSpeed', 0.1, 3.0).name('雨速');
+    matrixFolder.add(matrixParams, 'characterDensity', 0.1, 1.5).name('字符密度');
+    matrixFolder.add(matrixParams, 'trailLength', 0.1, 2.0).name('拖尾长度');
+    matrixFolder.add(matrixParams, 'glowIntensity', 0.1, 1.5).name('发光强度');
+    matrixFolder.add(matrixParams, 'matrixSize', 0.1, 1.2).name('矩阵大小');
+    matrixFolder.add(matrixParams, 'showGrid').name('显示网格');
+    
+    // 颜色方案控制
+    const colorSchemes = {
+      "经典绿色": 0,
+      "蓝色矩阵": 1,
+      "紫色矩阵": 2
+    };
+    matrixFolder.add(matrixParams, 'colorScheme', colorSchemes).name('颜色方案');
+    
+    matrixFolder.open();
+
+    // 参数变化时更新材质和矩阵信息
+    gui.onChange(() => {
+      material.uniforms.uRainSpeed.value = matrixParams.rainSpeed;
+      material.uniforms.uCharacterDensity.value = matrixParams.characterDensity;
+      material.uniforms.uTrailLength.value = matrixParams.trailLength;
+      material.uniforms.uGlowIntensity.value = matrixParams.glowIntensity;
+      material.uniforms.uMatrixSize.value = matrixParams.matrixSize;
+      material.uniforms.uColorScheme.value = matrixParams.colorScheme;
+      material.uniforms.uShowGrid.value = matrixParams.showGrid;
+      
+      updateMatrixInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 轻微旋转
+      matrixPlane.rotation.y += 0.001;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化矩阵信息显示
+    updateMatrixInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

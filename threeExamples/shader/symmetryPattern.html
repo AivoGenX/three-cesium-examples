@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js对称和图案着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      box-shadow: 0 0 20px #ff6b6b;
+    }
+    .pattern-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #4ecdc4;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #4ecdc4;
+      border: 1px solid #4ecdc4;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🔷 对称和图案着色器 - 初中数学教育 🔷</div>
+  <div class="pattern-info" id="patternInfo">对称类型：轴对称 | 图案：雪花</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,5)的位置观察场景
+    camera.position.set(0, 0, 5)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 创建几何体和材质
+    // ============================================================================
+    
+    // 创建平面几何体，作为对称和图案的载体
+    // 参数：宽度，高度，宽度分段数，高度分段数
+    const geometry = new THREE.PlaneGeometry(10, 10, 512, 512);
+
+    // 创建自定义着色器材质，实现对称和图案效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      uniforms: {
+        // 时间变量，用于动画效果
+        uTime: { value: 0.0 },
+        // 对称类型选择：0=轴对称, 1=中心对称, 2=旋转对称, 3=平移对称, 4=组合对称
+        uSymmetryType: { value: 0 },
+        // 图案类型选择：0=雪花, 1=万花筒, 2=分形, 3=几何图案, 4=伊斯兰图案
+        uPatternType: { value: 0 },
+        // 对称参数
+        uSymmetryAxis: { value: 0.0 }, // 对称轴角度
+        uRotationOrder: { value: 6 },  // 旋转对称阶数
+        uTranslationX: { value: 1.0 }, // 平移X
+        uTranslationY: { value: 1.0 }, // 平移Y
+        // 图案参数
+        uPatternScale: { value: 0.5 }, // 图案缩放
+        uPatternDetail: { value: 3 },  // 图案细节
+        uColorScheme: { value: 0 },    // 颜色方案
+        // 颜色参数
+        uPrimaryColor: { value: new THREE.Color(0xff6b6b) },  // 主颜色
+        uSecondaryColor: { value: new THREE.Color(0x4ecdc4) }, // 次颜色
+        uTertiaryColor: { value: new THREE.Color(0x45b7d1) },  // 第三颜色
+        uBackgroundColor: { value: new THREE.Color(0x1a1a2e) }, // 背景颜色
+        // 显示参数
+        uShowSymmetry: { value: true }, // 显示对称轴
+        uShowPattern: { value: true },  // 显示图案
+        uAnimate: { value: true },      // 启用动画
+      },
+      
+      // ============================================================================
+      // 顶点着色器：处理顶点位置和变形
+      // ============================================================================
+      vertexShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform int uSymmetryType;     // 对称类型
+        uniform int uPatternType;      // 图案类型
+        uniform float uSymmetryAxis;   // 对称轴角度
+        uniform int uRotationOrder;    // 旋转对称阶数
+        uniform float uTranslationX;   // 平移X
+        uniform float uTranslationY;   // 平移Y
+        uniform float uPatternScale;   // 图案缩放
+        uniform int uPatternDetail;    // 图案细节
+        uniform bool uAnimate;         // 启用动画
+        
+        // 传递到片元着色器的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying vec2 vPatternCoord;    // 图案坐标
+        varying float vSymmetryValue;  // 对称值
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 轴对称变换：关于直线对称
+        // 初中数学知识点：轴对称、对称轴
+        // 教育价值：理解轴对称的基本概念
+        // ============================================================================
+        vec2 axialSymmetry(vec2 pos, float angle) {
+          float s = sin(angle);
+          float c = cos(angle);
+          
+          // 旋转到对称轴方向
+          vec2 rotated = vec2(pos.x * c + pos.y * s, -pos.x * s + pos.y * c);
+          
+          // 关于x轴对称
+          rotated.y = abs(rotated.y);
+          
+          // 旋转回原方向
+          return vec2(rotated.x * c - rotated.y * s, rotated.x * s + rotated.y * c);
+        }
+        
+        // ============================================================================
+        // 中心对称变换：关于点对称
+        // 初中数学知识点：中心对称、对称中心
+        // 教育价值：理解中心对称的基本概念
+        // ============================================================================
+        vec2 centralSymmetry(vec2 pos) {
+          // 关于原点对称
+          return -pos;
+        }
+        
+        // ============================================================================
+        // 旋转对称变换：绕中心点旋转
+        // 初中数学知识点：旋转对称、旋转角度
+        // 教育价值：理解旋转对称的基本概念
+        // ============================================================================
+        vec2 rotationalSymmetry(vec2 pos, int order) {
+          float angle = 2.0 * 3.14159 / float(order);
+          float currentAngle = atan(pos.y, pos.x);
+          
+          // 找到最近的对称角度
+          float symmetricAngle = floor(currentAngle / angle + 0.5) * angle;
+          
+          float r = length(pos);
+          return vec2(cos(symmetricAngle), sin(symmetricAngle)) * r;
+        }
+        
+        // ============================================================================
+        // 平移对称变换：沿向量平移
+        // 初中数学知识点：平移对称、平移向量
+        // 教育价值：理解平移对称的基本概念
+        // ============================================================================
+        vec2 translationalSymmetry(vec2 pos, vec2 translation) {
+          // 对位置进行模运算，实现平铺效果
+          vec2 tiled = mod(pos, translation) - 0.5 * translation;
+          return tiled;
+        }
+        
+        // ============================================================================
+        // 雪花图案生成函数
+        // 初中数学知识点：分形、自相似
+        // 教育价值：理解雪花图案的数学原理
+        // ============================================================================
+        float snowflakePattern(vec2 pos, int detail) {
+          float pattern = 0.0;
+          
+          // 基础六边形
+          for(int i = 0; i < 6; i++) {
+            float angle = float(i) * 3.14159 / 3.0;
+            vec2 dir = vec2(cos(angle), sin(angle));
+            pattern += smoothstep(0.1, 0.15, dot(pos, dir));
+          }
+          
+          // 分形细节
+          for(int d = 0; d < 3; d++) {
+            if(d < detail) {
+              float scale = pow(3.0, float(d));
+              vec2 scaledPos = pos * scale;
+              
+              for(int i = 0; i < 6; i++) {
+                float angle = float(i) * 3.14159 / 3.0;
+                vec2 dir = vec2(cos(angle), sin(angle));
+                pattern += smoothstep(0.05, 0.1, dot(scaledPos, dir)) * 0.5;
+              }
+            }
+          }
+          
+          return pattern;
+        }
+        
+        // ============================================================================
+        // 万花筒图案生成函数
+        // 初中数学知识点：反射、旋转
+        // 教育价值：理解万花筒的数学原理
+        // ============================================================================
+        float kaleidoscopePattern(vec2 pos, int order) {
+          float angle = 2.0 * 3.14159 / float(order);
+          float currentAngle = atan(pos.y, pos.x);
+          
+          // 将角度映射到基本扇区
+          float sectorAngle = mod(currentAngle, angle);
+          if(sectorAngle > angle * 0.5) {
+            sectorAngle = angle - sectorAngle;
+          }
+          
+          float r = length(pos);
+          vec2 symmetricPos = vec2(cos(sectorAngle), sin(sectorAngle)) * r;
+          
+          // 基于对称位置生成图案
+          return sin(symmetricPos.x * 10.0) * cos(symmetricPos.y * 10.0);
+        }
+        
+        // ============================================================================
+        // 主顶点着色器函数
+        // ============================================================================
+        void main() {
+          // 传递UV坐标到片元着色器
+          vUv = uv;
+          vPosition = position;
+          
+          // 计算到中心的距离
+          vDistance = length(position.xy);
+          
+          // 应用对称变换
+          vec2 symmetricPos = position.xy;
+          
+          if(uSymmetryType == 0) {
+            // 轴对称
+            symmetricPos = axialSymmetry(position.xy, uSymmetryAxis);
+          } else if(uSymmetryType == 1) {
+            // 中心对称
+            symmetricPos = centralSymmetry(position.xy);
+          } else if(uSymmetryType == 2) {
+            // 旋转对称
+            symmetricPos = rotationalSymmetry(position.xy, uRotationOrder);
+          } else if(uSymmetryType == 3) {
+            // 平移对称
+            symmetricPos = translationalSymmetry(position.xy, vec2(uTranslationX, uTranslationY));
+          } else {
+            // 组合对称：轴对称 + 旋转对称
+            symmetricPos = axialSymmetry(position.xy, uSymmetryAxis);
+            symmetricPos = rotationalSymmetry(symmetricPos, uRotationOrder);
+          }
+          
+          vPatternCoord = symmetricPos / uPatternScale;
+          
+          // 计算对称值（用于颜色变化）
+          vSymmetryValue = length(position.xy - symmetricPos);
+          
+          // 根据图案类型对顶点位置进行变形
+          vec3 newPosition = position;
+          
+          if(uPatternType == 0) {
+            // 雪花图案：轻微高度变化
+            float snowflake = snowflakePattern(vPatternCoord, uPatternDetail);
+            newPosition.z += snowflake * 0.2;
+          } else if(uPatternType == 1) {
+            // 万花筒图案：波浪效果
+            float kaleidoscope = kaleidoscopePattern(vPatternCoord, uRotationOrder);
+            newPosition.z += kaleidoscope * 0.1;
+          }
+          
+          // 动画效果
+          if(uAnimate) {
+            newPosition.z += sin(uTime + length(position.xy) * 5.0) * 0.05;
+          }
+          
+          // 设置最终顶点位置
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      
+      // ============================================================================
+      // 片元着色器：处理像素颜色
+      // ============================================================================
+      fragmentShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform vec3 uPrimaryColor;    // 主颜色
+        uniform vec3 uSecondaryColor;  // 次颜色
+        uniform vec3 uTertiaryColor;   // 第三颜色
+        uniform vec3 uBackgroundColor; // 背景颜色
+        uniform bool uShowSymmetry;    // 显示对称轴
+        uniform bool uShowPattern;     // 显示图案
+        uniform int uSymmetryType;     // 对称类型
+        uniform int uPatternType;      // 图案类型
+        uniform int uPatternDetail;    // 图案细节
+        uniform int uColorScheme;      // 颜色方案
+        uniform bool uAnimate;         // 启用动画
+        
+        // 从顶点着色器传递的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying vec2 vPatternCoord;    // 图案坐标
+        varying float vSymmetryValue;  // 对称值
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 雪花图案渲染
+        // ============================================================================
+        float renderSnowflake(vec2 pos, int detail) {
+          float pattern = 0.0;
+          
+          // 基础六边形轮廓
+          for(int i = 0; i < 6; i++) {
+            float angle = float(i) * 3.14159 / 3.0;
+            vec2 dir = vec2(cos(angle), sin(angle));
+            pattern += smoothstep(0.08, 0.12, dot(pos, dir));
+          }
+          
+          // 分形细节
+          for(int d = 0; d < 3; d++) {
+            if(d < detail) {
+              float scale = pow(3.0, float(d));
+              vec2 scaledPos = pos * scale;
+              
+              for(int i = 0; i < 6; i++) {
+                float angle = float(i) * 3.14159 / 3.0;
+                vec2 dir = vec2(cos(angle), sin(angle));
+                pattern += smoothstep(0.04, 0.08, dot(scaledPos, dir)) * 0.3;
+              }
+            }
+          }
+          
+          return pattern;
+        }
+        
+        // ============================================================================
+        // 万花筒图案渲染
+        // ============================================================================
+        float renderKaleidoscope(vec2 pos, int order) {
+          float angle = 2.0 * 3.14159 / float(order);
+          float currentAngle = atan(pos.y, pos.x);
+          
+          // 将角度映射到基本扇区
+          float sectorAngle = mod(currentAngle, angle);
+          if(sectorAngle > angle * 0.5) {
+            sectorAngle = angle - sectorAngle;
+          }
+          
+          float r = length(pos);
+          vec2 symmetricPos = vec2(cos(sectorAngle), sin(sectorAngle)) * r;
+          
+          // 生成条纹图案
+          return sin(symmetricPos.x * 15.0) * cos(symmetricPos.y * 15.0);
+        }
+        
+        // ============================================================================
+        // 分形图案渲染
+        // ============================================================================
+        float renderFractal(vec2 pos, int detail) {
+          vec2 z = pos;
+          float iter = 0.0;
+          
+          // 简化的分形计算
+          for(int i = 0; i < 20; i++) {
+            if(i < detail * 5) {
+              z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + pos;
+              if(length(z) > 2.0) {
+                iter = float(i) / 20.0;
+                break;
+              }
+            }
+          }
+          
+          return iter;
+        }
+        
+        // ============================================================================
+        // 几何图案渲染
+        // ============================================================================
+        float renderGeometric(vec2 pos) {
+          // 生成几何网格图案
+          float gridX = sin(pos.x * 10.0);
+          float gridY = cos(pos.y * 10.0);
+          return gridX * gridY;
+        }
+        
+        // ============================================================================
+        // 伊斯兰图案渲染
+        // ============================================================================
+        float renderIslamic(vec2 pos) {
+          // 生成伊斯兰风格的几何图案
+          float star = 0.0;
+          
+          for(int i = 0; i < 8; i++) {
+            float angle = float(i) * 3.14159 / 4.0;
+            vec2 dir = vec2(cos(angle), sin(angle));
+            star += smoothstep(0.1, 0.15, dot(pos, dir));
+          }
+          
+          return star;
+        }
+        
+        // ============================================================================
+        // 绘制对称轴
+        // ============================================================================
+        float drawSymmetryAxes(vec3 pos, int symmetryType, float axisAngle) {
+          if(!uShowSymmetry) return 0.0;
+          
+          float axisWidth = 0.01;
+          float axis = 0.0;
+          
+          if(symmetryType == 0 || symmetryType == 4) {
+            // 绘制轴对称线
+            float angle = axisAngle;
+            float lineAngle = atan(pos.y, pos.x);
+            
+            // 检查是否在对称轴附近
+            if(abs(mod(lineAngle - angle + 3.14159, 3.14159) - 1.5708) < 0.05) {
+              axis = 1.0 - smoothstep(0.0, axisWidth, length(pos.xy));
+            }
+          }
+          
+          if(symmetryType == 1 || symmetryType == 4) {
+            // 绘制中心对称点（原点）
+            axis = max(axis, 1.0 - smoothstep(0.0, 0.02, length(pos.xy)));
+          }
+          
+          return axis;
+        }
+        
+        void main() {
+          // 基础颜色（背景色）
+          vec3 baseColor = uBackgroundColor;
+          
+          // 绘制图案
+          if(uShowPattern) {
+            float pattern = 0.0;
+            
+            if(uPatternType == 0) {
+              // 雪花图案
+              pattern = renderSnowflake(vPatternCoord, uPatternDetail);
+            } else if(uPatternType == 1) {
+              // 万花筒图案
+              pattern = renderKaleidoscope(vPatternCoord, 6);
+            } else if(uPatternType == 2) {
+              // 分形图案
+              pattern = renderFractal(vPatternCoord, uPatternDetail);
+            } else if(uPatternType == 3) {
+              // 几何图案
+              pattern = renderGeometric(vPatternCoord);
+            } else {
+              // 伊斯兰图案
+              pattern = renderIslamic(vPatternCoord);
+            }
+            
+            // 根据颜色方案选择颜色
+            vec3 patternColor = uPrimaryColor;
+            if(uColorScheme == 1) {
+              patternColor = mix(uSecondaryColor, uTertiaryColor, pattern);
+            } else if(uColorScheme == 2) {
+              patternColor = mix(uPrimaryColor, uSecondaryColor, sin(pattern * 10.0 + uTime) * 0.5 + 0.5);
+            }
+            
+            baseColor = mix(baseColor, patternColor, pattern);
+          }
+          
+          // 绘制对称轴
+          float axes = drawSymmetryAxes(vPosition, uSymmetryType, uTime * 0.5);
+          baseColor = mix(baseColor, vec3(1.0, 1.0, 0.0), axes * 0.8);
+          
+          // 根据对称值添加颜色变化
+          float symmetryEffect = smoothstep(0.0, 0.1, vSymmetryValue);
+          baseColor = mix(baseColor, uTertiaryColor, symmetryEffect * 0.3);
+          
+          // 根据距离添加边缘渐变效果
+          float edgeFade = 1.0 - smoothstep(0.0, 0.8, vDistance);
+          baseColor = mix(uBackgroundColor, baseColor, edgeFade);
+          
+          // 动画效果
+          if(uAnimate) {
+            float pulse = sin(uTime * 2.0) * 0.1 + 0.9;
+            baseColor *= pulse;
+          }
+          
+          // 最终颜色输出
+          gl_FragColor = vec4(baseColor, 1.0);
+        }
+      `
+    });
+
+    // 创建网格对象并添加到场景
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    // ============================================================================
+    // 图案信息显示更新函数
+    // ============================================================================
+    function updatePatternInfo() {
+      const infoElement = document.getElementById('patternInfo');
+      const symmetryType = material.uniforms.uSymmetryType.value;
+      const patternType = material.uniforms.uPatternType.value;
+      
+      const symmetryTypes = ["轴对称", "中心对称", "旋转对称", "平移对称", "组合对称"];
+      const patternTypes = ["雪花", "万花筒", "分形", "几何图案", "伊斯兰图案"];
+      
+      const symmetryName = symmetryTypes[symmetryType];
+      const patternName = patternTypes[patternType];
+      
+      let details = '';
+      if(symmetryType == 0) {
+        const angle = (material.uniforms.uSymmetryAxis.value * 180.0 / 3.14159).toFixed(0);
+        details = ` | 对称轴角度：${angle}°`;
+      } else if(symmetryType == 2) {
+        const order = material.uniforms.uRotationOrder.value;
+        details = ` | 旋转阶数：${order}`;
+      }
+      
+      infoElement.textContent = `对称类型：${symmetryName} | 图案：${patternName}${details}`;
+    }
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 对称类型控制
+    const symmetryTypes = {
+      "轴对称": 0,
+      "中心对称": 1,
+      "旋转对称": 2,
+      "平移对称": 3,
+      "组合对称": 4
+    };
+    
+    const symmetryController = gui.add(material.uniforms.uSymmetryType, 'value', symmetryTypes).name('对称类型');
+    symmetryController.onChange(updatePatternInfo);
+    
+    // 图案类型控制
+    const patternTypes = {
+      "雪花": 0,
+      "万花筒": 1,
+      "分形": 2,
+      "几何图案": 3,
+      "伊斯兰图案": 4
+    };
+    
+    const patternController = gui.add(material.uniforms.uPatternType, 'value', patternTypes).name('图案类型');
+    patternController.onChange(updatePatternInfo);
+    
+    // 对称参数控制
+    const symmetryFolder = gui.addFolder('对称参数');
+    const axisController = symmetryFolder.add(material.uniforms.uSymmetryAxis, 'value', 0.0, 3.14159).name('对称轴角度');
+    const orderController = symmetryFolder.add(material.uniforms.uRotationOrder, 'value', 2, 12).step(1).name('旋转阶数');
+    const txController = symmetryFolder.add(material.uniforms.uTranslationX, 'value', 0.1, 3.0).name('平移X');
+    const tyController = symmetryFolder.add(material.uniforms.uTranslationY, 'value', 0.1, 3.0).name('平移Y');
+    
+    // 参数变化时更新信息显示
+    [axisController, orderController, txController, tyController].forEach(controller => {
+      controller.onChange(updatePatternInfo);
+    });
+    
+    symmetryFolder.open();
+    
+    // 图案参数控制
+    const patternFolder = gui.addFolder('图案参数');
+    patternFolder.add(material.uniforms.uPatternScale, 'value', 0.1, 2.0).name('图案缩放');
+    patternFolder.add(material.uniforms.uPatternDetail, 'value', 1, 5).step(1).name('图案细节');
+    
+    const colorSchemes = {
+      "单色": 0,
+      "渐变": 1,
+      "动态": 2
+    };
+    patternFolder.add(material.uniforms.uColorScheme, 'value', colorSchemes).name('颜色方案');
+    patternFolder.open();
+    
+    // 显示设置
+    const displayFolder = gui.addFolder('显示设置');
+    displayFolder.add(material.uniforms.uShowSymmetry, 'value').name('显示对称轴');
+    displayFolder.add(material.uniforms.uShowPattern, 'value').name('显示图案');
+    displayFolder.add(material.uniforms.uAnimate, 'value').name('启用动画');
+    displayFolder.open();
+    
+    // 颜色控制
+    const colorFolder = gui.addFolder('颜色设置');
+    colorFolder.addColor(material.uniforms.uPrimaryColor, 'value').name('主颜色');
+    colorFolder.addColor(material.uniforms.uSecondaryColor, 'value').name('次颜色');
+    colorFolder.addColor(material.uniforms.uTertiaryColor, 'value').name('第三颜色');
+    colorFolder.open();
+
+    // 初始更新信息显示
+    updatePatternInfo();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间变量，用于平滑动画
+      material.uniforms.uTime.value += 0.01;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

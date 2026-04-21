@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js引力波效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #330066 0%, #110033 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #9966ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #9966ff;
+      border: 1px solid #9966ff;
+      box-shadow: 0 0 20px #9966ff;
+    }
+    .gravity-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #66ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #66ffff;
+      border: 1px solid #66ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🌊 引力波效果 - 实时渲染 🌊</div>
+  <div class="gravity-info" id="gravityInfo">波幅: 大 | 频率: 高频</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变引力波效果<br>
+    • 实时交互：体验时空涟漪
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x330066);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 引力波效果参数
+    const gravityParams = {
+      waveAmplitude: 0.8,
+      waveFrequency: 0.7,
+      spaceDistortion: 0.6,
+      glowIntensity: 1.2,
+      rippleEffect: 0.8,
+      gravityType: 0,
+      showRipples: true
+    };
+
+    // 创建立方体几何体，作为引力波的载体
+    const geometry = new THREE.BoxGeometry(3, 3, 3);
+
+    // 顶点着色器代码 - 引力波效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uWaveAmplitude;
+      uniform float uWaveFrequency;
+      uniform float uRippleEffect;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 引力波幅度效果
+        float amplitude = sin(position.x * 3.0 + uTime * uWaveAmplitude) * 
+                         cos(position.y * 4.0 + uTime * uWaveAmplitude * 0.8) *
+                         sin(position.z * 3.0 + uTime * uWaveAmplitude * 0.6);
+        
+        // 波频率
+        float frequency = sin(position.x * 5.0 + uTime * uWaveFrequency * 2.0) *
+                         cos(position.z * 5.0 + uTime * uWaveFrequency * 2.0);
+        
+        // 涟漪效果
+        float ripple = sin(position.x * uRippleEffect * 6.0) *
+                      cos(position.y * uRippleEffect * 8.0);
+        
+        vec3 newPosition = position + normal * (amplitude + frequency * 0.5 + ripple * 0.3) * 0.15;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 引力波效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uWaveAmplitude;
+      uniform float uWaveFrequency;
+      uniform float uSpaceDistortion;
+      uniform float uGlowIntensity;
+      uniform float uRippleEffect;
+      uniform int uGravityType;
+      uniform bool uShowRipples;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 引力波效果
+      float gravitationalWave(vec2 uv, float amplitude) {
+        float waveField = 0.0;
+        
+        // 多层引力波
+        waveField += sin(uv.x * 4.0 + uTime * 0.3) * 
+                    cos(uv.y * 6.0 + uTime * 0.5);
+        waveField += sin(uv.x * 6.0 + uTime * 0.7) * 
+                    cos(uv.y * 8.0 + uTime * 0.9) * 0.7;
+        waveField += sin(uv.x * 8.0 + uTime * 1.1) * 
+                    cos(uv.y * 10.0 + uTime * 1.3) * 0.4;
+        
+        return waveField * amplitude;
+      }
+      
+      // 时空扭曲效果
+      float spaceDistortion(vec2 uv, float distortion) {
+        float distortionField = 0.0;
+        for(int i = 0; i < 20; i++) {
+          vec2 distortionPos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, distortionPos);
+          float distortionSize = noise(vec2(float(i) * 0.789, 0.123)) * 0.04 + 0.02;
+          float distortionLife = mod(uTime * 1.5 + float(i) * 8.0, 6.28);
+          float distortionIntensity = sin(distortionLife) * 0.7 + 0.3;
+          distortionField += exp(-dist * 45.0) * distortionIntensity * distortion;
+        }
+        return distortionField;
+      }
+      
+      // 引力类型
+      vec3 getGravityType(int type) {
+        if(type == 0) {
+          // 黑洞合并引力波
+          return vec3(0.8, 0.2, 1.0);
+        } else if(type == 1) {
+          // 中子星合并引力波
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 宇宙膨胀引力波
+          return vec3(1.0, 0.8, 0.2);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 引力波效果
+        float waveValue = gravitationalWave(uv, uWaveAmplitude);
+        
+        // 时空扭曲效果
+        float distortionValue = spaceDistortion(uv, uSpaceDistortion);
+        
+        // 颜色计算
+        vec3 baseColor = getGravityType(uGravityType);
+        vec3 finalColor = baseColor * (waveValue * 0.6 + distortionValue * 0.4) * uGlowIntensity;
+        
+        // 波动效果
+        float waveEffect = sin(uTime * uWaveFrequency) * 0.2 + 0.8;
+        finalColor *= waveEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uWaveAmplitude: { value: gravityParams.waveAmplitude },
+        uWaveFrequency: { value: gravityParams.waveFrequency },
+        uSpaceDistortion: { value: gravityParams.spaceDistortion },
+        uGlowIntensity: { value: gravityParams.glowIntensity },
+        uRippleEffect: { value: gravityParams.rippleEffect },
+        uGravityType: { value: gravityParams.gravityType },
+        uShowRipples: { value: gravityParams.showRipples }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const gravityCube = new THREE.Mesh(geometry, material);
+    scene.add(gravityCube);
+
+    // 更新引力波信息显示
+    function updateGravityInfo() {
+      const gravityElement = document.getElementById('gravityInfo');
+      let amplitude = "小";
+      if(gravityParams.waveAmplitude > 0.5) amplitude = "中";
+      if(gravityParams.waveAmplitude > 0.8) amplitude = "大";
+      
+      let frequency = "低频";
+      if(gravityParams.waveFrequency > 0.4) frequency = "中频";
+      if(gravityParams.waveFrequency > 0.7) frequency = "高频";
+      
+      gravityElement.textContent = `波幅: ${amplitude} | 频率: ${frequency}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 引力波参数控制
+    const gravityFolder = gui.addFolder('引力波效果参数');
+    gravityFolder.add(gravityParams, 'waveAmplitude', 0.1, 1.2).name('波幅');
+    gravityFolder.add(gravityParams, 'waveFrequency', 0.1, 1.0).name('频率');
+    gravityFolder.add(gravityParams, 'spaceDistortion', 0.1, 1.0).name('时空扭曲');
+    gravityFolder.add(gravityParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    gravityFolder.add(gravityParams, 'rippleEffect', 0.1, 0.9).name('涟漪效果');
+    gravityFolder.add(gravityParams, 'showRipples').name('显示涟漪');
+    
+    // 引力类型控制
+    const gravityTypes = {
+      "黑洞合并": 0,
+      "中子星合并": 1,
+      "宇宙膨胀": 2
+    };
+    gravityFolder.add(gravityParams, 'gravityType', gravityTypes).name('引力类型');
+    
+    gravityFolder.open();
+
+    // 参数变化时更新材质和引力波信息
+    gui.onChange(() => {
+      material.uniforms.uWaveAmplitude.value = gravityParams.waveAmplitude;
+      material.uniforms.uWaveFrequency.value = gravityParams.waveFrequency;
+      material.uniforms.uSpaceDistortion.value = gravityParams.spaceDistortion;
+      material.uniforms.uGlowIntensity.value = gravityParams.glowIntensity;
+      material.uniforms.uRippleEffect.value = gravityParams.rippleEffect;
+      material.uniforms.uGravityType.value = gravityParams.gravityType;
+      material.uniforms.uShowRipples.value = gravityParams.showRipples;
+      
+      updateGravityInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转引力波立方体
+      gravityCube.rotation.y += gravityParams.waveFrequency * 0.01;
+      gravityCube.rotation.x += gravityParams.waveFrequency * 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化引力波信息显示
+    updateGravityInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

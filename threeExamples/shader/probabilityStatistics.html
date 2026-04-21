@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js概率统计可视化着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      box-shadow: 0 0 20px #ff6b6b;
+    }
+    .stats-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #4ecdc4;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #4ecdc4;
+      border: 1px solid #4ecdc4;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">📊 概率统计可视化着色器 - 初中数学教育 📊</div>
+  <div class="stats-info" id="statsInfo">图表类型：柱状图 | 数据分布：均匀分布</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,5)的位置观察场景
+    camera.position.set(0, 0, 5)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 创建几何体和材质
+    // ============================================================================
+    
+    // 创建平面几何体，作为概率统计可视化的载体
+    // 参数：宽度，高度，宽度分段数，高度分段数
+    const geometry = new THREE.PlaneGeometry(10, 10, 256, 256);
+
+    // 创建自定义着色器材质，实现概率统计可视化效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      uniforms: {
+        // 时间变量，用于动画效果
+        uTime: { value: 0.0 },
+        // 图表类型选择：0=柱状图, 1=折线图, 2=饼图, 3=散点图, 4=频率分布图
+        uChartType: { value: 0 },
+        // 数据分布类型：0=均匀分布, 1=正态分布, 2=二项分布, 3=泊松分布, 4=指数分布
+        uDistributionType: { value: 0 },
+        // 统计参数
+        uMean: { value: 0.0 },         // 均值
+        uStdDev: { value: 1.0 },       // 标准差
+        uProbability: { value: 0.5 },  // 概率
+        uSampleSize: { value: 100 },   // 样本大小
+        uLambda: { value: 1.0 },       // 泊松分布参数
+        // 图表参数
+        uBarCount: { value: 10 },      // 柱状图柱子数量
+        uBarWidth: { value: 0.8 },     // 柱子宽度
+        uShowStats: { value: true },   // 显示统计信息
+        uShowLabels: { value: true },  // 显示标签
+        // 颜色参数
+        uBarColor: { value: new THREE.Color(0xff6b6b) },     // 柱子颜色
+        uLineColor: { value: new THREE.Color(0x4ecdc4) },    // 线条颜色
+        uPointColor: { value: new THREE.Color(0x45b7d1) },   // 点颜色
+        uTextColor: { value: new THREE.Color(0x90e0ef) },    // 文字颜色
+        uBackgroundColor: { value: new THREE.Color(0x1a1a2e) }, // 背景颜色
+      },
+      
+      // ============================================================================
+      // 顶点着色器：处理顶点位置和变形
+      // ============================================================================
+      vertexShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform int uChartType;        // 图表类型
+        uniform int uDistributionType; // 分布类型
+        uniform float uMean;           // 均值
+        uniform float uStdDev;         // 标准差
+        uniform float uProbability;    // 概率
+        uniform float uLambda;         // 泊松分布参数
+        uniform int uBarCount;         // 柱子数量
+        uniform float uBarWidth;       // 柱子宽度
+        
+        // 传递到片元着色器的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vDataValue;      // 数据值
+        varying float vBarIndex;       // 柱子索引
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 均匀分布：每个值出现的概率相等
+        // 初中数学知识点：概率、等可能性
+        // 教育价值：理解均匀分布的基本概念
+        // ============================================================================
+        float uniformDistribution(float x) {
+          return 1.0;
+        }
+        
+        // ============================================================================
+        // 正态分布：钟形曲线分布
+        // 初中数学知识点：均值、标准差、正态分布
+        // 教育价值：理解正态分布的基本特征
+        // ============================================================================
+        float normalDistribution(float x) {
+          float z = (x - uMean) / uStdDev;
+          return exp(-0.5 * z * z) / (uStdDev * sqrt(6.28318));
+        }
+        
+        // ============================================================================
+        // 二项分布：n次独立试验中成功次数的分布
+        // 初中数学知识点：组合、概率、二项分布
+        // 教育价值：理解二项分布的基本概念
+        // ============================================================================
+        float binomialDistribution(float x) {
+          // 简化版二项分布（使用正态近似）
+          float n = 10.0;
+          float p = uProbability;
+          float mean = n * p;
+          float stdDev = sqrt(n * p * (1.0 - p));
+          float z = (x - mean) / stdDev;
+          return exp(-0.5 * z * z) / (stdDev * sqrt(6.28318));
+        }
+        
+        // ============================================================================
+        // 泊松分布：单位时间内随机事件发生次数的分布
+        // 初中数学知识点：概率、期望值
+        // 教育价值：理解泊松分布的基本概念
+        // ============================================================================
+        float poissonDistribution(float x) {
+          // 简化版泊松分布
+          return exp(-uLambda) * pow(uLambda, x) / factorial(x);
+        }
+        
+        // ============================================================================
+        // 阶乘函数（近似）
+        // ============================================================================
+        float factorial(float n) {
+          if(n <= 0.0) return 1.0;
+          float result = 1.0;
+          for(float i = 1.0; i <= n; i += 1.0) {
+            result *= i;
+          }
+          return result;
+        }
+        
+        // ============================================================================
+        // 指数分布：描述独立随机事件发生的时间间隔
+        // 初中数学知识点：概率、指数函数
+        // 教育价值：理解指数分布的基本概念
+        // ============================================================================
+        float exponentialDistribution(float x) {
+          return uLambda * exp(-uLambda * x);
+        }
+        
+        // ============================================================================
+        // 主顶点着色器函数
+        // ============================================================================
+        void main() {
+          // 传递UV坐标到片元着色器
+          vUv = uv;
+          vPosition = position;
+          
+          // 计算到中心的距离
+          vDistance = length(position.xy);
+          
+          // 根据图表类型计算数据值
+          float dataValue = 0.0;
+          float barIndex = 0.0;
+          
+          if(uChartType == 0) {
+            // 柱状图：根据位置计算柱子高度
+            float barSpacing = 2.0 / float(uBarCount);
+            float xPos = position.x + 1.0;
+            barIndex = floor(xPos / barSpacing);
+            float barCenter = (barIndex + 0.5) * barSpacing - 1.0;
+            
+            // 计算当前柱子的数据值
+            float normalizedX = barIndex / float(uBarCount - 1);
+            
+            // 根据分布类型计算数据值
+            if(uDistributionType == 0) {
+              dataValue = uniformDistribution(normalizedX);
+            } else if(uDistributionType == 1) {
+              dataValue = normalDistribution(normalizedX * 4.0 - 2.0);
+            } else if(uDistributionType == 2) {
+              dataValue = binomialDistribution(normalizedX * 10.0);
+            } else if(uDistributionType == 3) {
+              dataValue = poissonDistribution(normalizedX * 5.0);
+            } else {
+              dataValue = exponentialDistribution(normalizedX * 3.0);
+            }
+            
+            // 柱子宽度控制
+            float barHalfWidth = uBarWidth * barSpacing * 0.5;
+            if(abs(position.x - barCenter) < barHalfWidth) {
+              vDataValue = dataValue;
+            } else {
+              vDataValue = 0.0;
+            }
+          } else {
+            // 其他图表类型：基于位置计算数据值
+            float x = position.x * 2.0;
+            
+            if(uDistributionType == 0) {
+              dataValue = uniformDistribution(x);
+            } else if(uDistributionType == 1) {
+              dataValue = normalDistribution(x);
+            } else if(uDistributionType == 2) {
+              dataValue = binomialDistribution(x * 5.0 + 5.0);
+            } else if(uDistributionType == 3) {
+              dataValue = poissonDistribution(x * 2.5 + 2.5);
+            } else {
+              dataValue = exponentialDistribution(x * 1.5 + 0.5);
+            }
+            
+            vDataValue = dataValue;
+          }
+          
+          vBarIndex = barIndex;
+          
+          // 根据数据值对顶点位置进行变形
+          vec3 newPosition = position;
+          newPosition.z += vDataValue * 1.5;
+          
+          // 设置最终顶点位置
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      
+      // ============================================================================
+      // 片元着色器：处理像素颜色
+      // ============================================================================
+      fragmentShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform vec3 uBarColor;        // 柱子颜色
+        uniform vec3 uLineColor;       // 线条颜色
+        uniform vec3 uPointColor;      // 点颜色
+        uniform vec3 uTextColor;       // 文字颜色
+        uniform vec3 uBackgroundColor; // 背景颜色
+        uniform bool uShowStats;       // 显示统计信息
+        uniform bool uShowLabels;      // 显示标签
+        uniform int uChartType;        // 图表类型
+        uniform int uDistributionType; // 分布类型
+        uniform int uBarCount;         // 柱子数量
+        
+        // 从顶点着色器传递的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vDataValue;      // 数据值
+        varying float vBarIndex;       // 柱子索引
+        varying float vDistance;       // 到中心距离
+        
+        // ============================================================================
+        // 绘制柱状图
+        // ============================================================================
+        float drawBarChart(vec3 pos, float dataValue, float barIndex) {
+          // 只在柱子区域内绘制
+          if(dataValue > 0.0) {
+            // 柱子高度渐变
+            float height = smoothstep(0.0, 0.1, pos.z);
+            return height;
+          }
+          return 0.0;
+        }
+        
+        // ============================================================================
+        // 绘制折线图
+        // ============================================================================
+        float drawLineChart(vec3 pos, float dataValue) {
+          // 绘制数据点附近的线条
+          float lineWidth = 0.02;
+          float expectedY = dataValue * 1.5;
+          return 1.0 - smoothstep(0.0, lineWidth, abs(pos.z - expectedY));
+        }
+        
+        // ============================================================================
+        // 绘制饼图（简化版）
+        // ============================================================================
+        float drawPieChart(vec3 pos, float dataValue) {
+          // 基于角度绘制饼图扇区
+          float angle = atan(pos.y, pos.x);
+          float normalizedAngle = (angle + 3.14159) / (2.0 * 3.14159);
+          
+          // 每个扇区占1/5的角度
+          float sectorSize = 0.2;
+          float sector = floor(normalizedAngle / sectorSize);
+          
+          if(sector == float(uDistributionType)) {
+            float radius = length(pos.xy);
+            return 1.0 - smoothstep(0.0, 0.1, abs(radius - 0.6));
+          }
+          return 0.0;
+        }
+        
+        // ============================================================================
+        // 绘制散点图
+        // ============================================================================
+        float drawScatterPlot(vec3 pos, float dataValue) {
+          // 在数据点位置绘制圆点
+          float pointSize = 0.03;
+          float expectedY = dataValue * 1.5;
+          
+          // 检查是否在数据点附近
+          float dist = length(vec2(pos.x, pos.z - expectedY));
+          return 1.0 - smoothstep(0.0, pointSize, dist);
+        }
+        
+        // ============================================================================
+        // 绘制频率分布图
+        // ============================================================================
+        float drawFrequencyDistribution(vec3 pos, float dataValue) {
+          // 绘制频率分布曲线
+          float curveWidth = 0.02;
+          float expectedY = dataValue * 1.5;
+          
+          // 检查是否在曲线上
+          float dist = abs(pos.z - expectedY);
+          return 1.0 - smoothstep(0.0, curveWidth, dist);
+        }
+        
+        // ============================================================================
+        // 绘制坐标轴和网格
+        // ============================================================================
+        float drawAxesAndGrid(vec3 pos) {
+          float axisWidth = 0.01;
+          float gridWidth = 0.005;
+          
+          // x轴和y轴
+          float xAxis = 1.0 - smoothstep(0.0, axisWidth, abs(pos.y));
+          float yAxis = 1.0 - smoothstep(0.0, axisWidth, abs(pos.x));
+          
+          // 网格线
+          float gridX = 1.0 - smoothstep(0.0, gridWidth, mod(pos.x + 1.0, 0.2));
+          float gridY = 1.0 - smoothstep(0.0, gridWidth, mod(pos.y + 1.0, 0.2));
+          
+          return max(max(xAxis, yAxis), max(gridX, gridY) * 0.3);
+        }
+        
+        // ============================================================================
+        // 绘制统计信息标签
+        // ============================================================================
+        float drawStatsLabels(vec3 pos) {
+          if(!uShowStats) return 0.0;
+          
+          float labelSize = 0.1;
+          float label = 0.0;
+          
+          // 在特定位置显示统计信息
+          if(pos.x > 0.8 && pos.y > 0.8) {
+            // 右上角显示分布类型
+            label = 1.0 - smoothstep(0.0, labelSize, length(pos.xy - vec2(0.9, 0.9)));
+          }
+          
+          return label * 0.5;
+        }
+        
+        void main() {
+          // 基础颜色（背景色）
+          vec3 baseColor = uBackgroundColor;
+          
+          // 绘制坐标轴和网格
+          float axesGrid = drawAxesAndGrid(vPosition);
+          baseColor = mix(baseColor, uTextColor, axesGrid * 0.5);
+          
+          // 根据图表类型绘制不同的图表
+          float chartValue = 0.0;
+          
+          if(uChartType == 0) {
+            // 柱状图
+            chartValue = drawBarChart(vPosition, vDataValue, vBarIndex);
+            baseColor = mix(baseColor, uBarColor, chartValue);
+          } else if(uChartType == 1) {
+            // 折线图
+            chartValue = drawLineChart(vPosition, vDataValue);
+            baseColor = mix(baseColor, uLineColor, chartValue);
+          } else if(uChartType == 2) {
+            // 饼图
+            chartValue = drawPieChart(vPosition, vDataValue);
+            baseColor = mix(baseColor, uBarColor, chartValue);
+          } else if(uChartType == 3) {
+            // 散点图
+            chartValue = drawScatterPlot(vPosition, vDataValue);
+            baseColor = mix(baseColor, uPointColor, chartValue);
+          } else {
+            // 频率分布图
+            chartValue = drawFrequencyDistribution(vPosition, vDataValue);
+            baseColor = mix(baseColor, uLineColor, chartValue);
+          }
+          
+          // 绘制统计信息标签
+          float labels = drawStatsLabels(vPosition);
+          baseColor = mix(baseColor, uTextColor, labels);
+          
+          // 根据距离添加边缘渐变效果
+          float edgeFade = 1.0 - smoothstep(0.0, 0.8, vDistance);
+          baseColor = mix(uBackgroundColor, baseColor, edgeFade);
+          
+          // 添加时间动画效果
+          float timeEffect = sin(uTime * 0.5) * 0.05 + 0.95;
+          baseColor *= timeEffect;
+          
+          // 最终颜色输出
+          gl_FragColor = vec4(baseColor, 1.0);
+        }
+      `
+    });
+
+    // 创建网格对象并添加到场景
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    // ============================================================================
+    // 统计信息显示更新函数
+    // ============================================================================
+    function updateStatsInfo() {
+      const infoElement = document.getElementById('statsInfo');
+      const chartType = material.uniforms.uChartType.value;
+      const distType = material.uniforms.uDistributionType.value;
+      
+      const chartTypes = ["柱状图", "折线图", "饼图", "散点图", "频率分布图"];
+      const distributions = ["均匀分布", "正态分布", "二项分布", "泊松分布", "指数分布"];
+      
+      const chartName = chartTypes[chartType];
+      const distName = distributions[distType];
+      
+      let stats = '';
+      const mean = material.uniforms.uMean.value.toFixed(2);
+      const stdDev = material.uniforms.uStdDev.value.toFixed(2);
+      const prob = material.uniforms.uProbability.value.toFixed(2);
+      
+      if(distType == 1) {
+        stats = ` | 均值：${mean}，标准差：${stdDev}`;
+      } else if(distType == 2) {
+        stats = ` | 概率：${prob}`;
+      }
+      
+      infoElement.textContent = `图表类型：${chartName} | 数据分布：${distName}${stats}`;
+    }
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 图表类型控制
+    const chartTypes = {
+      "柱状图": 0,
+      "折线图": 1,
+      "饼图": 2,
+      "散点图": 3,
+      "频率分布图": 4
+    };
+    
+    const chartController = gui.add(material.uniforms.uChartType, 'value', chartTypes).name('图表类型');
+    chartController.onChange(updateStatsInfo);
+    
+    // 分布类型控制
+    const distTypes = {
+      "均匀分布": 0,
+      "正态分布": 1,
+      "二项分布": 2,
+      "泊松分布": 3,
+      "指数分布": 4
+    };
+    
+    const distController = gui.add(material.uniforms.uDistributionType, 'value', distTypes).name('分布类型');
+    distController.onChange(updateStatsInfo);
+    
+    // 统计参数控制
+    const statsFolder = gui.addFolder('统计参数');
+    const meanController = statsFolder.add(material.uniforms.uMean, 'value', -2.0, 2.0).name('均值');
+    const stdDevController = statsFolder.add(material.uniforms.uStdDev, 'value', 0.1, 3.0).name('标准差');
+    const probController = statsFolder.add(material.uniforms.uProbability, 'value', 0.0, 1.0).name('概率');
+    const lambdaController = statsFolder.add(material.uniforms.uLambda, 'value', 0.1, 5.0).name('λ参数');
+    
+    // 参数变化时更新信息显示
+    [meanController, stdDevController, probController, lambdaController].forEach(controller => {
+      controller.onChange(updateStatsInfo);
+    });
+    
+    statsFolder.open();
+    
+    // 图表参数控制
+    const chartFolder = gui.addFolder('图表参数');
+    chartFolder.add(material.uniforms.uBarCount, 'value', 5, 20).step(1).name('柱子数量');
+    chartFolder.add(material.uniforms.uBarWidth, 'value', 0.1, 1.0).name('柱子宽度');
+    chartFolder.add(material.uniforms.uShowStats, 'value').name('显示统计信息');
+    chartFolder.add(material.uniforms.uShowLabels, 'value').name('显示标签');
+    chartFolder.open();
+    
+    // 颜色控制
+    const colorFolder = gui.addFolder('颜色设置');
+    colorFolder.addColor(material.uniforms.uBarColor, 'value').name('柱子颜色');
+    colorFolder.addColor(material.uniforms.uLineColor, 'value').name('线条颜色');
+    colorFolder.addColor(material.uniforms.uPointColor, 'value').name('点颜色');
+    colorFolder.addColor(material.uniforms.uTextColor, 'value').name('文字颜色');
+    colorFolder.open();
+
+    // 初始更新信息显示
+    updateStatsInfo();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间变量，用于平滑动画
+      material.uniforms.uTime.value += 0.01;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

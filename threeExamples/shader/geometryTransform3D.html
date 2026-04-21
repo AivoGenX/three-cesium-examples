@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js几何图形变换 - 三维物体变换</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #0a0a2a 0%, #1a1a3a 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00b4d8;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00b4d8;
+      border: 1px solid #00b4d8;
+      box-shadow: 0 0 20px #00b4d8;
+    }
+    .geometry-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #90e0ef;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #90e0ef;
+      border: 1px solid #90e0ef;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🔺 几何图形变换 - 三维物体变换展示 🔺</div>
+  <div class="geometry-info" id="geometryInfo">图形：立方体 | 变换：平移 | 变换量：(0.0, 0.0)</div>
+  <div class="help">
+    🎯 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 切换图形：观察不同几何体<br>
+    • 调整变换：体验几何变换效果<br>
+    • 显示原图形：对比变换前后
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../threejs/build/three.module.js",
+        "three/addons/": "../../threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x0a0a2a);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,5,10)的位置观察场景
+    camera.position.set(0, 5, 10)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+
+    // 添加平行光
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 10, 5);
+    scene.add(directionalLight);
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 创建三维坐标系
+    // ============================================================================
+    function createCoordinateSystem() {
+      // 创建坐标轴材质
+      const axisMaterial = new THREE.LineBasicMaterial({ 
+        color: 0xff6b6b,
+        linewidth: 2
+      });
+
+      // X轴（红色）
+      const xAxisGeometry = new THREE.BufferGeometry();
+      const xAxisPoints = [
+        new THREE.Vector3(-8, 0, 0),
+        new THREE.Vector3(8, 0, 0)
+      ];
+      xAxisGeometry.setFromPoints(xAxisPoints);
+      const xAxis = new THREE.Line(xAxisGeometry, axisMaterial);
+      scene.add(xAxis);
+
+      // Y轴（绿色）
+      const yAxisGeometry = new THREE.BufferGeometry();
+      const yAxisPoints = [
+        new THREE.Vector3(0, -8, 0),
+        new THREE.Vector3(0, 8, 0)
+      ];
+      yAxisGeometry.setFromPoints(yAxisPoints);
+      const yAxis = new THREE.Line(yAxisGeometry, axisMaterial);
+      scene.add(yAxis);
+
+      // Z轴（蓝色）
+      const zAxisGeometry = new THREE.BufferGeometry();
+      const zAxisPoints = [
+        new THREE.Vector3(0, 0, -8),
+        new THREE.Vector3(0, 0, 8)
+      ];
+      zAxisGeometry.setFromPoints(zAxisPoints);
+      const zAxis = new THREE.Line(zAxisGeometry, axisMaterial);
+      scene.add(zAxis);
+
+      // 创建网格平面
+      const gridHelper = new THREE.GridHelper(16, 16, 0xffffff, 0x333333);
+      scene.add(gridHelper);
+    }
+
+    // ============================================================================
+    // 几何图形变换参数
+    // ============================================================================
+    let originalObject = null;
+    let transformedObject = null;
+    let transformArrow = null;
+    
+    const transformParameters = {
+      shapeType: 0, // 0=立方体, 1=球体, 2=圆柱, 3=圆锥, 4=四面体
+      transformType: 0, // 0=平移, 1=旋转, 2=缩放, 3=对称, 4=组合
+      translateX: 0.0,
+      translateY: 0.0,
+      translateZ: 0.0,
+      rotateX: 0.0,
+      rotateY: 0.0,
+      rotateZ: 0.0,
+      scaleX: 1.0,
+      scaleY: 1.0,
+      scaleZ: 1.0,
+      symmetryAxis: 0, // 0=x轴, 1=y轴, 2=z轴, 3=原点
+      showOriginal: true,
+      showTransform: true,
+      showArrow: true,
+      shapeSize: 1.0
+    };
+
+    // ============================================================================
+    // 创建几何图形
+    // ============================================================================
+    function createGeometryObjects() {
+      // 移除之前的对象
+      if (originalObject) scene.remove(originalObject);
+      if (transformedObject) scene.remove(transformedObject);
+      if (transformArrow) scene.remove(transformArrow);
+
+      // 创建原图形（位于原点）
+      originalObject = createShape(transformParameters.shapeType, 0x4ecdc4);
+      originalObject.position.set(0, 0, 0);
+      if (transformParameters.showOriginal) {
+        scene.add(originalObject);
+      }
+
+      // 创建变换后的图形
+      transformedObject = createShape(transformParameters.shapeType, 0xff6b6b);
+      applyTransform(transformedObject);
+      if (transformParameters.showTransform) {
+        scene.add(transformedObject);
+      }
+
+      // 创建变换箭头（显示变换方向）
+      if (transformParameters.showArrow && transformParameters.transformType === 0) {
+        createTransformArrow();
+      }
+    }
+
+    // ============================================================================
+    // 创建具体几何体
+    // ============================================================================
+    function createShape(shapeType, color) {
+      let geometry;
+      
+      switch(shapeType) {
+        case 0: // 立方体
+          geometry = new THREE.BoxGeometry(
+            transformParameters.shapeSize, 
+            transformParameters.shapeSize, 
+            transformParameters.shapeSize
+          );
+          break;
+        case 1: // 球体
+          geometry = new THREE.SphereGeometry(transformParameters.shapeSize, 32, 32);
+          break;
+        case 2: // 圆柱
+          geometry = new THREE.CylinderGeometry(
+            transformParameters.shapeSize * 0.5, 
+            transformParameters.shapeSize * 0.5, 
+            transformParameters.shapeSize * 2, 
+            32
+          );
+          break;
+        case 3: // 圆锥
+          geometry = new THREE.ConeGeometry(
+            transformParameters.shapeSize, 
+            transformParameters.shapeSize * 2, 
+            32
+          );
+          break;
+        case 4: // 四面体
+          geometry = new THREE.TetrahedronGeometry(transformParameters.shapeSize);
+          break;
+      }
+
+      const material = new THREE.MeshPhongMaterial({ 
+        color: color,
+        transparent: true,
+        opacity: 0.8,
+        shininess: 100
+      });
+
+      return new THREE.Mesh(geometry, material);
+    }
+
+    // ============================================================================
+    // 应用几何变换
+    // ============================================================================
+    function applyTransform(object) {
+      // 重置变换
+      object.position.set(0, 0, 0);
+      object.rotation.set(0, 0, 0);
+      object.scale.set(1, 1, 1);
+
+      switch(transformParameters.transformType) {
+        case 0: // 平移
+          object.position.set(
+            transformParameters.translateX,
+            transformParameters.translateY,
+            transformParameters.translateZ
+          );
+          break;
+        case 1: // 旋转
+          object.rotation.set(
+            transformParameters.rotateX * Math.PI / 180,
+            transformParameters.rotateY * Math.PI / 180,
+            transformParameters.rotateZ * Math.PI / 180
+          );
+          break;
+        case 2: // 缩放
+          object.scale.set(
+            transformParameters.scaleX,
+            transformParameters.scaleY,
+            transformParameters.scaleZ
+          );
+          break;
+        case 3: // 对称
+          applySymmetryTransform(object);
+          break;
+        case 4: // 组合变换
+          object.position.set(
+            transformParameters.translateX,
+            transformParameters.translateY,
+            transformParameters.translateZ
+          );
+          object.rotation.set(
+            transformParameters.rotateX * Math.PI / 180,
+            transformParameters.rotateY * Math.PI / 180,
+            transformParameters.rotateZ * Math.PI / 180
+          );
+          object.scale.set(
+            transformParameters.scaleX,
+            transformParameters.scaleY,
+            transformParameters.scaleZ
+          );
+          break;
+      }
+    }
+
+    // ============================================================================
+    // 应用对称变换
+    // ============================================================================
+    function applySymmetryTransform(object) {
+      switch(transformParameters.symmetryAxis) {
+        case 0: // 关于x轴对称
+          object.scale.set(-1, 1, 1);
+          break;
+        case 1: // 关于y轴对称
+          object.scale.set(1, -1, 1);
+          break;
+        case 2: // 关于z轴对称
+          object.scale.set(1, 1, -1);
+          break;
+        case 3: // 关于原点对称
+          object.scale.set(-1, -1, -1);
+          break;
+      }
+    }
+
+    // ============================================================================
+    // 创建变换箭头
+    // ============================================================================
+    function createTransformArrow() {
+      if (transformArrow) scene.remove(transformArrow);
+
+      const arrowLength = Math.sqrt(
+        transformParameters.translateX ** 2 + 
+        transformParameters.translateY ** 2 + 
+        transformParameters.translateZ ** 2
+      );
+
+      if (arrowLength > 0.1) {
+        const direction = new THREE.Vector3(
+          transformParameters.translateX,
+          transformParameters.translateY,
+          transformParameters.translateZ
+        ).normalize();
+
+        const arrowHelper = new THREE.ArrowHelper(
+          direction,
+          new THREE.Vector3(0, 0, 0),
+          arrowLength,
+          0xffff00,
+          0.3,
+          0.1
+        );
+        
+        transformArrow = arrowHelper;
+        scene.add(transformArrow);
+      }
+    }
+
+    // ============================================================================
+    // 几何信息显示更新函数
+    // ============================================================================
+    function updateGeometryInfo() {
+      const infoElement = document.getElementById('geometryInfo');
+      const shapeType = transformParameters.shapeType;
+      const transformType = transformParameters.transformType;
+      
+      const shapes = ["立方体", "球体", "圆柱", "圆锥", "四面体"];
+      const transforms = ["平移", "旋转", "缩放", "对称", "组合变换"];
+      
+      const shapeName = shapes[shapeType];
+      const transformName = transforms[transformType];
+      
+      let details = '';
+      if(transformType == 0) {
+        const tx = transformParameters.translateX.toFixed(1);
+        const ty = transformParameters.translateY.toFixed(1);
+        const tz = transformParameters.translateZ.toFixed(1);
+        details = ` | 变换量：(${tx}, ${ty}, ${tz})`;
+      } else if(transformType == 1) {
+        const rx = transformParameters.rotateX.toFixed(0);
+        const ry = transformParameters.rotateY.toFixed(0);
+        const rz = transformParameters.rotateZ.toFixed(0);
+        details = ` | 旋转角度：(${rx}°, ${ry}°, ${rz}°)`;
+      } else if(transformType == 2) {
+        const sx = transformParameters.scaleX.toFixed(1);
+        const sy = transformParameters.scaleY.toFixed(1);
+        const sz = transformParameters.scaleZ.toFixed(1);
+        details = ` | 缩放比例：(${sx}, ${sy}, ${sz})`;
+      }
+      
+      infoElement.textContent = `图形：${shapeName} | 变换：${transformName}${details}`;
+    }
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 几何图形类型控制
+    const shapeTypes = {
+      "立方体": 0,
+      "球体": 1,
+      "圆柱": 2,
+      "圆锥": 3,
+      "四面体": 4
+    };
+    
+    const shapeController = gui.add(transformParameters, 'shapeType', shapeTypes).name('图形类型');
+    shapeController.onChange(() => {
+      updateGeometryInfo();
+      createGeometryObjects();
+    });
+    
+    // 变换类型控制
+    const transformTypes = {
+      "平移": 0,
+      "旋转": 1,
+      "缩放": 2,
+      "对称": 3,
+      "组合变换": 4
+    };
+    
+    const transformController = gui.add(transformParameters, 'transformType', transformTypes).name('变换类型');
+    transformController.onChange(() => {
+      updateGeometryInfo();
+      createGeometryObjects();
+    });
+    
+    // 变换参数控制
+    const transformFolder = gui.addFolder('变换参数');
+    const txController = transformFolder.add(transformParameters, 'translateX', -5.0, 5.0).name('平移X');
+    const tyController = transformFolder.add(transformParameters, 'translateY', -5.0, 5.0).name('平移Y');
+    const tzController = transformFolder.add(transformParameters, 'translateZ', -5.0, 5.0).name('平移Z');
+    const rxController = transformFolder.add(transformParameters, 'rotateX', 0, 360).name('旋转X(度)');
+    const ryController = transformFolder.add(transformParameters, 'rotateY', 0, 360).name('旋转Y(度)');
+    const rzController = transformFolder.add(transformParameters, 'rotateZ', 0, 360).name('旋转Z(度)');
+    const sxController = transformFolder.add(transformParameters, 'scaleX', 0.1, 3.0).name('缩放X');
+    const syController = transformFolder.add(transformParameters, 'scaleY', 0.1, 3.0).name('缩放Y');
+    const szController = transformFolder.add(transformParameters, 'scaleZ', 0.1, 3.0).name('缩放Z');
+    
+    const symmetryAxes = {
+      "X轴": 0,
+      "Y轴": 1,
+      "Z轴": 2,
+      "原点": 3
+    };
+    const axisController = transformFolder.add(transformParameters, 'symmetryAxis', symmetryAxes).name('对称轴');
+    
+    // 参数变化时更新几何图形
+    [txController, tyController, tzController, rxController, ryController, rzController, 
+     sxController, syController, szController, axisController].forEach(controller => {
+      controller.onChange(() => {
+        updateGeometryInfo();
+        createGeometryObjects();
+      });
+    });
+    
+    transformFolder.open();
+    
+    // 显示设置
+    const displayFolder = gui.addFolder('显示设置');
+    displayFolder.add(transformParameters, 'showOriginal').name('显示原图形');
+    displayFolder.add(transformParameters, 'showTransform').name('显示变换图形');
+    displayFolder.add(transformParameters, 'showArrow').name('显示变换箭头');
+    displayFolder.add(transformParameters, 'shapeSize', 0.5, 2.0).name('图形大小');
+    
+    displayFolder.open();
+
+    // ============================================================================
+    // 初始化场景
+    // ============================================================================
+    createCoordinateSystem();
+    createGeometryObjects();
+    updateGeometryInfo();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>
