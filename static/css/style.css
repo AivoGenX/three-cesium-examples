@@ -1,0 +1,539 @@
+/* ThreeLab静态页面样式表 - 优化版 */
+
+/* 基础样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* CSS变量定义 */
+:root {
+  --primary-color: #007acc;
+  --secondary-color: #00c6ff;
+  --accent-color: #667eea;
+  --dark-color: #2c3e50;
+  --light-color: #f8f9fa;
+  --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  --gradient-accent: linear-gradient(135deg, #667eea, #764ba2);
+  --shadow-soft: 0 10px 30px rgba(0,0,0,0.1);
+  --shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+/* 动画定义 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 122, 204, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 122, 204, 0.6);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes slide {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+/* 基础样式 */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  background-attachment: fixed;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  /* 优化滚动性能 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 优化图片渲染 */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* 优化卡片渲染 */
+.example-card {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, box-shadow;
+}
+
+/* 优化滚动性能 */
+.container,
+.example-grid,
+.example-card {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  -o-transform: translateZ(0);
+}
+
+/* 背景装饰元素 */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%);
+  z-index: -1;
+}
+
+/* 主容器 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 40px;
+  border-radius: 25px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  margin-top: 40px;
+  margin-bottom: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: fadeInUp 0.8s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.container:hover::before {
+  opacity: 0.3;
+}
+
+/* 头部样式 */
+header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  position: relative;
+}
+
+header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+}
+
+h1 {
+  font-size: 3em;
+  color: var(--dark-color);
+  margin-bottom: 15px;
+  background: linear-gradient(135deg, #007acc, #00c6ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+h2 {
+  font-size: 2.2em;
+  color: var(--dark-color);
+  margin: 40px 0 25px;
+  padding: 15px 20px;
+  background: linear-gradient(90deg, rgba(0,122,204,0.1), transparent);
+  border-left: 5px solid var(--primary-color);
+  border-radius: 0 10px 10px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+h2::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  transition: width 0.3s ease;
+}
+
+h2:hover::before {
+  width: 100%;
+}
+
+h3 {
+  font-size: 1.6em;
+  color: var(--dark-color);
+  margin: 30px 0 20px;
+  padding: 10px 15px;
+  background: linear-gradient(90deg, rgba(0,198,255,0.1), transparent);
+  border-left: 4px solid var(--secondary-color);
+  border-radius: 0 8px 8px 0;
+}
+
+/* 内容区域 */
+.content {
+  line-height: 1.8;
+  color: #555;
+  font-size: 1.1em;
+}
+
+/* 导航链接 */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 30px;
+  padding: 12px 24px;
+  background: var(--gradient-primary);
+  color: white;
+  text-decoration: none;
+  border-radius: 25px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.back-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.back-link:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+.back-link:hover::before {
+  left: 100%;
+}
+
+/* 示例网格布局 */
+.example-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 35px;
+  margin: 50px 0;
+}
+
+/* 示例卡片 */
+.example-card {
+  border: none;
+  border-radius: 20px;
+  padding: 30px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(248,249,250,0.9));
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.example-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--gradient-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.example-card:hover::before {
+  transform: scaleX(1);
+}
+
+.example-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.example-image {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  transition: all 0.4s ease;
+  filter: brightness(0.95) contrast(1.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.example-image::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(0,122,204,0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.example-card:hover .example-image {
+  transform: scale(1.08) rotate(1deg);
+  filter: brightness(1.05) contrast(1.1);
+}
+
+.example-card:hover .example-image::after {
+  opacity: 1;
+}
+
+.example-title {
+  font-size: 1.5em;
+  font-weight: 800;
+  color: var(--dark-color);
+  margin-bottom: 10px;
+  background: linear-gradient(45deg, var(--dark-color), #34495e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.example-author {
+  color: var(--primary-color);
+  font-size: 1em;
+  margin-bottom: 15px;
+  font-style: italic;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.example-author::before {
+  content: '👤';
+  font-size: 0.9em;
+}
+
+.example-description {
+  font-size: 1em;
+  line-height: 1.7;
+  color: #666;
+  margin-bottom: 25px;
+  padding: 15px;
+  background: rgba(248, 249, 250, 0.8);
+  border-radius: 10px;
+  border-left: 3px solid var(--secondary-color);
+}
+
+.example-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: var(--gradient-primary);
+  color: white;
+  text-decoration: none;
+  border-radius: 30px;
+  font-weight: 600;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-align: center;
+  min-width: 140px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.example-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.6s;
+}
+
+.example-link:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: var(--shadow-hover);
+  background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+}
+
+.example-link:hover::before {
+  left: 100%;
+}
+
+/* 详细页面样式 */
+.example-detail {
+  background: #f8f9fa;
+  padding: 30px;
+  border-radius: 15px;
+  margin: 30px 0;
+}
+
+.example-detail .example-card {
+  background: white;
+  margin-bottom: 30px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .container {
+    margin: 20px;
+    padding: 20px;
+  }
+  
+  h1 {
+    font-size: 2em;
+  }
+  
+  h2 {
+    font-size: 1.8em;
+    margin: 30px 0 20px;
+    padding: 12px 15px;
+  }
+  
+  h3 {
+    font-size: 1.4em;
+    margin: 25px 0 15px;
+    padding: 8px 12px;
+  }
+  
+  .example-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .example-card {
+    padding: 20px;
+  }
+}
+
+/* 列表样式 */
+ul {
+  list-style: none;
+  margin: 20px 0;
+}
+
+ul li {
+  padding: 10px 0;
+  padding-left: 25px;
+  position: relative;
+}
+
+ul li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+/* 段落样式 */
+p {
+  margin-bottom: 20px;
+  line-height: 1.8;
+}
+
+/* 页脚样式 */
+footer {
+  text-align: center;
+  margin-top: 50px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  color: #7f8c8d;
+  font-size: 0.9em;
+}
+
+/* 面包屑导航样式 */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 0.9em;
+  color: #7f8c8d;
+}
+
+.breadcrumb a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.breadcrumb a:hover {
+  color: var(--secondary-color);
+}
+
+.breadcrumb span {
+  color: #ccc;
+}

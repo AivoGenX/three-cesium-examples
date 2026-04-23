@@ -1,0 +1,677 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>着色器 - Three.js示例 | ThreeLab</title>
+  <meta name="keywords" content="Three.js,着色器,WebGL,三维可视化,开源示例">
+  <meta name="description" content="Three.js 着色器示例集合，包含各种着色器相关的三维可视化效果">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="ThreeLab">
+  <meta name="generator" content="ThreeLab Static Generator">
+  <link rel="canonical" href="https://threelab.cn/static/------three-js-----threelab.html">
+  
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="着色器 - Three.js示例 | ThreeLab">
+  <meta property="og:description" content="Three.js 着色器示例集合，包含各种着色器相关的三维可视化效果">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://threelab.cn/static/------three-js-----threelab.html">
+  <meta property="og:image" content="https://threelab.cn/logo.png">
+  <meta property="og:site_name" content="ThreeLab">
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="着色器 - Three.js示例 | ThreeLab">
+  <meta name="twitter:description" content="Three.js 着色器示例集合，包含各种着色器相关的三维可视化效果">
+  <meta name="twitter:image" content="https://threelab.cn/logo.png">
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "着色器 - Three.js示例 | ThreeLab",
+    "description": "Three.js 着色器示例集合，包含各种着色器相关的三维可视化效果",
+    "url": "https://threelab.cn/static/------three-js-----threelab.html",
+    "author": {
+      "@type": "Organization",
+      "name": "ThreeLab"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "ThreeLab",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://threelab.cn/logo.png"
+      }
+    }
+  }
+  </script>
+  
+  <!-- 外部CSS样式表 -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>着色器 - Three.js示例 | ThreeLab</h1>
+      <p class="content">Three.js 着色器示例集合，包含各种着色器相关的三维可视化效果</p>
+    </header>
+    
+    <main>
+      
+    <h2>着色器示例</h2>
+    <div class="example-grid">
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/shader_planet.jpg" alt="着色器行星" class="example-image">
+          <h3 class="example-title">着色器行星</h3>
+          <p class="example-author">nico</p>
+          <p class="example-description">使用Three.js和自定义GLSL着色器实现的3D行星效果，包含大气层、云层和动态光照的三维渲染技术</p>
+          <a href="shader_planet.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/mosaicShader.jpg" alt="马赛克" class="example-image">
+          <h3 class="example-title">马赛克</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">基于Three.js实现的马赛克着色器效果，通过像素化处理和动态颜色变换实现独特的视觉风格</p>
+          <a href="mosaicShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/mushroom.jpg" alt="蘑菇" class="example-image">
+          <h3 class="example-title">蘑菇</h3>
+          <p class="example-author">bubinyang</p>
+          <p class="example-description">使用Three.js实现的蘑菇形态着色器效果，模拟有机生物的三维渲染和材质表现</p>
+          <a href="mushroom.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/circleRotate.jpg" alt="旋转的圆" class="example-image">
+          <h3 class="example-title">旋转的圆</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">基于Three.js实现的旋转圆形着色器效果，展示动态几何图形的3D动画和渲染技术</p>
+          <a href="circleRotate.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/blobShader.jpg" alt="一团揉动" class="example-image">
+          <h3 class="example-title">一团揉动</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 一团揉动示例，展示一团揉动的三维渲染效果</p>
+          <a href="blobShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/flowerShader.jpg" alt="花" class="example-image">
+          <h3 class="example-title">花</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 花示例，展示花的三维渲染效果</p>
+          <a href="flowerShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/grayShader.jpg" alt="灰度效果" class="example-image">
+          <h3 class="example-title">灰度效果</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 灰度效果示例，展示灰度效果的三维渲染效果</p>
+          <a href="grayShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/jumpHeart.jpg" alt="跳动的心" class="example-image">
+          <h3 class="example-title">跳动的心</h3>
+          <p class="example-author">stonerao</p>
+          <p class="example-description">Three.js 跳动的心示例，展示跳动的心的三维渲染效果</p>
+          <a href="jumpHeart.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/chinaFlag.jpg" alt="中国旗帜" class="example-image">
+          <h3 class="example-title">中国旗帜</h3>
+          <p class="example-author">giser2017</p>
+          <p class="example-description">Three.js 中国旗帜示例，展示中国旗帜的三维渲染效果</p>
+          <a href="chinaFlag.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/innerGlow.png" alt="内发光" class="example-image">
+          <h3 class="example-title">内发光</h3>
+          <p class="example-author">quyinggang</p>
+          <p class="example-description">Three.js 内发光示例，展示内发光的三维渲染效果</p>
+          <a href="innerGlow.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/groundglass.jpg" alt="毛玻璃" class="example-image">
+          <h3 class="example-title">毛玻璃</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 毛玻璃示例，展示毛玻璃的三维渲染效果</p>
+          <a href="groundglass.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/cityEffect.jpg" alt="城市扫描" class="example-image">
+          <h3 class="example-title">城市扫描</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 城市扫描示例，展示城市扫描的三维渲染效果</p>
+          <a href="cityEffect.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/cityBlendLight.jpg" alt="城市混合扫光" class="example-image">
+          <h3 class="example-title">城市混合扫光</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 城市混合扫光示例，展示城市混合扫光的三维渲染效果</p>
+          <a href="cityBlendLight.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/oceanShader.png" alt="海面" class="example-image">
+          <h3 class="example-title">海面</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 海面示例，展示海面的三维渲染效果</p>
+          <a href="oceanShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/transparentGradient.png" alt="透明渐变" class="example-image">
+          <h3 class="example-title">透明渐变</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 透明渐变示例，展示透明渐变的三维渲染效果</p>
+          <a href="transparentGradient.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/loveShader.png" alt="爱心" class="example-image">
+          <h3 class="example-title">爱心</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 爱心示例，展示爱心的三维渲染效果</p>
+          <a href="loveShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/cityMixShader.jpg" alt="城市混合Shader" class="example-image">
+          <h3 class="example-title">城市混合Shader</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 城市混合Shader示例，展示城市混合Shader的三维渲染效果</p>
+          <a href="cityMixShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/innerGlow.png" alt="内发光" class="example-image">
+          <h3 class="example-title">内发光</h3>
+          <p class="example-author">quyinggang</p>
+          <p class="example-description">Three.js 内发光示例，展示内发光的三维渲染效果</p>
+          <a href="innerGlow.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/planeScan.jpg" alt="平面扫描" class="example-image">
+          <h3 class="example-title">平面扫描</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 平面扫描示例，展示平面扫描的三维渲染效果</p>
+          <a href="planeScan.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/circleWave.jpg" alt="圆波扫光" class="example-image">
+          <h3 class="example-title">圆波扫光</h3>
+          <p class="example-author">alphardex</p>
+          <p class="example-description">Three.js 圆波扫光示例，展示圆波扫光的三维渲染效果</p>
+          <a href="circleWave.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/cellShader.jpg" alt="细胞" class="example-image">
+          <h3 class="example-title">细胞</h3>
+          <p class="example-author">stonerao</p>
+          <p class="example-description">Three.js 细胞示例，展示细胞的三维渲染效果</p>
+          <a href="cellShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/smokeCircle.jpg" alt="圆泡吸附" class="example-image">
+          <h3 class="example-title">圆泡吸附</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">Three.js 圆泡吸附示例，展示圆泡吸附的三维渲染效果</p>
+          <a href="smokeCircle.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/dissolveAnimate.jpg" alt="溶解动画" class="example-image">
+          <h3 class="example-title">溶解动画</h3>
+          <p class="example-author">yiiiiiiqianyao</p>
+          <p class="example-description">使用Three.js实现的溶解动画着色器效果，实现物体渐隐渐现的三维特效和动态材质变化</p>
+          <a href="dissolveAnimate.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/waveShader.jpg" alt="图像波动" class="example-image">
+          <h3 class="example-title">图像波动</h3>
+          <p class="example-author">gitee18247670551</p>
+          <p class="example-description">基于Three.js实现的图像波动着色器效果，创建动态波纹和波动效果的三维渲染技术</p>
+          <a href="waveShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/reliefImage.jpg" alt="浮雕图像" class="example-image">
+          <h3 class="example-title">浮雕图像</h3>
+          <p class="example-author">hafly</p>
+          <p class="example-description">使用Three.js实现的浮雕图像着色器效果，将平面图像转换为立体浮雕的三维渲染技术</p>
+          <a href="reliefImage.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/rasterGrid.jpg" alt="栅格网格" class="example-image">
+          <h3 class="example-title">栅格网格</h3>
+          <p class="example-author">yjsdszz</p>
+          <p class="example-description">使用Three.js实现的栅格网格着色器效果，展示几何图案的三维可视化和网格渲染技术</p>
+          <a href="rasterGrid.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/raningSea.jpg" alt="波涛海浪" class="example-image">
+          <h3 class="example-title">波涛海浪</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">Three.js 波涛海浪示例，展示波涛海浪的三维渲染效果</p>
+          <a href="raningSea.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/ringsShader.jpg" alt="环彩虹着色器" class="example-image">
+          <h3 class="example-title">环彩虹着色器</h3>
+          <p class="example-author">stonerao</p>
+          <p class="example-description">Three.js 环彩虹着色器示例，展示环彩虹着色器的三维渲染效果</p>
+          <a href="ringsShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/shaderSky.jpg" alt="着色器天空" class="example-image">
+          <h3 class="example-title">着色器天空</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">使用three.js着色器天空</p>
+          <a href="shaderSky.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/grassShader.jpg" alt="草地着色器" class="example-image">
+          <h3 class="example-title">草地着色器</h3>
+          <p class="example-author">Siricee</p>
+          <p class="example-description">使用three.js草地着色器</p>
+          <a href="grassShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/modelBlendShader.jpg" alt="模型混合着色器" class="example-image">
+          <h3 class="example-title">模型混合着色器</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">使用three.js模型混合着色器</p>
+          <a href="modelBlendShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeSymbol/shader/fenceShader.jpg" alt="围栏着色器" class="example-image">
+          <h3 class="example-title">围栏着色器</h3>
+          <p class="example-author">flowers-10</p>
+          <p class="example-description">使用three.js围栏着色器</p>
+          <a href="undefined.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/fenceWall.jpg" alt="围墙着色器" class="example-image">
+          <h3 class="example-title">围墙着色器</h3>
+          <p class="example-author">yjsdszz</p>
+          <p class="example-description">使用three.js围墙着色器</p>
+          <a href="fenceWall.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/videoShader.jpg" alt="视频着色器" class="example-image">
+          <h3 class="example-title">视频着色器</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">使用three.js视频着色器</p>
+          <a href="videoShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/steamWaveSun.jpg" alt="蒸汽波太阳" class="example-image">
+          <h3 class="example-title">蒸汽波太阳</h3>
+          <p class="example-author">xzw199509</p>
+          <p class="example-description">使用three.js蒸汽波太阳</p>
+          <a href="steamWaveSun.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/cobwebBox.jpg" alt="蛛网箱子" class="example-image">
+          <h3 class="example-title">蛛网箱子</h3>
+          <p class="example-author">xzw199509</p>
+          <p class="example-description">使用three.js蛛网箱子</p>
+          <a href="cobwebBox.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/audioSolutions.png" alt="音乐可视化" class="example-image">
+          <h3 class="example-title">音乐可视化</h3>
+          <p class="example-author">flowers-10</p>
+          <p class="example-description">使用three.js音乐可视化</p>
+          <a href="audioSolutions.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/dissolve.png" alt="溶解" class="example-image">
+          <h3 class="example-title">溶解</h3>
+          <p class="example-author">KallkaGo</p>
+          <p class="example-description">溶解特效</p>
+          <a href="dissolve.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/changeShaderToy.jpg" alt="切换ShaderToy" class="example-image">
+          <h3 class="example-title">切换ShaderToy</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">切换ShaderToy</p>
+          <a href="changeShaderToy.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/imageShake.jpg" alt="图片抖动" class="example-image">
+          <h3 class="example-title">图片抖动</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">Three.js 图片抖动示例，展示图片抖动的三维渲染效果</p>
+          <a href="imageShake.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/warnInfo.jpg" alt="警告信息" class="example-image">
+          <h3 class="example-title">警告信息</h3>
+          <p class="example-author">yjsdszz</p>
+          <p class="example-description">Three.js 警告信息示例，展示警告信息的三维渲染效果</p>
+          <a href="warnInfo.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/halfCircle.jpg" alt="半圆" class="example-image">
+          <h3 class="example-title">半圆</h3>
+          <p class="example-author">yiiiiiiqianyao</p>
+          <p class="example-description">使用three.js半圆</p>
+          <a href="halfCircle.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/vortexShader.jpg" alt="扭曲" class="example-image">
+          <h3 class="example-title">扭曲</h3>
+          <p class="example-author">hafly</p>
+          <p class="example-description">Three.js 扭曲示例，展示扭曲的三维渲染效果</p>
+          <a href="vortexShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/heatmapShader.jpg" alt="热力图" class="example-image">
+          <h3 class="example-title">热力图</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">Three.js 热力图示例，展示热力图的三维渲染效果</p>
+          <a href="heatmapShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/shaderBlock.jpg" alt="方块着色器" class="example-image">
+          <h3 class="example-title">方块着色器</h3>
+          <p class="example-author">z2586300277</p>
+          <p class="example-description">使用three方块着色器</p>
+          <a href="shaderBlock.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/whiteCloud.jpg" alt="白云" class="example-image">
+          <h3 class="example-title">白云</h3>
+          <p class="example-author">yjsdszz</p>
+          <p class="example-description">使用three.js白云</p>
+          <a href="whiteCloud.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/darkClouds.jpg" alt="乌云" class="example-image">
+          <h3 class="example-title">乌云</h3>
+          <p class="example-author">stonerao</p>
+          <p class="example-description">使用three.js乌云</p>
+          <a href="darkClouds.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/heartShader.jpg" alt="流光心" class="example-image">
+          <h3 class="example-title">流光心</h3>
+          <p class="example-author">threemap</p>
+          <p class="example-description">Three.js 流光心示例，展示流光心的三维渲染效果</p>
+          <a href="heartShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/candleShader.jpg" alt="蜡烛" class="example-image">
+          <h3 class="example-title">蜡烛</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 蜡烛示例，展示蜡烛的三维渲染效果</p>
+          <a href="candleShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/tachnologyFloor.jpg" alt="科技风地面" class="example-image">
+          <h3 class="example-title">科技风地面</h3>
+          <p class="example-author">flowers-10</p>
+          <p class="example-description">Three.js 科技风地面示例，展示科技风地面的三维渲染效果</p>
+          <a href="tachnologyFloor.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/threeLogo.jpg" alt="three.js Logo" class="example-image">
+          <h3 class="example-title">three.js Logo</h3>
+          <p class="example-author">threemap</p>
+          <p class="example-description">Three.js three.js Logo示例，展示three.js Logo的三维渲染效果</p>
+          <a href="threeLogo.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/audioDance.jpg" alt="音乐舞动" class="example-image">
+          <h3 class="example-title">音乐舞动</h3>
+          <p class="example-author">wuyifan0203</p>
+          <p class="example-description">Three.js 音乐舞动示例，展示音乐舞动的三维渲染效果</p>
+          <a href="audioDance.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/cloudShader.jpg" alt="天空云" class="example-image">
+          <h3 class="example-title">天空云</h3>
+          <p class="example-author">wuyifan0203</p>
+          <p class="example-description">Three.js 天空云示例，展示天空云的三维渲染效果</p>
+          <a href="cloudShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/compassShader.jpg" alt="罗盘" class="example-image">
+          <h3 class="example-title">罗盘</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">Three.js 罗盘示例，展示罗盘的三维渲染效果</p>
+          <a href="compassShader.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/waterRipple.jpg" alt="水波纹扩散" class="example-image">
+          <h3 class="example-title">水波纹扩散</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现交互式水波纹扩散着色器效果</p>
+          <a href="waterRipple.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/smokeEffect.jpg" alt="烟雾特效" class="example-image">
+          <h3 class="example-title">烟雾特效</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现基于噪声函数的动态烟雾着色器效果</p>
+          <a href="smokeEffect.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/awesomeSmoke.png" alt="超酷烟雾" class="example-image">
+          <h3 class="example-title">超酷烟雾</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现简单但效果明显的烟雾着色器效果</p>
+          <a href="awesomeSmoke.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/epicSmokeFixed.png" alt="史诗级烟雾" class="example-image">
+          <h3 class="example-title">史诗级烟雾</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现修复后的史诗级烟雾着色器效果</p>
+          <a href="epicSmokeFixed.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/magicVortex.jpg" alt="魔法漩涡" class="example-image">
+          <h3 class="example-title">魔法漩涡</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现动态魔法漩涡着色器效果</p>
+          <a href="magicVortex.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/quantumEnergyField.png" alt="量子能量场" class="example-image">
+          <h3 class="example-title">量子能量场</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现动态量子能量场着色器效果</p>
+          <a href="quantumEnergyField.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/holographicDataStream.png" alt="全息数据流" class="example-image">
+          <h3 class="example-title">全息数据流</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现全息数据流传输着色器效果</p>
+          <a href="holographicDataStream.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/neuralPulseNetwork.png" alt="神经脉冲网络" class="example-image">
+          <h3 class="example-title">神经脉冲网络</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现神经脉冲网络着色器效果</p>
+          <a href="neuralPulseNetwork.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/timeSpaceTunnel.png" alt="时空扭曲隧道" class="example-image">
+          <h3 class="example-title">时空扭曲隧道</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现时空扭曲隧道着色器效果</p>
+          <a href="timeSpaceTunnel.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/crystalMatrixGrowth.png" alt="晶体矩阵生长" class="example-image">
+          <h3 class="example-title">晶体矩阵生长</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现晶体矩阵生长着色器效果</p>
+          <a href="crystalMatrixGrowth.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/plasmaStorm.png" alt="等离子风暴" class="example-image">
+          <h3 class="example-title">等离子风暴</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现等离子风暴着色器效果</p>
+          <a href="plasmaStorm.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/digitalMatrixRain.png" alt="数字矩阵雨" class="example-image">
+          <h3 class="example-title">数字矩阵雨</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现数字矩阵雨着色器效果</p>
+          <a href="digitalMatrixRain.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/cosmicNebula.png" alt="宇宙星云" class="example-image">
+          <h3 class="example-title">宇宙星云</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现宇宙星云着色器效果</p>
+          <a href="cosmicNebula.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/liquidMetal.png" alt="液态金属" class="example-image">
+          <h3 class="example-title">液态金属</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现液态金属着色器效果</p>
+          <a href="liquidMetal.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/energyShield.png" alt="能量护盾" class="example-image">
+          <h3 class="example-title">能量护盾</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现能量护盾着色器效果</p>
+          <a href="energyShield.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/starField.jpg" alt="星空粒子场" class="example-image">
+          <h3 class="example-title">星空粒子场</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现动态星空粒子场着色器效果</p>
+          <a href="starField.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/fireEffect.jpg" alt="火焰效果" class="example-image">
+          <h3 class="example-title">火焰效果</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现逼真的火焰着色器效果</p>
+          <a href="fireEffect.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/waterFlow.jpg" alt="水流效果" class="example-image">
+          <h3 class="example-title">水流效果</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现动态水流着色器效果</p>
+          <a href="waterFlow.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/energyField.jpg" alt="能量场效果" class="example-image">
+          <h3 class="example-title">能量场效果</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现动态能量场着色器效果</p>
+          <a href="energyField.html" class="example-link">详情查看</a>
+        </div>
+      
+        <div class="example-card">
+          <img src="https://threelab.cn/threeExamples/shader/lightningEffect.jpg" alt="闪电效果" class="example-image">
+          <h3 class="example-title">闪电效果</h3>
+          <p class="example-author">AivoGenX</p>
+          <p class="example-description">使用three.js实现动态闪电着色器效果</p>
+          <a href="lightningEffect.html" class="example-link">详情查看</a>
+        </div>
+      
+    </div>
+    
+    <div class="breadcrumb">
+      <a href="static-index.html">首页</a>
+      <span>></span>
+      <a href="threejs.html">Three.js示例</a>
+      <span>></span>
+      <span>着色器</span>
+    </div>
+  
+    </main>
+    
+    <footer>
+      <p>© 2026 ThreeLab - Three.js和Cesium开源示例集合</p>
+      <p>联系我们: <a href="mailto:2945853209@qq.com" style="color: #007acc;">2945853209@qq.com</a></p>
+    </footer>
+  </div>
+</body>
+</html>

@@ -49,6 +49,12 @@ export default [
         name: "视频教程",
         url: "https://space.bilibili.com/3546385311861401",
       },
+      // 案例说明 
+      {
+        name: "案例说明",
+        url: "http://www.threelab.cn/static/CaseStudy.html",
+      },
+
     ],
   },
   {
