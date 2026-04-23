@@ -1,39 +1,79 @@
-# ThreeLab - Three.js和Cesium开源示例网站robots.txt
+# ThreeLab - Three.js & Cesium 示例社区
+# Robots.txt 文件
 
 User-agent: *
 Allow: /
 
-# 禁止抓取的目录
-Disallow: /api/
-Disallow: /admin/
-Disallow: /private/
+# 禁止搜索引擎抓取敏感目录
+Disallow: /assets/
+Disallow: /build/
+Disallow: /config/
+Disallow: /files/
+Disallow: /js/
+Disallow: /threejs/
+Disallow: /cesiumExamples/
 
-# 允许抓取的主要页面
-Allow: /index.html
-Allow: /sitemap.xml
+# 允许抓取静态示例页面
+Allow: /static/
+Allow: /threeExamples/
 
-# Sitemap位置
+# 允许抓取CSS和图片资源
+Allow: /*.css$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.gif$
+Allow: /*.svg$
+
+# 禁止抓取特定文件类型
+Disallow: /*.js$
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /*.txt$
+
+# Sitemap 文件位置
 Sitemap: https://threelab.cn/sitemap.xml
+Sitemap: https://threelab.cn/sitemap-vue.xml
 
-# 爬取延迟（秒）
+# 爬取延迟设置
 Crawl-delay: 1
 
-# 允许的搜索引擎
+# 主机名设置
+Host: threelab.cn
+
+# 特定搜索引擎优化
+
+# Googlebot
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 0.5
 
-User-agent: Bingbot
+# Bingbot
+User-agent: bingbot
 Allow: /
+Crawl-delay: 0.5
 
+# Baiduspider
 User-agent: Baiduspider
 Allow: /
+Crawl-delay: 0.5
 
-User-agent: Slurp
+# 社交媒体爬虫
+User-agent: facebookexternalhit/1.1
 Allow: /
 
-# 禁止某些爬虫
+User-agent: Twitterbot
+Allow: /
+
+# 禁止恶意爬虫
 User-agent: MJ12bot
 Disallow: /
 
 User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
 Disallow: /
