@@ -24,6 +24,13 @@ window.THREE_CESIUM_NAVIGATION = [
 
 window.THREE_CESIUM_AUTHORS = threeCesiumAuthors;
 
+// 定义网站相关 URL
+window.__SITE_URLS__ = {
+  gitee: 'https://gitee.com/giser2017/3d-lab-demos',
+  github: 'https://github.com/AivoGenX/3d-lab-demos',
+  web: 'https://threelab.cn/'
+};
+
 /* 依赖注入 */
 window.GET_SCRIPT = (v, t) => {
   let scriptContent = ``; 
