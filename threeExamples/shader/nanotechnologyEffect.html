@@ -162,14 +162,14 @@
                         sin(position.z * 3.0 + uTime * uMolecularAssembly * 0.6);
         
         // 精度级别
-        float precision = sin(position.x * 5.0 + uTime * uPrecisionLevel * 2.0) *
-                         cos(position.z * 5.0 + uTime * uPrecisionLevel * 2.0);
+        float precisionLevel = sin(position.x * 5.0 + uTime * uPrecisionLevel * 2.0) *
+                              cos(position.z * 5.0 + uTime * uPrecisionLevel * 2.0);
         
         // 量子效应
         float quantum = sin(position.x * uQuantumEffect * 6.0) *
                        cos(position.y * uQuantumEffect * 8.0);
         
-        vec3 newPosition = position + normal * (assembly + precision * 0.5 + quantum * 0.3) * 0.15;
+        vec3 newPosition = position + normal * (assembly + precisionLevel * 0.5 + quantum * 0.3) * 0.15;
         
         gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
       }

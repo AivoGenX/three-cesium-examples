@@ -1,360 +1,262 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Three.js极光效果着色器</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: radial-gradient(circle at center, #001122 0%, #000011 100%);
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-    }
-    .info {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #00ffcc;
-      background: rgba(0,0,0,0.8);
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 14px;
-      z-index: 100;
-      text-shadow: 0 0 10px #00ffcc;
-      border: 1px solid #00ffcc;
-      box-shadow: 0 0 20px #00ffcc;
-    }
-    .aurora-info {
-      position: absolute;
-      top: 60px;
-      left: 10px;
-      color: #ff66cc;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 12px;
-      z-index: 100;
-      text-shadow: 0 0 5px #ff66cc;
-      border: 1px solid #ff66cc;
-      font-family: 'Courier New', monospace;
-      max-width: 300px;
-    }
-    .help {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      color: #ffff66;
-      background: rgba(0,0,0,0.8);
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 12px;
-      z-index: 100;
-      text-shadow: 0 0 5px #ffff66;
-      border: 1px solid #ffff66;
-      max-width: 300px;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 极光效果</title>
+    <!-- 配置模块导入映射 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./threejs/build/three.module.js",
+                "three/addons/": "./threejs/examples/jsm/",
+                "gsap": "./js/gsap/index.js",
+                "dat.gui": "./js/dat/build/dat.gui.module.js"
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #000;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #box {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
-
 <body>
-  <div class="info">🌌 极光效果 - 实时渲染 🌌</div>
-  <div class="aurora-info" id="auroraInfo">极光强度: 中等 | 流动速度: 慢</div>
-  <div class="help">
-    🎮 使用说明：<br>
-    • 鼠标拖动：旋转视角<br>
-    • 鼠标滚轮：缩放场景<br>
-    • 调整参数：改变极光效果<br>
-    • 实时交互：体验极光奇观
-  </div>
-  
-  <!-- 导入模块映射，配置Three.js依赖路径 -->
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "../../threejs/build/three.module.js",
-        "three/addons/": "../../threejs/examples/jsm/"
-      }
-    }
-  </script>
-  <script type="module">
-    // 导入Three.js核心库和辅助工具
-    import * as THREE from 'three'
-    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
-    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+    <!-- 渲染容器 -->
+    <div id="box"></div>
 
-    // 获取渲染容器，使用整个body元素
-    const box = document.body;
+    <script type="module">
+        // 导入所需模块
+        import * as THREE from "three";
+        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+        import * as dat from "dat.gui";
+        import gsap from "gsap";
 
-    // 创建Three.js场景，作为所有3D对象的容器
-    const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x001122);
+        // 全局变量声明
+        let scene, camera, renderer;
+        let _width, _height;
+        let mat;  // 着色器材质
+        let _primitive;  // 3D几何体对象
+        let clock = new THREE.Clock();
+        let gui;
 
-    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
-    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+        // 初始化函数
+        function init() {
+            // 获取容器尺寸
+            const container = document.getElementById('box');
+            _width = container.clientWidth;
+            _height = container.clientHeight;
 
-    // 设置相机位置，从(0,0,8)的位置观察场景
-    camera.position.set(0, 0, 8)
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
 
-    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true, 
-      alpha: true
-    })
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(60, _width / _height, 0.1, 1000);
+            camera.position.set(0, 0, 8);
 
-    // 设置渲染器尺寸为容器大小
-    renderer.setSize(box.clientWidth, box.clientHeight)
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(_width, _height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
 
-    // 将渲染器的DOM元素添加到页面中
-    box.appendChild(renderer.domElement)
+            // 添加轨道控制器
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
 
-    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
-    const controls = new OrbitControls(camera, renderer.domElement)
+            // 创建着色器材质
+            createShaderMaterial();
 
-    // 启用阻尼效果，使相机移动更平滑
-    controls.enableDamping = true
+            // 创建几何体
+            createGeometry();
 
-    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
-    window.onresize = () => {
-      // 更新渲染器尺寸
-      renderer.setSize(box.clientWidth, box.clientHeight)
-      // 更新相机的宽高比
-      camera.aspect = box.clientWidth / box.clientHeight
-      // 更新相机投影矩阵
-      camera.updateProjectionMatrix()
-    }
+            // 创建GUI
+            createGUI();
 
-    // 极光效果参数
-    const auroraParams = {
-      auroraIntensity: 1.2,
-      flowSpeed: 0.5,
-      waveFrequency: 0.8,
-      glowEffect: 1.5,
-      colorShift: 0.7,
-      auroraType: 0,
-      showStars: true
-    };
+            // 开始动画循环
+            animate();
 
-    // 创建平面几何体，作为极光的载体
-    const geometry = new THREE.PlaneGeometry(8, 4, 64, 32);
-
-    // 顶点着色器代码 - 极光效果
-    const vertexShader = `
-      varying vec2 vUv;
-      varying vec3 vPosition;
-      varying vec3 vNormal;
-      
-      uniform float uTime;
-      uniform float uFlowSpeed;
-      uniform float uWaveFrequency;
-      
-      void main() {
-        vUv = uv;
-        vPosition = position;
-        vNormal = normal;
-        
-        // 极光流动效果
-        float flow = sin(position.x * 2.0 + uTime * uFlowSpeed) * 
-                    cos(position.y * 3.0 + uTime * uFlowSpeed * 0.7);
-        
-        // 波浪效果
-        float wave = sin(position.x * uWaveFrequency * 4.0 + uTime * uFlowSpeed * 2.0);
-        
-        vec3 newPosition = position;
-        newPosition.y += (flow + wave) * 0.3;
-        
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-      }
-    `;
-
-    // 片段着色器代码 - 极光效果
-    const fragmentShader = `
-      varying vec2 vUv;
-      varying vec3 vPosition;
-      varying vec3 vNormal;
-      
-      uniform float uTime;
-      uniform float uAuroraIntensity;
-      uniform float uFlowSpeed;
-      uniform float uWaveFrequency;
-      uniform float uGlowEffect;
-      uniform float uColorShift;
-      uniform int uAuroraType;
-      uniform bool uShowStars;
-      
-      // 噪声函数
-      float noise(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-      }
-      
-      // 极光效果
-      float aurora(vec2 uv, float intensity) {
-        float auroraField = 0.0;
-        
-        // 多层极光
-        auroraField += sin(uv.x * 6.0 + uTime * 0.3) * 
-                      cos(uv.y * 8.0 + uTime * 0.5);
-        auroraField += sin(uv.x * 8.0 + uTime * 0.7) * 
-                      cos(uv.y * 10.0 + uTime * 0.9) * 0.7;
-        auroraField += sin(uv.x * 12.0 + uTime * 1.1) * 
-                      cos(uv.y * 14.0 + uTime * 1.3) * 0.4;
-        
-        return auroraField * intensity;
-      }
-      
-      // 星星效果
-      float stars(vec2 uv, float density) {
-        if(!uShowStars) return 0.0;
-        
-        float starField = 0.0;
-        for(int i = 0; i < 15; i++) {
-          vec2 starPos = vec2(
-            noise(vec2(float(i) * 0.234, 0.567)),
-            noise(vec2(float(i) * 0.567, 0.891))
-          );
-          float dist = distance(uv, starPos);
-          float twinkle = sin(uTime * 3.0 + float(i) * 15.0) * 0.5 + 0.5;
-          starField += exp(-dist * 25.0) * twinkle * density;
+            // 窗口大小变化处理
+            window.addEventListener('resize', onWindowResize);
         }
-        return starField;
-      }
-      
-      // 极光类型
-      vec3 getAuroraType(int type) {
-        if(type == 0) {
-          // 绿色极光
-          return vec3(0.0, 1.0, 0.5);
-        } else if(type == 1) {
-          // 紫色极光
-          return vec3(0.8, 0.2, 1.0);
-        } else {
-          // 蓝色极光
-          return vec3(0.2, 0.6, 1.0);
+
+        // 创建着色器材质
+        function createShaderMaterial() {
+            const vertexShader = `
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                void main() {
+                    vUv = uv;
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+
+            const fragmentShader = `
+                uniform float time;
+                uniform vec2 resolution;
+                uniform float flowSpeed;
+                uniform float intensity;
+                uniform float waveFrequency;
+                uniform vec3 auroraColor;
+                
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                // 极光流动函数
+                float auroraFlow(vec2 uv, float time) {
+                    float flow = 0.0;
+                    
+                    // 创建多层极光带
+                    for (int i = 0; i < 3; i++) {
+                        float layer = float(i) * 0.3;
+                        float speed = flowSpeed * (1.0 + layer * 0.5);
+                        
+                        // 水平流动效果
+                        float xFlow = sin(uv.x * waveFrequency + time * speed + layer * 3.14);
+                        
+                        // 垂直波动效果
+                        float yWave = sin(uv.y * 10.0 + time * speed * 0.5) * 0.5 + 0.5;
+                        
+                        // 组合效果
+                        flow += (xFlow * yWave) * (1.0 - layer * 0.3);
+                    }
+                    
+                    return flow * 0.5 + 0.5;
+                }
+                
+                // 极光颜色映射
+                vec3 auroraColorMap(float intensity) {
+                    vec3 color1 = vec3(0.0, 0.8, 0.4);  // 绿色
+                    vec3 color2 = vec3(0.2, 0.4, 1.0);  // 蓝色
+                    vec3 color3 = vec3(0.8, 0.2, 0.8);  // 紫色
+                    
+                    if (intensity < 0.3) {
+                        return mix(color1, color2, intensity / 0.3);
+                    } else if (intensity < 0.6) {
+                        return mix(color2, color3, (intensity - 0.3) / 0.3);
+                    } else {
+                        return color3;
+                    }
+                }
+                
+                // 发光效果
+                float glowEffect(vec2 uv, float time) {
+                    float dist = length(uv - vec2(0.5, 0.3));
+                    float pulse = sin(time * 2.0) * 0.5 + 0.5;
+                    return smoothstep(0.4, 0.0, dist) * pulse;
+                }
+                
+                void main() {
+                    vec2 uv = vUv;
+                    
+                    // 生成极光流动效果
+                    float flow = auroraFlow(uv, time);
+                    
+                    // 应用强度
+                    flow = pow(flow, intensity);
+                    
+                    // 获取极光颜色
+                    vec3 color = auroraColorMap(flow);
+                    
+                    // 应用自定义颜色
+                    color *= auroraColor;
+                    
+                    // 添加发光效果
+                    float glow = glowEffect(uv, time);
+                    color += glow * 0.3;
+                    
+                    // 添加星光效果
+                    float stars = sin(uv.x * 50.0 + time) * sin(uv.y * 50.0 + time) * 0.1;
+                    color += stars;
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+
+            mat = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: {
+                    time: { value: 0 },
+                    resolution: { value: new THREE.Vector2(_width, _height) },
+                    flowSpeed: { value: 1.0 },
+                    intensity: { value: 1.2 },
+                    waveFrequency: { value: 3.0 },
+                    auroraColor: { value: new THREE.Color(0xffffff) }
+                }
+            });
         }
-      }
-      
-      void main() {
-        vec2 uv = vUv;
-        
-        // 极光效果
-        float auroraField = aurora(uv, uAuroraIntensity);
-        
-        // 星星效果
-        float starField = stars(uv, 0.3);
-        
-        // 颜色偏移效果
-        float colorShift = sin(uTime * uColorShift) * 0.3 + 0.7;
-        
-        // 颜色计算
-        vec3 baseColor = getAuroraType(uAuroraType);
-        vec3 finalColor = baseColor * (auroraField * 0.7 + starField * 0.3) * colorShift * uGlowEffect;
-        
-        // 垂直渐变效果
-        float verticalGradient = 1.0 - abs(uv.y - 0.5) * 1.5;
-        finalColor *= verticalGradient;
-        
-        gl_FragColor = vec4(finalColor, 1.0);
-      }
-    `;
 
-    // 创建自定义着色器材质
-    const material = new THREE.ShaderMaterial({
-      vertexShader: vertexShader,
-      fragmentShader: fragmentShader,
-      side: THREE.DoubleSide,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: { value: 0.0 },
-        uAuroraIntensity: { value: auroraParams.auroraIntensity },
-        uFlowSpeed: { value: auroraParams.flowSpeed },
-        uWaveFrequency: { value: auroraParams.waveFrequency },
-        uGlowEffect: { value: auroraParams.glowEffect },
-        uColorShift: { value: auroraParams.colorShift },
-        uAuroraType: { value: auroraParams.auroraType },
-        uShowStars: { value: auroraParams.showStars }
-      }
-    });
+        // 创建几何体
+        function createGeometry() {
+            const geometry = new THREE.PlaneGeometry(8, 6, 64, 48);
+            _primitive = new THREE.Mesh(geometry, mat);
+            scene.add(_primitive);
+        }
 
-    // 创建网格对象并添加到场景中
-    const auroraPlane = new THREE.Mesh(geometry, material);
-    auroraPlane.position.y = 1.5;
-    scene.add(auroraPlane);
+        // 创建GUI
+        function createGUI() {
+            gui = new dat.GUI();
+            const params = {
+                auroraColor: '#ffffff',
+                flowSpeed: 1.0,
+                intensity: 1.2,
+                waveFrequency: 3.0,
+                reset: function() {
+                    mat.uniforms.auroraColor.value.set('#ffffff');
+                    mat.uniforms.flowSpeed.value = 1.0;
+                    mat.uniforms.intensity.value = 1.2;
+                    mat.uniforms.waveFrequency.value = 3.0;
+                    gui.updateDisplay();
+                }
+            };
 
-    // 更新极光信息显示
-    function updateAuroraInfo() {
-      const auroraElement = document.getElementById('auroraInfo');
-      let intensity = "低";
-      if(auroraParams.auroraIntensity > 0.8) intensity = "中等";
-      if(auroraParams.auroraIntensity > 1.2) intensity = "高";
-      
-      let speed = "慢";
-      if(auroraParams.flowSpeed > 0.5) speed = "中等";
-      if(auroraParams.flowSpeed > 0.8) speed = "快";
-      
-      auroraElement.textContent = `极光强度: ${intensity} | 流动速度: ${speed}`;
-    }
+            gui.addColor(params, 'auroraColor').onChange(value => {
+                mat.uniforms.auroraColor.value.set(value);
+            });
+            gui.add(mat.uniforms.flowSpeed, 'value', 0.1, 3.0).name('流动速度');
+            gui.add(mat.uniforms.intensity, 'value', 0.5, 2.0).name('强度');
+            gui.add(mat.uniforms.waveFrequency, 'value', 1.0, 8.0).name('波动频率');
+            gui.add(params, 'reset').name('重置');
+        }
 
-    // 创建GUI控制面板
-    const gui = new GUI();
-    
-    // 极光参数控制
-    const auroraFolder = gui.addFolder('极光效果参数');
-    auroraFolder.add(auroraParams, 'auroraIntensity', 0.1, 2.0).name('极光强度');
-    auroraFolder.add(auroraParams, 'flowSpeed', 0.1, 1.2).name('流动速度');
-    auroraFolder.add(auroraParams, 'waveFrequency', 0.1, 1.5).name('波浪频率');
-    auroraFolder.add(auroraParams, 'glowEffect', 0.1, 2.0).name('发光效果');
-    auroraFolder.add(auroraParams, 'colorShift', 0.1, 1.2).name('颜色偏移');
-    auroraFolder.add(auroraParams, 'showStars').name('显示星星');
-    
-    // 极光类型控制
-    const auroraTypes = {
-      "绿色极光": 0,
-      "紫色极光": 1,
-      "蓝色极光": 2
-    };
-    auroraFolder.add(auroraParams, 'auroraType', auroraTypes).name('极光类型');
-    
-    auroraFolder.open();
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            mat.uniforms.time.value += delta;
+            
+            renderer.render(scene, camera);
+        }
 
-    // 参数变化时更新材质和极光信息
-    gui.onChange(() => {
-      material.uniforms.uAuroraIntensity.value = auroraParams.auroraIntensity;
-      material.uniforms.uFlowSpeed.value = auroraParams.flowSpeed;
-      material.uniforms.uWaveFrequency.value = auroraParams.waveFrequency;
-      material.uniforms.uGlowEffect.value = auroraParams.glowEffect;
-      material.uniforms.uColorShift.value = auroraParams.colorShift;
-      material.uniforms.uAuroraType.value = auroraParams.auroraType;
-      material.uniforms.uShowStars.value = auroraParams.showStars;
-      
-      updateAuroraInfo();
-    });
+        // 窗口大小变化处理
+        function onWindowResize() {
+            const container = document.getElementById('box');
+            _width = container.clientWidth;
+            _height = container.clientHeight;
+            
+            camera.aspect = _width / _height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(_width, _height);
+            mat.uniforms.resolution.value.set(_width, _height);
+        }
 
-    // 动画循环函数
-    function animate() {
-      requestAnimationFrame(animate);
-      
-      // 更新时间
-      material.uniforms.uTime.value += 0.016;
-      
-      // 轻微摆动
-      auroraPlane.rotation.z = Math.sin(material.uniforms.uTime.value * 0.3) * 0.1;
-      
-      // 更新控制器
-      controls.update();
-      
-      // 渲染场景
-      renderer.render(scene, camera);
-    }
-
-    // 初始化极光信息显示
-    updateAuroraInfo();
-
-    // 启动动画循环
-    animate();
-  </script>
+        // 启动应用
+        init();
+    </script>
 </body>
-
 </html>

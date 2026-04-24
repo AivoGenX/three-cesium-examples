@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 雨滴涟漪效果</title>
+    <!-- 配置模块导入映射 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./threejs/build/three.module.js",
+                "three/addons/": "./threejs/examples/jsm/",
+                "gsap": "./js/gsap/index.js",
+                "dat.gui": "./js/dat/build/dat.gui.module.js"
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #000;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #box {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- 渲染容器 -->
+    <div id="box"></div>
+
+    <script type="module">
+        // 导入所需模块
+        import * as THREE from "three";
+        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+        import * as dat from "dat.gui";
+        import gsap from "gsap";
+
+        // 全局变量声明
+        let scene, camera, renderer;
+        let _width, _height;
+        let mat;  // 着色器材质
+        let _primitive;  // 3D几何体对象
+        let clock = new THREE.Clock();
+        let gui;
+
+        // 初始化函数
+        function init() {
+            // 获取容器尺寸
+            const container = document.getElementById('box');
+            _width = container.clientWidth;
+            _height = container.clientHeight;
+
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x002244);
+
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(60, _width / _height, 0.1, 1000);
+            camera.position.set(0, 0, 8);
+
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(_width, _height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // 添加轨道控制器
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // 创建着色器材质
+            createShaderMaterial();
+
+            // 创建几何体
+            createGeometry();
+
+            // 创建GUI
+            createGUI();
+
+            // 开始动画循环
+            animate();
+
+            // 窗口大小变化处理
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // 创建着色器材质
+        function createShaderMaterial() {
+            const vertexShader = `
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                void main() {
+                    vUv = uv;
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+
+            const fragmentShader = `
+                uniform float time;
+                uniform vec2 resolution;
+                uniform float dropDensity;
+                uniform float rippleSpeed;
+                uniform float waveAmplitude;
+                uniform vec3 waterColor;
+                
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                // 雨滴位置生成器
+                vec2 generateRaindropPosition(float seed) {
+                    // 使用伪随机数生成雨滴位置
+                    float x = fract(sin(seed * 78.233) * 43758.5453);
+                    float y = fract(sin(seed * 12.9898) * 43758.5453);
+                    return vec2(x, y);
+                }
+                
+                // 单个涟漪效果
+                float singleRipple(vec2 uv, vec2 center, float time, float speed) {
+                    float dist = distance(uv, center);
+                    
+                    // 涟漪传播效果
+                    float ripple = sin(dist * 20.0 - time * speed * 5.0);
+                    
+                    // 衰减效果
+                    float attenuation = 1.0 / (1.0 + dist * 10.0);
+                    
+                    return ripple * attenuation * waveAmplitude;
+                }
+                
+                // 雨滴冲击效果
+                float raindropImpact(vec2 uv, vec2 center, float time, float speed) {
+                    float dist = distance(uv, center);
+                    
+                    // 冲击波效果
+                    float impact = sin(dist * 30.0 - time * speed * 10.0) * 
+                                 exp(-dist * 15.0);
+                    
+                    return impact * 0.5;
+                }
+                
+                // 多雨滴涟漪系统
+                float multiRippleSystem(vec2 uv, float time, float density) {
+                    float totalRipple = 0.0;
+                    int numDrops = int(density * 20.0);
+                    
+                    for (int i = 0; i < 15; i++) {
+                        if (i >= numDrops) break;
+                        
+                        float seed = float(i) * 123.456;
+                        vec2 dropPos = generateRaindropPosition(seed);
+                        
+                        // 每个雨滴的动画时间偏移
+                        float timeOffset = sin(seed * 45.678) * 10.0;
+                        
+                        // 单个涟漪
+                        float ripple = singleRipple(uv, dropPos, time + timeOffset, rippleSpeed);
+                        
+                        // 冲击效果
+                        float impact = raindropImpact(uv, dropPos, time + timeOffset, rippleSpeed);
+                        
+                        totalRipple += ripple + impact;
+                    }
+                    
+                    return totalRipple;
+                }
+                
+                // 水面波动基础
+                float waterSurface(vec2 uv, float time) {
+                    float surface = 0.0;
+                    
+                    // 基础水面波动
+                    for (int i = 0; i < 2; i++) {
+                        float frequency = float(i + 1) * 3.0;
+                        surface += sin(uv.x * frequency + time * 0.5) * 
+                                 cos(uv.y * frequency + time * 0.3) * 0.1;
+                    }
+                    
+                    return surface;
+                }
+                
+                void main() {
+                    vec2 uv = vUv;
+                    
+                    // 基础水面
+                    float baseSurface = waterSurface(uv, time);
+                    
+                    // 雨滴涟漪系统
+                    float ripples = multiRippleSystem(uv, time, dropDensity);
+                    
+                    // 组合效果
+                    float finalEffect = baseSurface + ripples;
+                    
+                    // 基础水色
+                    vec3 color = waterColor * (finalEffect * 0.5 + 0.5);
+                    
+                    // 涟漪边缘发光
+                    float edgeGlow = smoothstep(0.1, 0.0, abs(ripples)) * 0.3;
+                    color += edgeGlow * vec3(0.8, 0.9, 1.0);
+                    
+                    // 水面高光
+                    float highlight = smoothstep(0.3, 0.0, abs(finalEffect)) * 0.2;
+                    color += highlight * vec3(1.0, 1.0, 1.0);
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+
+            mat = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: {
+                    time: { value: 0 },
+                    resolution: { value: new THREE.Vector2(_width, _height) },
+                    dropDensity: { value: 0.5 },
+                    rippleSpeed: { value: 1.0 },
+                    waveAmplitude: { value: 0.3 },
+                    waterColor: { value: new THREE.Color(0x4a90e2) }
+                }
+            });
+        }
+
+        // 创建几何体
+        function createGeometry() {
+            const geometry = new THREE.PlaneGeometry(6, 6, 128, 128);
+            _primitive = new THREE.Mesh(geometry, mat);
+            scene.add(_primitive);
+        }
+
+        // 创建GUI
+        function createGUI() {
+            gui = new dat.GUI();
+            const params = {
+                waterColor: '#4a90e2',
+                dropDensity: 0.5,
+                rippleSpeed: 1.0,
+                waveAmplitude: 0.3,
+                reset: function() {
+                    mat.uniforms.waterColor.value.set('#4a90e2');
+                    mat.uniforms.dropDensity.value = 0.5;
+                    mat.uniforms.rippleSpeed.value = 1.0;
+                    mat.uniforms.waveAmplitude.value = 0.3;
+                    gui.updateDisplay();
+                }
+            };
+
+            gui.addColor(params, 'waterColor').onChange(value => {
+                mat.uniforms.waterColor.value.set(value);
+            });
+            gui.add(mat.uniforms.dropDensity, 'value', 0.1, 1.0).name('雨滴密度');
+            gui.add(mat.uniforms.rippleSpeed, 'value', 0.3, 3.0).name('涟漪速度');
+            gui.add(mat.uniforms.waveAmplitude, 'value', 0.1, 0.8).name('波幅强度');
+            gui.add(params, 'reset').name('重置');
+        }
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            mat.uniforms.time.value += delta;
+            
+            renderer.render(scene, camera);
+        }
+
+        // 窗口大小变化处理
+        function onWindowResize() {
+            const container = document.getElementById('box');
+            _width = container.clientWidth;
+            _height = container.clientHeight;
+            
+            camera.aspect = _width / _height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(_width, _height);
+            mat.uniforms.resolution.value.set(_width, _height);
+        }
+
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>

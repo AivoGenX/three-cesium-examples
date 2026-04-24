@@ -384,8 +384,8 @@ export default [
         pid: "fenceShader",
         name: "围栏着色器",
         author: "flowers-10",
-        codeUrl: HOST + "/threeSymbol/shader/fenceShader.html",
-        image: HOST + "/threeSymbol/shader/fenceShader.jpg",
+        codeUrl: HOST + "/threeExamples/shader/fenceShader.html",
+        image: HOST + "/threeExamples/shader/fenceShader.jpg",
         meta: {
           title: "围栏着色器",
           keywords: "three.js,围栏着色器",
@@ -844,6 +844,126 @@ export default [
           description: "使用three.js实现动态闪电着色器效果",
         },
       },
+      {
+        id: "quantumField",
+        name: "量子场效应",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/quantumField.html",
+        image: HOST + "threeExamples/shader/quantumField.png",
+        meta: {
+          title: "Three.js量子场效应着色器 - 量子物理风格的动态场可视化",
+          keywords: "Three.js量子场,量子物理,动态场效果,WebGL着色器,三维可视化",
+          description: "使用Three.js实现的量子场效应着色器，模拟量子物理中的动态场波动和能量分布的三维可视化效果"
+        }
+      },
+      {
+        id: "holographicProjection",
+        name: "全息投影",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/holographicProjection.html",
+        image: HOST + "threeExamples/shader/holographicProjection.png",
+        meta: {
+          title: "Three.js全息投影着色器 - 科幻风格的全息显示效果",
+          keywords: "Three.js全息投影,科幻效果,扫描线,透明显示,WebGL特效",
+          description: "基于Three.js实现的全息投影着色器效果，创建科幻风格的全息显示、扫描线和透明投影的三维渲染技术"
+        }
+      },
+      {
+        id: "lavaFlow",
+        name: "熔岩流动",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/lavaFlow.html",
+        image: HOST + "threeExamples/shader/lavaFlow.png",
+        meta: {
+          title: "Three.js熔岩流动着色器 - 动态岩浆流动和热力效果",
+          keywords: "Three.js熔岩流动,岩浆效果,热力模拟,流体动力学,WebGL渲染",
+          description: "使用Three.js实现的熔岩流动着色器效果，模拟动态岩浆流动、热力分布和火山岩浆的三维可视化技术"
+        }
+      },
+      {
+        id: "spaceTimeWarp",
+        name: "时空扭曲",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/spaceTimeWarp.html",
+        image: HOST + "threeExamples/shader/spaceTimeWarp.png",
+        meta: {
+          title: "Three.js时空扭曲着色器 - 相对论时空弯曲效果",
+          keywords: "Three.js时空扭曲,相对论效果,引力波,时空弯曲,WebGL特效",
+          description: "基于Three.js实现的时空扭曲着色器效果，模拟相对论中的时空弯曲、引力波和黑洞效应的三维可视化技术"
+        }
+      },
+      {
+        id: "digitalMatrix",
+        name: "数字矩阵",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/digitalMatrix.html",
+        image: HOST + "threeExamples/shader/digitalMatrix.png",
+        meta: {
+          title: "Three.js数字矩阵着色器 - 黑客帝国风格的数字雨效果",
+          keywords: "Three.js数字矩阵,黑客帝国,数字雨,代码流,WebGL特效",
+          description: "使用Three.js实现的数字矩阵着色器效果，创建黑客帝国风格的数字雨、代码流和矩阵世界的三维可视化体验"
+        }
+      },
+      {
+        id: "crystalGrowth",
+        name: "水晶生长",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/crystalGrowth.html",
+        image: HOST + "threeExamples/shader/crystalGrowth.png",
+        meta: {
+          title: "Three.js水晶生长着色器 - 模拟晶体结晶过程的动态效果",
+          keywords: "Three.js水晶生长,晶体结晶,晶格结构,折射效果,WebGL渲染",
+          description: "使用Three.js实现的水晶生长着色器效果，模拟晶体结晶过程的动态生长、晶格结构和折射光效的三维可视化技术"
+        }
+      },
+      {
+        id: "auroraEffect",
+        name: "极光效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/auroraEffect.html",
+        image: HOST + "threeExamples/shader/auroraEffect.png",
+        meta: {
+          title: "Three.js极光效果着色器 - 北极光风格的流动光带可视化",
+          keywords: "Three.js极光效果,北极光,流动光带,大气光学,WebGL特效",
+          description: "基于Three.js实现的极光效果着色器，创建北极光风格的流动光带、多层波动和色彩渐变的三维大气光学效果"
+        }
+      },
+      {
+        id: "fluidDynamics",
+        name: "流体动力学",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/fluidDynamics.html",
+        image: HOST + "threeExamples/shader/fluidDynamics.png",
+        meta: {
+          title: "Three.js流体动力学着色器 - 液体流动和涡旋效果模拟",
+          keywords: "Three.js流体动力学,液体流动,涡旋效果,粘度模拟,WebGL渲染",
+          description: "使用Three.js实现的流体动力学着色器效果，模拟液体流动、涡旋形成和粘度变化的复杂流体行为三维可视化"
+        }
+      },
+      {
+        id: "electromagneticField",
+        name: "电磁场",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/electromagneticField.html",
+        image: HOST + "threeExamples/shader/electromagneticField.png",
+        meta: {
+          title: "Three.js电磁场着色器 - 电场线和磁场环的可视化",
+          keywords: "Three.js电磁场,电场线,磁场环,电荷效果,WebGL可视化",
+          description: "基于Three.js实现的电磁场着色器效果，可视化电场线分布、磁场环形成和电荷相互作用的三维物理场模拟"
+        }
+      },
+      {
+        id: "bioluminescence",
+        name: "生物发光",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/shader/bioluminescence.html",
+        image: HOST + "threeExamples/shader/bioluminescence.png",
+        meta: {
+          title: "Three.js生物发光着色器 - 深海生物发光效果模拟",
+          keywords: "Three.js生物发光,深海生物,发光细胞,脉动效果,WebGL特效",
+          description: "使用Three.js实现的生物发光着色器效果，模拟深海生物发光、细胞网络和脉动光效的三维生物光学可视化"
+        }
+      },
     ],
   },
   // ========== 新增的着色器效果分类 ==========
@@ -1106,7 +1226,7 @@ export default [
         name: "电磁场效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/electromagneticFieldEffect.html",
-        image: HOST + "threeExamples/shader/electromagneticFieldEffect.svg",
+        image: HOST + "threeExamples/shader/electromagneticFieldEffect.png",
         tag: "优质",
         bgcolor: "rgb(0, 100, 204)",
         meta: {
@@ -1120,7 +1240,7 @@ export default [
         name: "生物发光效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/bioluminescenceEffect.html",
-        image: HOST + "threeExamples/shader/bioluminescenceEffect.svg",
+        image: HOST + "threeExamples/shader/bioluminescenceEffect.png",
         tag: "优质",
         bgcolor: "rgb(0, 204, 102)",
         meta: {
@@ -1134,7 +1254,7 @@ export default [
         name: "晶体生长效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/crystalGrowthEffect.html",
-        image: HOST + "threeExamples/shader/crystalGrowthEffect.svg",
+        image: HOST + "threeExamples/shader/crystalGrowthEffect.png",
         tag: "优质",
         bgcolor: "rgb(153, 51, 204)",
         meta: {
@@ -1148,7 +1268,7 @@ export default [
         name: "流体动力学效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/fluidDynamicsEffect.html",
-        image: HOST + "threeExamples/shader/fluidDynamicsEffect.svg",
+        image: HOST + "threeExamples/shader/fluidDynamicsEffect.png",
         tag: "优质",
         bgcolor: "rgb(0, 153, 204)",
         meta: {
@@ -1162,7 +1282,7 @@ export default [
         name: "等离子体效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/plasmaEffect.html",
-        image: HOST + "threeExamples/shader/plasmaEffect.svg",
+        image: HOST + "threeExamples/shader/plasmaEffect.png",
         tag: "优质",
         bgcolor: "rgb(204, 0, 0)",
         meta: {
@@ -1176,7 +1296,7 @@ export default [
         name: "量子场效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/quantumFieldEffect.html",
-        image: HOST + "threeExamples/shader/quantumFieldEffect.svg",
+        image: HOST + "threeExamples/shader/quantumFieldEffect.png",
         tag: "优质",
         bgcolor: "rgb(0, 102, 204)",
         meta: {
@@ -1190,7 +1310,7 @@ export default [
         name: "引力波效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/gravitationalWaveEffect.html",
-        image: HOST + "threeExamples/shader/gravitationalWaveEffect.svg",
+        image: HOST + "threeExamples/shader/gravitationalWaveEffect.png",
         tag: "优质",
         bgcolor: "rgb(102, 51, 153)",
         meta: {
@@ -1204,7 +1324,7 @@ export default [
         name: "纳米技术效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/nanotechnologyEffect.html",
-        image: HOST + "threeExamples/shader/nanotechnologyEffect.svg",
+        image: HOST + "threeExamples/shader/nanotechnologyEffect.png",
         tag: "优质",
         bgcolor: "rgb(0, 153, 0)",
         meta: {
@@ -1218,7 +1338,7 @@ export default [
         name: "星际旅行效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/interstellarTravelEffect.html",
-        image: HOST + "threeExamples/shader/interstellarTravelEffect.svg",
+        image: HOST + "threeExamples/shader/interstellarTravelEffect.png",
         tag: "优质",
         bgcolor: "rgb(0, 51, 102)",
         meta: {
@@ -1232,7 +1352,7 @@ export default [
         name: "虚拟现实效果",
         author: "AivoGenX",
         codeUrl: HOST + "threeExamples/shader/virtualRealityEffect.html",
-        image: HOST + "threeExamples/shader/virtualRealityEffect.svg",
+        image: HOST + "threeExamples/shader/virtualRealityEffect.png",
         tag: "优质",
         bgcolor: "rgb(102, 51, 102)",
         meta: {
@@ -1623,8 +1743,8 @@ export default [
         pid: "giser2017",
         name: "波浪效果",
         author: "giser2017",
-        codeUrl: HOST + "/threeSymbol/water/waterA.html",
-        image: HOST + "/threeSymbol/water/waterA.png",
+        codeUrl: HOST + "/threeExamples/water/waterA.html",
+        image: HOST + "/threeExamples/water/waterA.png",
         meta: {
           title: "水效果",
           keywords: "three.js,水效果",
@@ -1635,16 +1755,137 @@ export default [
         id: "waterSky",
         name: "水天一色",
         author: "z2586300277",
-        codeUrl: HOST + "threeExamples/shader/waterSky.html",
-        image: HOST + "threeExamples/shader/waterSky.jpg",
+        codeUrl: HOST + "threeExamples/water/waterSky.html",
+        image: HOST + "threeExamples/water/waterSky.jpg",
         meta: {
           title: "水天一色",
           keywords: "three.js,水天一色",
           description: "使用three.js水天一色",
         },
       },
+      {
+        id: "deepVortex",
+        name: "深海漩涡",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/deepVortex.html",
+        image: HOST + "threeExamples/water/deepVortex.png",
+        meta: {
+          title: "Three.js深海漩涡效果 - 模拟深海涡旋和暗流",
+          keywords: "Three.js深海漩涡,涡旋效果,暗流模拟,深海物理,WebGL渲染",
+          description: "使用Three.js实现的深海漩涡着色器效果，模拟深海涡旋形成、暗流运动和深海物理现象的三维可视化技术"
+        }
+      },
+      {
+        id: "waterfallEffect",
+        name: "瀑布效果",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/waterfallEffect.html",
+        image: HOST + "threeExamples/water/waterfallEffect.png",
+        meta: {
+          title: "Three.js瀑布效果 - 水流冲击和湍流模拟",
+          keywords: "Three.js瀑布效果,水流冲击,湍流模拟,瀑布物理,WebGL特效",
+          description: "基于Three.js实现的瀑布效果着色器，模拟水流冲击、湍流形成和瀑布物理现象的三维流体动力学可视化"
+        }
+      },
+      {
+        id: "iceReflection",
+        name: "冰面反射",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/iceReflection.html",
+        image: HOST + "threeExamples/water/iceReflection.png",
+        meta: {
+          title: "Three.js冰面反射效果 - 冰层折射和反射光效",
+          keywords: "Three.js冰面反射,折射效果,冰层光学,反射光效,WebGL渲染",
+          description: "使用Three.js实现的冰面反射着色器效果，模拟冰层折射、反射光效和冰面光学特性的三维可视化技术"
+        }
+      },
+      {
+        id: "tropicalOcean",
+        name: "热带海洋",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/tropicalOcean.html",
+        image: HOST + "threeExamples/water/tropicalOcean.png",
+        meta: {
+          title: "Three.js热带海洋效果 - 清澈海水和阳光透射",
+          keywords: "Three.js热带海洋,清澈海水,阳光透射,热带光学,WebGL特效",
+          description: "基于Three.js实现的热带海洋着色器效果，模拟清澈海水、阳光透射和热带海洋光学特性的三维可视化技术"
+        }
+      },
+      {
+        id: "raindropRipple",
+        name: "雨滴涟漪",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/raindropRipple.html",
+        image: HOST + "threeExamples/water/raindropRipple.png",
+        meta: {
+          title: "Three.js雨滴涟漪效果 - 雨滴冲击和涟漪传播",
+          keywords: "Three.js雨滴涟漪,雨滴冲击,涟漪传播,水面波动,WebGL渲染",
+          description: "使用Three.js实现的雨滴涟漪着色器效果，模拟雨滴冲击水面、涟漪传播和水面波动现象的三维流体动力学可视化"
+        }
+      },
+      {
+        id: "quantumWave",
+        name: "量子水波",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/quantumWave.html",
+        image: HOST + "threeExamples/water/quantumWave.png",
+        meta: {
+          title: "Three.js量子水波效果 - 量子力学风格的水波干涉",
+          keywords: "Three.js量子水波,波函数干涉,概率密度,量子纠缠,WebGL特效",
+          description: "基于Three.js实现的量子水波着色器效果，模拟量子力学波函数干涉、概率密度分布和量子纠缠现象的三维可视化技术"
+        }
+      },
+      {
+        id: "holographicWater",
+        name: "全息水幕",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/holographicWater.html",
+        image: HOST + "threeExamples/water/holographicWater.png",
+        meta: {
+          title: "Three.js全息水幕效果 - 全息投影风格的水幕可视化",
+          keywords: "Three.js全息水幕,扫描线效果,数据流动,全息投影,WebGL渲染",
+          description: "使用Three.js实现的全息水幕着色器效果，创建全息投影风格的扫描线、数据流动和水幕波动的三维可视化体验"
+        }
+      },
+      {
+        id: "lavaWaterfall",
+        name: "熔岩瀑布",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/lavaWaterfall.html",
+        image: HOST + "threeExamples/water/lavaWaterfall.png",
+        meta: {
+          title: "Three.js熔岩瀑布效果 - 熔岩与水混合的奇幻效果",
+          keywords: "Three.js熔岩瀑布,热浪效果,岩浆气泡,水火混合,WebGL特效",
+          description: "基于Three.js实现的熔岩瀑布着色器效果，模拟熔岩流动、热浪波动和水火混合的奇幻三维可视化技术"
+        }
+      },
+      {
+        id: "spacetimeRipple",
+        name: "时空涟漪",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/spacetimeRipple.html",
+        image: HOST + "threeExamples/water/spacetimeRipple.png",
+        meta: {
+          title: "Three.js时空涟漪效果 - 相对论时空扭曲的水面",
+          keywords: "Three.js时空涟漪,引力波传播,时间膨胀,黑洞吸积,WebGL渲染",
+          description: "使用Three.js实现的时空涟漪着色器效果，模拟相对论时空扭曲、引力波传播和时间膨胀现象的三维物理可视化"
+        }
+      },
+      {
+        id: "digitalWater",
+        name: "数字水纹",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/water/digitalWater.html",
+        image: HOST + "threeExamples/water/digitalWater.png",
+        meta: {
+          title: "Three.js数字水纹效果 - 数字化和像素化的水纹可视化",
+          keywords: "Three.js数字水纹,像素化效果,数据流动,数字故障,WebGL特效",
+          description: "基于Three.js实现的数字水纹着色器效果，创建数字化像素化、数据流动和数字故障风格的水纹三维可视化技术"
+        }
+      },
     ],
   },
+
   {
     pid: "ShiningGlowing",
     name: "闪耀发光",
@@ -2179,8 +2420,21 @@ export default [
           description: "使用three.js骨骼动画",
         },
       },
+      {
+        id: "extrudeGeometryThreeColors",
+        name: "挤压几何体三色分离",
+        author: "AivoGenX",
+        codeUrl: HOST + "threeExamples/basic/extrudeGeometryThreeColors.html",
+        image: HOST + "threeExamples/basic/extrudeGeometryThreeColors.png",
+        meta: {
+          title: "Three.js挤压几何体三色分离效果 - 顶面、底面、侧面不同颜色",
+          keywords: "Three.js挤压几何体,ExtrudeGeometry,材质分组,三色分离,WebGL渲染",
+          description: "基于Three.js实现的挤压几何体三色分离效果，通过修改ExtrudeGeometry源码实现顶面、底面、侧面分别使用不同颜色的高级材质分组技术"
+        }
+      },
     ],
   },
+
   {
     pid: "case",
     name: "入门实例",
@@ -2372,8 +2626,8 @@ export default [
   },
 
   {
-    pid: "tools",
-    name: "相关工具",
+    pid: "onlineResources",
+    name: "免费资源",
     children: [
       {
         id: "sketchfab_model",

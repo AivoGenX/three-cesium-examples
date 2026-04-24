@@ -1,0 +1,15 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="waterfallGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a90e2;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6699ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#88aaff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="#000"/>
+  <rect x="120" y="40" width="60" height="120" fill="url(#waterfallGradient)"/>
+  <path d="M120,40 Q150,60 180,40" fill="none" stroke="#ffffff" stroke-width="1" stroke-linecap="round"/>
+  <path d="M125,60 Q150,80 175,60" fill="none" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.8"/>
+  <path d="M130,80 Q150,100 170,80" fill="none" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+  <path d="M135,100 Q150,120 165,100" fill="none" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+</svg>

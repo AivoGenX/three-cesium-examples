@@ -52,7 +52,7 @@ export default [
       // 案例说明 
       {
         name: "案例说明",
-        url: "http://www.threelab.cn/static/CaseStudy.html",
+        url: "https://www.threelab.cn/threejs-case.html",
       },
 
     ],
@@ -66,7 +66,7 @@ export default [
       },
       {
         name: "赞助团队",
-        url: "http://trilab.threelab.cn/index.html",
+        url: "https://trilab.threelab.cn/index.html",
       },
     ],
   },

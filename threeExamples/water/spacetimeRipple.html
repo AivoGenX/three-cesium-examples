@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 时空涟漪效果</title>
+    <!-- 配置模块导入映射 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./threejs/build/three.module.js",
+                "three/addons/": "./threejs/examples/jsm/",
+                "gsap": "./js/gsap/index.js",
+                "dat.gui": "./js/dat/build/dat.gui.module.js"
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #000;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #box {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- 渲染容器 -->
+    <div id="box"></div>
+
+    <script type="module">
+        // 导入所需模块
+        import * as THREE from "three";
+        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+        import * as dat from "dat.gui";
+        import gsap from "gsap";
+
+        // 全局变量声明
+        let scene, camera, renderer;
+        let _width, _height;
+        let mat;  // 着色器材质
+        let _primitive;  // 3D几何体对象
+        let clock = new THREE.Clock();
+        let gui;
+
+        // 初始化函数
+        function init() {
+            // 获取容器尺寸
+            const container = document.getElementById('box');
+            _width = container.clientWidth;
+            _height = container.clientHeight;
+
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000011);
+
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(60, _width / _height, 0.1, 1000);
+            camera.position.set(0, 0, 8);
+
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(_width, _height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // 添加轨道控制器
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // 创建着色器材质
+            createShaderMaterial();
+
+            // 创建几何体
+            createGeometry();
+
+            // 创建GUI
+            createGUI();
+
+            // 开始动画循环
+            animate();
+
+            // 窗口大小变化处理
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // 创建着色器材质
+        function createShaderMaterial() {
+            const vertexShader = `
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                void main() {
+                    vUv = uv;
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+
+            const fragmentShader = `
+                uniform float time;
+                uniform vec2 resolution;
+                uniform float spacetimeWarp;
+                uniform float gravitationalWave;
+                uniform float timeDilation;
+                uniform vec3 spacetimeColor;
+                
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                // 时空扭曲函数
+                vec2 spacetimeDistortion(vec2 uv, float time) {
+                    vec2 distortedUV = uv;
+                    
+                    // 创建时空扭曲效果
+                    float distortion = spacetimeWarp * 0.1;
+                    
+                    distortedUV.x += sin(uv.y * 10.0 + time * 2.0) * distortion;
+                    distortedUV.y += cos(uv.x * 10.0 + time * 1.5) * distortion;
+                    
+                    return distortedUV;
+                }
+                
+                // 引力波效果
+                float gravitationalWaveEffect(vec2 uv, float time) {
+                    float wave = 0.0;
+                    
+                    // 创建引力波传播
+                    for (int i = 0; i < 3; i++) {
+                        float frequency = 5.0 + float(i) * 2.0;
+                        float amplitude = 0.1 - float(i) * 0.03;
+                        
+                        wave += sin(distance(uv, vec2(0.5)) * frequency - time * 3.0) * amplitude;
+                    }
+                    
+                    return wave * gravitationalWave;
+                }
+                
+                // 时间膨胀效果
+                float timeDilationEffect(vec2 uv, float time, float dilation) {
+                    float dilationEffect = 0.0;
+                    
+                    // 创建时间膨胀区域
+                    vec2 center = vec2(0.5, 0.5);
+                    float dist = distance(uv, center);
+                    
+                    dilationEffect = sin(dist * 20.0 - time * dilation * 5.0) * exp(-dist * 8.0);
+                    
+                    return dilationEffect;
+                }
+                
+                // 黑洞吸积盘效果
+                float accretionDisk(vec2 uv, float time) {
+                    float disk = 0.0;
+                    
+                    // 创建吸积盘旋转效果
+                    vec2 center = vec2(0.5, 0.5);
+                    float angle = atan(uv.y - center.y, uv.x - center.x);
+                    float radius = distance(uv, center);
+                    
+                    disk = sin(angle * 10.0 + time * 4.0) * exp(-radius * 15.0) * 0.3;
+                    
+                    return disk;
+                }
+                
+                // 时空涟漪效果
+                float spacetimeRipple(vec2 uv, float time) {
+                    float ripple = 0.0;
+                    
+                    // 创建时空涟漪
+                    for (int i = 0; i < 4; i++) {
+                        float seed = float(i) * 67.890;
+                        vec2 source = vec2(
+                            fract(sin(seed * 78.233) * 43758.5453),
+                            fract(sin(seed * 12.9898) * 43758.5453)
+                        );
+                        
+                        float dist = distance(uv, source);
+                        float wave = sin(dist * 25.0 - time * 6.0) * exp(-dist * 12.0);
+                        
+                        ripple += wave * 0.2;
+                    }
+                    
+                    return ripple;
+                }
+                
+                void main() {
+                    vec2 uv = vUv;
+                    
+                    // 应用时空扭曲
+                    vec2 distortedUV = spacetimeDistortion(uv, time);
+                    
+                    // 引力波效果
+                    float gravityWave = gravitationalWaveEffect(distortedUV, time);
+                    
+                    // 时间膨胀效果
+                    float timeDilation = timeDilationEffect(distortedUV, time, timeDilation);
+                    
+                    // 黑洞吸积盘
+                    float accretion = accretionDisk(distortedUV, time);
+                    
+                    // 时空涟漪
+                    float ripple = spacetimeRipple(distortedUV, time);
+                    
+                    // 组合效果
+                    float finalEffect = (gravityWave + timeDilation + accretion + ripple) * 2.0;
+                    
+                    // 时空基础色
+                    vec3 color = spacetimeColor * (finalEffect * 0.5 + 0.5);
+                    
+                    // 添加时空发光效果
+                    float glow = smoothstep(0.3, 0.0, abs(finalEffect)) * 0.8;
+                    color += glow * vec3(0.1, 0.3, 0.8);
+                    
+                    // 添加星光效果
+                    float stars = sin(uv.x * 100.0 + time * 10.0) * sin(uv.y * 100.0 + time * 10.0) * 0.05;
+                    color += stars * vec3(1.0, 1.0, 1.0);
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+
+            mat = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: {
+                    time: { value: 0 },
+                    resolution: { value: new THREE.Vector2(_width, _height) },
+                    spacetimeWarp: { value: 1.0 },
+                    gravitationalWave: { value: 0.7 },
+                    timeDilation: { value: 1.2 },
+                    spacetimeColor: { value: new THREE.Color(0x3366ff) }
+                }
+            });
+        }
+
+        // 创建几何体
+        function createGeometry() {
+            const geometry = new THREE.PlaneGeometry(6, 6, 128, 128);
+            _primitive = new THREE.Mesh(geometry, mat);
+            scene.add(_primitive);
+        }
+
+        // 创建GUI
+        function createGUI() {
+            gui = new dat.GUI();
+            const params = {
+                spacetimeColor: '#3366ff',
+                spacetimeWarp: 1.0,
+                gravitationalWave: 0.7,
+                timeDilation: 1.2,
+                reset: function() {
+                    mat.uniforms.spacetimeColor.value.set('#3366ff');
+                    mat.uniforms.spacetimeWarp.value = 1.0;
+                    mat.uniforms.gravitationalWave.value = 0.7;
+                    mat.uniforms.timeDilation.value = 1.2;
+                    gui.updateDisplay();
+                }
+            };
+
+            gui.addColor(params, 'spacetimeColor').onChange(value => {
+                mat.uniforms.spacetimeColor.value.set(value);
+            });
+            gui.add(mat.uniforms.spacetimeWarp, 'value', 0.1, 2.0).name('时空扭曲');
+            gui.add(mat.uniforms.gravitationalWave, 'value', 0.1, 1.5).name('引力波强度');
+            gui.add(mat.uniforms.timeDilation, 'value', 0.5, 2.0).name('时间膨胀');
+            gui.add(params, 'reset').name('重置');
+        }
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            mat.uniforms.time.value += delta;
+            
+            renderer.render(scene, camera);
+        }
+
+        // 窗口大小变化处理
+        function onWindowResize() {
+            const container = document.getElementById('box');
+            _width = container.clientWidth;
+            _height = container.clientHeight;
+            
+            camera.aspect = _width / _height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(_width, _height);
+            mat.uniforms.resolution.value.set(_width, _height);
+        }
+
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>
