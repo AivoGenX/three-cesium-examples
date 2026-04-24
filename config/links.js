@@ -43,7 +43,7 @@ export default [
     children: [
       {
         name: "文档教程",
-        url: "https://docs.threelab.cn/",
+        url: "http://docs.threelab.cn/",
       },
       {
         name: "视频教程",
@@ -52,7 +52,7 @@ export default [
       // 案例说明 
       {
         name: "案例说明",
-        url: "https://www.threelab.cn/threejs-case.html",
+        url: "http://www.threelab.cn/threejs-case.html",
       },
 
     ],
@@ -62,11 +62,11 @@ export default [
     children: [
       {
         name: "TriLab引擎",
-        url: "https://threelab.cn/TriLabEngine/#/",
+        url: "http://threelab.cn/TriLabEngine/#/",
       },
       {
         name: "赞助团队",
-        url: "https://trilab.threelab.cn/index.html",
+        url: "http://trilab.threelab.cn/index.html",
       },
     ],
   },
