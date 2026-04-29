@@ -1,4 +1,4 @@
-# 💎 Three.js & Cesium 3D 案例平台
+# 💎 Three.js & Cesium 3D 案例分享
 
 > Web3D+GIS 开源社区平台，专注于 Three.js 和 Cesium 的案例展示与分享
 
