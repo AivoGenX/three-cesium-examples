@@ -25,6 +25,7 @@
 
 - **主站**：https://threelab.github.io/three-lab-demos/#/example
 - **国内镜像**：https://gitee.com/giser2017/three-lab-demos
+- **社区讨论**：https://github.com/threelab/three-lab-demos/discussions
 
 ---
 
@@ -158,6 +159,7 @@ This platform is an open-source Web3D case library focusing on **Three.js** and 
 
 - **Main**: https://threelab.github.io/three-lab-demos/#/example
 - **Mirror**: https://gitee.com/giser2017/three-lab-demos
+- **Discussions**: https://github.com/threelab/three-lab-demos/discussions
 
 ---
 
