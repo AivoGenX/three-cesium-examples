@@ -109,7 +109,7 @@ window.GET_SCRIPT = (v, t) => {
       ${v}`;
   }
 
-  return `<link rel="stylesheet" type="text/css" href="${HOST}css/threelab.css" />
+  return `
     <script>
       window.HOST = "${HOST}";
       window.FILE_HOST = "${FILE_HOST}";
