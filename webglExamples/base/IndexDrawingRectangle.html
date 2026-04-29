@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGL Indexed Rectangle Example</title>
+</head>
+<body>
+    <canvas id="webglCanvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('webglCanvas');
+        const gl = canvas.getContext('webgl');
+
+        if (!gl) {
+            alert('Your browser does not support WebGL');
+        }
+
+        // 顶点着色器代码
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+        `;
+
+        // 片元着色器代码
+        const fragmentShaderSource = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); // 蓝色
+            }
+        `;
+
+        // 创建顶点着色器
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexShaderSource);
+        gl.compileShader(vertexShader);
+
+        // 创建片元着色器
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentShaderSource);
+        gl.compileShader(fragmentShader);
+
+        // 创建程序
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(program));
+        }
+
+        // 使用程序
+        gl.useProgram(program);
+
+        // 定义顶点数据
+        const vertices = [
+            -0.5, -0.5,  // 左下
+             0.5, -0.5,  // 右下
+             0.5,  0.5,  // 右上
+            -0.5,  0.5   // 左上
+        ];
+
+        // 创建顶点缓冲区对象
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        // 获取attribute变量的位置
+        const positionLocation = gl.getAttribLocation(program, 'a_position');
+
+        // 绑定缓冲区到attribute变量
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        // 定义索引数据
+        const indices = [
+            0, 1, 2,  // 第一个三角形
+            0, 2, 3   // 第二个三角形
+        ];
+
+        // 创建索引缓冲区对象
+        const indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+        // 清空画布
+        gl.clearColor(0.0, 0.0, 0.0, 1.0); // 设置背景颜色为黑色
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 绘制矩形（使用索引绘制）
+        gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    </script>
+</body>
+</html>

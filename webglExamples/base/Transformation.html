@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGL Transformation Example</title>
+</head>
+<body>
+    <canvas id="webglCanvas" width="800" height="600"></canvas>
+    <script src="./webglExamples/base/gl-matrix-min.js"></script>
+    <script>
+        const canvas = document.getElementById('webglCanvas');
+        const gl = canvas.getContext('webgl');
+
+        if (!gl) {
+            alert('Your browser does not support WebGL');
+        }
+
+        // 顶点着色器代码
+        const vertexShaderSource = `
+            attribute vec4 a_position;
+            uniform mat4 u_modelViewProjectionMatrix;
+            void main() {
+                gl_Position = u_modelViewProjectionMatrix * a_position;
+            }
+        `;
+
+        // 片元着色器代码
+        const fragmentShaderSource = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 红色
+            }
+        `;
+
+        // 创建顶点着色器
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexShaderSource);
+        gl.compileShader(vertexShader);
+
+        // 创建片元着色器
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentShaderSource);
+        gl.compileShader(fragmentShader);
+
+        // 创建程序
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(program));
+        }
+
+        // 使用程序
+        gl.useProgram(program);
+
+        // 定义顶点数据
+        const vertices = [
+            -0.5, -0.5, 0.0,
+             0.5, -0.5, 0.0,
+             0.0,  0.5, 0.0
+        ];
+
+        // 创建顶点缓冲区对象
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        // 获取attribute变量的位置
+        const positionLocation = gl.getAttribLocation(program, 'a_position');
+
+        // 绑定缓冲区到attribute变量
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+
+        // 获取uniform变量的位置
+        const modelViewProjectionMatrixLocation = gl.getUniformLocation(program, 'u_modelViewProjectionMatrix');
+
+        // 创建矩阵
+        const modelMatrix = mat4.create();
+        const viewMatrix = mat4.create();
+        const projectionMatrix = mat4.create();
+        const modelViewProjectionMatrix = mat4.create();
+
+        // 设置模型矩阵（平移、旋转、缩放）
+        mat4.translate(modelMatrix, modelMatrix, [0.0, 0.0, -2.0]); // 平移
+        mat4.rotate(modelMatrix, modelMatrix, Math.PI / 4, [0, 0, 1]); // 旋转45度
+        mat4.scale(modelMatrix, modelMatrix, [1.0, 1.0, 1.0]); // 缩放
+
+        // 设置视图矩阵（观察者位置和方向）
+        mat4.lookAt(viewMatrix, [0, 0, 5], [0, 0, 0], [0, 1, 0]);
+
+        // 设置投影矩阵（透视投影）
+        mat4.perspective(projectionMatrix, Math.PI / 4, canvas.width / canvas.height, 0.1, 100.0);
+
+        // 计算模型视图投影矩阵
+        mat4.multiply(modelViewProjectionMatrix, viewMatrix, modelMatrix);
+        mat4.multiply(modelViewProjectionMatrix, projectionMatrix, modelViewProjectionMatrix);
+
+        // 将矩阵传递给着色器
+        gl.uniformMatrix4fv(modelViewProjectionMatrixLocation, false, modelViewProjectionMatrix);
+
+        // 清空画布
+        gl.clearColor(0.0, 0.0, 0.0, 1.0); // 设置背景颜色为黑色
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 绘制三角形
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+    </script>
+
+</body>
+</html>

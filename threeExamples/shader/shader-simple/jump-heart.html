@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Open Three - Shader Animation</title>
+    <!-- 配置Three.js模块导入映射 -->
+      <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+    <style>
+      /* 基础样式重置和布局设置 */
+      body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        background-color: #1f1f1f;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden; /* 防止页面滚动 */
+      }
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 用于放置Three.js渲染结果的容器 -->
+    <div id="canvas-container"></div>
+
+    <script type="module">
+      // 导入Three.js核心库和轨道控制器
+      import * as THREE from "three";
+       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      // 初始化场景核心组件
+      function initThreeJS() {
+        // 获取DOM容器
+        const container = document.getElementById("canvas-container");
+
+        // 创建场景 - 所有物体的容器
+        const scene = new THREE.Scene();
+
+        // 创建相机 - 定义视图和视角
+        // 参数: 视角角度, 宽高比, 近平面, 远平面
+        const camera = new THREE.PerspectiveCamera(
+          75,
+          container.clientWidth / container.clientHeight,
+          0.1,
+          1000
+        );
+        // 设置相机初始位置
+        camera.position.set(0, 0, 10);
+
+        // 创建渲染器 - 负责将3D场景绘制到DOM中
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true, // 启用抗锯齿，使边缘更平滑
+        });
+        // 设置渲染器尺寸以匹配容器
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        // 将渲染器的DOM元素添加到页面
+        container.appendChild(renderer.domElement);
+
+        // 添加轨道控制器 - 允许用户通过鼠标交互旋转/缩放场景
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // 启用阻尼效果，使旋转更平滑
+        controls.dampingFactor = 0.1; // 阻尼系数
+
+        // 添加坐标轴辅助线 - 帮助开发时定位（红色：X轴，绿色：Y轴，蓝色：Z轴）
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        // 处理窗口大小变化
+        window.addEventListener("resize", () => {
+          // 更新渲染器尺寸
+          renderer.setSize(container.clientWidth, container.clientHeight);
+          // 更新相机宽高比
+          camera.aspect = container.clientWidth / container.clientHeight;
+          // 重新计算相机投影矩阵
+          camera.updateProjectionMatrix();
+        });
+
+        return { scene, camera, renderer, controls };
+      }
+
+      // 创建带有着色器材质的平面网格
+      function createShaderMesh() {
+        // 着色器 uniforms - 可以在JavaScript和GLSL之间传递的变量
+        const uniforms = {
+          iTime: { value: 0 }, // 时间变量，用于动画
+          iResolution: { value: new THREE.Vector2(1900, 1900) }, // 分辨率
+        };
+
+        // 创建平面几何体 - 一个20x20单位的平面
+        const geometry = new THREE.PlaneGeometry(20, 20);
+
+        // 创建着色器材质 - 使用自定义GLSL着色器
+        const material = new THREE.ShaderMaterial({
+          uniforms: uniforms,
+          side: THREE.DoubleSide, // 双面可见
+          depthWrite: false, // 不写入深度缓冲区
+          transparent: true, // 启用透明度
+          // 顶点着色器 - 处理顶点位置
+          vertexShader: `
+                    // 传递给片段着色器的变量
+                    varying vec2 vUv;
+                    
+                    void main() { 
+                        // 将UV坐标传递给片段着色器
+                        vUv = uv; 
+                        // 计算模型视图矩阵中的顶点位置
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        // 计算最终投影位置
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+          // 片段着色器 - 处理像素颜色，创建动画效果
+          fragmentShader: `
+                    // 从JavaScript接收的变量
+                    uniform float iTime; 
+                    uniform vec2 iResolution;  
+                    // 从顶点着色器接收的变量
+                    varying vec2 vUv;  
+                     
+                    void main(void) {
+                        // 将UV坐标标准化到[-1, 1]范围
+                        vec2 p = (vUv - 0.5) * 2.0;
+                        
+                        // 计算背景颜色 - 暖色调渐变
+                        vec3 bcol = vec3(1.0, 0.8, 0.7 - 0.07 * p.y) * 
+                                  (1.0 - 0.25 * length(p));
+                        
+                        // 动画时间控制 - 循环动画（1.5秒一个周期）
+                        float tt = mod(iTime, 1.5) / 1.5; // 0到1之间的时间值
+                        float ss = pow(tt, 0.2) * 0.5 + 0.5; // 缓动函数
+                        // 随时间变化的正弦波动
+                        ss = 1.0 + ss * 0.5 * sin(tt * 6.2831 * 3.0 + p.y * 0.5) * exp(-tt * 4.0);
+                        // 应用变形到坐标
+                        p *= vec2(0.5, 1.5) + ss * vec2(0.5, -0.5);
+                        
+                        // 形状计算
+                        p.y -= 0.25; // Y轴偏移
+                        float a = atan(p.x, p.y) / 3.141593; // 计算角度（标准化到-1到1）
+                        float r = length(p); // 极坐标半径
+                        float h = abs(a); // 角度绝对值
+                        // 形状函数 - 计算距离场
+                        float d = (13.0 * h - 22.0 * h * h + 10.0 * h * h * h) / (6.0 - 5.0 * h);
+                        
+                        // 颜色计算
+                        float s = 0.75 + 0.75 * p.x; // 基于X坐标的亮度变化
+                        s *= 1.0 - 0.4 * r; // 基于距离的衰减
+                        s = 0.3 + 0.7 * s; // 亮度调整
+                        // 边缘平滑处理
+                        s *= 0.5 + 0.5 * pow(1.0 - clamp(r / d, 0.0, 1.0), 0.1);
+                        // 形状颜色 - 暖色调
+                        vec3 hcol = vec3(1.0, 0.4 * r, 0.3) * s;
+                        
+                        // 混合背景色和形状色，创建平滑边缘
+                        vec3 col = mix(bcol, hcol, smoothstep(-0.01, 0.01, d - r));
+                        
+                        // 输出最终颜色
+                        gl_FragColor = vec4(col, 1.0);
+                    }
+                `,
+        });
+
+        // 创建网格并应用材质
+        const mesh = new THREE.Mesh(geometry, material);
+
+        return { mesh, uniforms };
+      }
+
+      // 动画循环
+      function animate(scene, camera, renderer, controls, uniforms) {
+        // 更新时间变量，驱动动画
+        uniforms.iTime.value += 0.01;
+
+        // 更新控制器状态（用于阻尼效果）
+        controls.update();
+
+        // 渲染场景
+        renderer.render(scene, camera);
+
+        // 请求下一帧动画
+        requestAnimationFrame(() => {
+          animate(scene, camera, renderer, controls, uniforms);
+        });
+      }
+
+      // 主函数 - 初始化并启动应用
+      function main() {
+        // 初始化Three.js核心组件
+        const { scene, camera, renderer, controls } = initThreeJS();
+
+        // 创建带有着色器的网格并添加到场景
+        const { mesh, uniforms } = createShaderMesh();
+        scene.add(mesh);
+
+        // 启动动画循环
+        animate(scene, camera, renderer, controls, uniforms);
+      }
+
+      // 启动应用
+      main();
+    </script>
+  </body>
+</html>

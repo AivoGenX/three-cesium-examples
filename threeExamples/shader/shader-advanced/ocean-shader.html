@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ThreeLab 赛博水面 Demo</title>
+
+  <!-- 映射裸模块路径 -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    /* 全屏无滚动条 */
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:Arial;}
+    #box{width:100%;height:100%;}
+    /* 右下角 ThreeLab 水印 */
+    #watermark{
+      position:fixed;
+      right:10px;bottom:10px;
+      color:#0ff;font-size:12px;
+      pointer-events:none;
+      opacity:0.4;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="box"></div>
+  <div id="watermark">ThreeLab © 2024</div>
+
+  <script type="module">
+    /* ========================================================
+       0. 模块导入
+    ======================================================== */
+    import * as THREE        from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { Water }         from 'three/addons/objects/Water.js';
+    import { GUI }           from 'three/addons/libs/lil-gui.module.min.js';
+    import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+
+    /* ========================================================
+       1. 场景、相机、渲染器
+    ======================================================== */
+    const box      = document.getElementById('box');
+    const scene    = new THREE.Scene();
+    const camera   = new THREE.PerspectiveCamera(50, box.clientWidth/box.clientHeight, 0.1, 1000000);
+    camera.position.set(6, 3, 15);
+
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, logarithmicDepthBuffer:true });
+    renderer.setSize(box.clientWidth, box.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    box.appendChild(renderer.domElement);
+
+    /* 控制器 */
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    /* ========================================================
+       2. 大面积水面
+    ======================================================== */
+    const waterGeometry = new THREE.PlaneGeometry(10000, 10000); 
+    const water = new Water(waterGeometry, {
+      textureWidth:  512,
+      textureHeight: 512,
+      waterNormals:  new THREE.TextureLoader().load(FILE_HOST + 'images/texture/waternormals.jpg', tex=>{
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;   // 无缝平铺
+      }),
+      sunDirection:  new THREE.Vector3(0.3, 0.9, 0.2).normalize(), // 太阳方向
+      sunColor:      0xffffff,
+      waterColor:    0x1394f6,
+      distortionScale: 3.7,
+      fog: scene.fog !== undefined
+    });
+    water.rotation.x = -Math.PI / 2;  // 水平面
+    scene.add(water);
+
+    /* ========================================================
+       3. 天空盒（6 张 PNG 立方体贴图）
+    ======================================================== */
+    const skyUrls = [0,1,2,3,4,5].map(k => FILE_HOST + 'files/sky/skyBox0/' + (k+1) + '.png');
+    scene.background = new THREE.CubeTextureLoader().load(skyUrls);
+
+    /* ========================================================
+       4. 加载 GLB 模型
+          若网络/链接异常，可换 Duck.glb 测试：
+          'https://threejs.org/examples/models/gltf/Duck.glb'
+    ======================================================== */
+    new GLTFLoader().load(FILE_HOST+'/models/glb/wajueji.glb', gltf=>{
+      const root = gltf.scene;
+      root.traverse(child=>{
+        if(child.isMesh){
+          // 让模型反射天空盒
+          child.material.envMap = scene.background;
+        }
+      });
+      root.position.y=1;
+      scene.add(root);
+    });
+
+    /* ========================================================
+       5. GUI 调试
+    ======================================================== */
+    const gui = new GUI();
+    gui.addColor(water.material.uniforms.waterColor, 'value').name('水面颜色');
+    gui.addColor(water.material.uniforms.sunColor,   'value').name('太阳颜色');
+    gui.add(water.material.uniforms.sunDirection.value, 'x', -1, 1, 0.01).name('太阳方向 X');
+
+    /* ========================================================
+       6. 帧循环
+    ======================================================== */
+    function animate(){
+      requestAnimationFrame(animate);
+      controls.update();
+      water.material.uniforms.time.value += 1.0 / 60.0;  // 水面动画
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    /* ========================================================
+       7. 窗口自适应
+    ======================================================== */
+    window.addEventListener('resize', ()=>{
+      renderer.setSize(box.clientWidth, box.clientHeight);
+      camera.aspect = box.clientWidth / box.clientHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    /* ========================================================
+       8. ThreeLab
+    ======================================================== */
+    console.log('%cThreeLab © 2024 - 赛博水面 Demo', 'color:#0ff;font-size:14px;background:#000;padding:4px 8px;border-radius:4px;');
+  </script>
+</body>
+</html>

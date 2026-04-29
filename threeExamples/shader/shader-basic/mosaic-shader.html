@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>马赛克滤镜 | Three.js 示例</title>
+    <!-- 配置Three.js模块导入映射 -->
+      <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        background-color: #121212;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #container {
+        width: 100%;
+        height: 100%;
+      }
+      /* 加载提示样式 */
+      .loading {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+        opacity: 0.8;
+        transition: opacity 0.5s ease;
+      }
+      .loading.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 加载提示 -->
+    <div class="loading" id="loading">加载中...</div>
+    <!-- 渲染容器 -->
+    <div id="container"></div>
+
+    <script type="module">
+      // 导入所需库
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GUI } from 'three/addons/libs/lil-gui.module.min.js';;
+
+      // 获取DOM容器
+      const container = document.getElementById("container");
+      const loadingIndicator = document.getElementById("loading");
+
+      // 初始化场景
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x121212); // 设置场景背景色
+
+      // 初始化相机 - 透视相机
+      // 参数: 视野角度(75°), 宽高比, 近裁剪面, 远裁剪面
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 0, 1); // 设置相机位置，使其正对平面
+
+      // 初始化渲染器
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true, // 启用抗锯齿，使边缘更平滑
+      });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比，平衡性能
+      container.appendChild(renderer.domElement);
+
+      // 初始化轨道控制器 - 允许用户交互
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; // 启用阻尼效果
+      controls.dampingFactor = 0.1; // 阻尼系数
+      controls.enableZoom = true; // 允许缩放
+      controls.enableRotate = false; // 禁用旋转（对于图片查看更合适）
+      controls.zoomSpeed = 0.5; // 缩放速度
+
+      // 定义着色器所需的uniform变量
+      const uniforms = {
+        // 纹理采样器 - 用于加载图片
+        tDiffuse: {
+          type: "t",
+          value: null, // 稍后加载图片
+        },
+        // 屏幕尺寸 - 用于计算马赛克大小
+        vScreenSize: {
+          type: "v2",
+          value: new THREE.Vector2(
+            container.clientWidth,
+            container.clientHeight
+          ),
+        },
+        // 马赛克尺寸 - 控制马赛克块大小
+        fMosaicScale: {
+          type: "f",
+          value: 20.0,
+        },
+      };
+
+      // 加载图片纹理
+      const textureLoader = new THREE.TextureLoader();
+      // 显示加载提示
+      loadingIndicator.textContent = "加载图片中...";
+
+      textureLoader.load(
+        `/files/author/AivoGenX.png`,
+        // 加载成功回调
+        (texture) => {
+          uniforms.tDiffuse.value = texture;
+          // 隐藏加载提示
+          loadingIndicator.classList.add("hidden");
+        },
+        // 加载进度回调
+        (xhr) => {
+          const percent = Math.round((xhr.loaded / xhr.total) * 100);
+          loadingIndicator.textContent = `加载中: ${percent}%`;
+        },
+        // 加载错误回调
+        (error) => {
+          console.error("图片加载错误:", error);
+          loadingIndicator.textContent = "图片加载失败";
+        }
+      );
+
+      // 顶点着色器 - 传递UV坐标
+      const vertexShader = ` 
+            varying vec2 vUv; // 声明 varying 变量，用于传递UV坐标到片段着色器
+            
+            void main() {
+                vUv = uv; // 将模型的UV坐标赋值给 varying 变量
+                // 计算顶点最终位置
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+      // 片段着色器 - 实现马赛克效果
+      const fragmentShader = `
+            varying vec2 vUv; // 接收从顶点着色器传递的UV坐标
+            
+            // 声明uniform变量
+            uniform sampler2D tDiffuse; // 纹理采样器
+            uniform vec2 vScreenSize;   // 屏幕尺寸
+            uniform float fMosaicScale; // 马赛克尺寸
+            
+            void main() {
+                // 复制原始UV坐标
+                vec2 vUv2 = vUv;
+                
+                // 计算马赛克效果：将UV坐标量化为块状
+                // X方向量化
+                vUv2.x = floor(vUv2.x * vScreenSize.x / fMosaicScale) / 
+                         (vScreenSize.x / fMosaicScale) + 
+                         (fMosaicScale / 2.0) / vScreenSize.x;
+                         
+                // Y方向量化
+                vUv2.y = floor(vUv2.y * vScreenSize.y / fMosaicScale) / 
+                         (vScreenSize.y / fMosaicScale) + 
+                         (fMosaicScale / 2.0) / vScreenSize.y;
+                
+                // 从处理后的UV坐标采样纹理颜色
+                vec4 color = texture2D(tDiffuse, vUv2);
+                
+                // 输出最终颜色
+                gl_FragColor = color;
+            }
+        `;
+
+      // 创建自定义着色器材质
+      const material = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+      });
+
+      // 创建平面几何体 - 用于显示图片
+      // 使用单位平面，后续会根据图片比例调整
+      const geometry = new THREE.PlaneGeometry(1, 1);
+
+      // 创建网格并添加到场景
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+
+      // 监听纹理加载完成事件，调整平面比例以匹配图片
+      material.onBeforeCompile = (shader) => {
+        if (uniforms.tDiffuse.value) {
+          const aspect =
+            uniforms.tDiffuse.value.image.width /
+            uniforms.tDiffuse.value.image.height;
+          mesh.scale.set(aspect, 1, 1); // 根据图片宽高比调整平面大小
+        }
+      };
+
+      // 创建控制面板
+      const gui = new GUI({
+        width: 300,
+        closed: false, // 默认展开控制面板
+      });
+      // 添加马赛克尺寸控制滑块
+      gui
+        .add(uniforms.fMosaicScale, "value", 1.0, 100.0)
+        .step(1.0)
+        .name("马赛克大小")
+        .onChange((value) => {
+          // 限制最小值，避免过大计算量
+          if (value < 1) value = 1;
+          uniforms.fMosaicScale.value = value;
+        });
+
+      // 处理窗口大小变化
+      window.addEventListener("resize", onWindowResize);
+      function onWindowResize() {
+        // 更新渲染器尺寸
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        // 更新相机宽高比
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        // 更新着色器中的屏幕尺寸
+        uniforms.vScreenSize.value.set(
+          container.clientWidth,
+          container.clientHeight
+        );
+      }
+
+      // 动画循环
+      function animate() {
+        requestAnimationFrame(animate);
+
+        // 更新控制器（用于阻尼效果）
+        controls.update();
+
+        // 渲染场景
+        renderer.render(scene, camera);
+      }
+
+      // 启动动画
+      animate();
+    </script>
+  </body>
+</html>

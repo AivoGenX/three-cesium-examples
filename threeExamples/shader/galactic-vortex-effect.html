@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js银河漩涡效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #000033 0%, #000011 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #9966ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #9966ff;
+      border: 1px solid #9966ff;
+      box-shadow: 0 0 20px #9966ff;
+    }
+    .galaxy-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #66ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #66ffff;
+      border: 1px solid #66ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🌌 银河漩涡效果 - 实时渲染 🌌</div>
+  <div class="galaxy-info" id="galaxyInfo">漩涡强度: 强 | 旋转速度: 中等</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变漩涡效果<br>
+    • 实时交互：体验宇宙奇观
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x000033);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 银河漩涡效果参数
+    const galaxyParams = {
+      vortexStrength: 0.8,
+      rotationSpeed: 0.6,
+      starDensity: 0.7,
+      glowIntensity: 1.2,
+      spiralArms: 0.7,
+      galaxyType: 0,
+      showNebula: true
+    };
+
+    // 创建圆环几何体，作为银河的载体
+    const geometry = new THREE.TorusGeometry(2, 1, 64, 128);
+
+    // 顶点着色器代码 - 银河漩涡效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uVortexStrength;
+      uniform float uRotationSpeed;
+      uniform float uSpiralArms;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 漩涡效果
+        float vortex = sin(position.x * 3.0 + uTime * uVortexStrength) * 
+                      cos(position.y * 4.0 + uTime * uVortexStrength * 0.8) *
+                      sin(position.z * 3.0 + uTime * uVortexStrength * 0.6);
+        
+        // 旋转效果
+        float rotation = sin(position.x * 5.0 + uTime * uRotationSpeed * 2.0) *
+                        cos(position.z * 5.0 + uTime * uRotationSpeed * 2.0);
+        
+        // 螺旋臂效果
+        float spiral = sin(position.x * uSpiralArms * 8.0) *
+                      cos(position.y * uSpiralArms * 10.0);
+        
+        vec3 newPosition = position + normal * (vortex + rotation * 0.5 + spiral * 0.3) * 0.2;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 银河漩涡效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uVortexStrength;
+      uniform float uRotationSpeed;
+      uniform float uStarDensity;
+      uniform float uGlowIntensity;
+      uniform float uSpiralArms;
+      uniform int uGalaxyType;
+      uniform bool uShowNebula;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 银河漩涡效果
+      float galaxy(vec2 uv, float strength) {
+        float galaxyField = 0.0;
+        
+        // 多层漩涡
+        galaxyField += sin(uv.x * 4.0 + uTime * 0.2) * 
+                      cos(uv.y * 6.0 + uTime * 0.3);
+        galaxyField += sin(uv.x * 6.0 + uTime * 0.4) * 
+                      cos(uv.y * 8.0 + uTime * 0.5) * 0.7;
+        galaxyField += sin(uv.x * 8.0 + uTime * 0.6) * 
+                      cos(uv.y * 10.0 + uTime * 0.7) * 0.4;
+        
+        return galaxyField * strength;
+      }
+      
+      // 星星效果
+      float stars(vec2 uv, float density) {
+        float starField = 0.0;
+        for(int i = 0; i < 30; i++) {
+          vec2 starPos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, starPos);
+          float starSize = noise(vec2(float(i) * 0.789, 0.123)) * 0.06 + 0.03;
+          float starLife = mod(uTime * 1.5 + float(i) * 8.0, 6.28);
+          float starIntensity = sin(starLife) * 0.6 + 0.4;
+          starField += exp(-dist * 40.0) * starIntensity * density;
+        }
+        return starField;
+      }
+      
+      // 星云效果
+      float nebula(vec2 uv, float intensity) {
+        if(!uShowNebula) return 0.0;
+        
+        float nebulaField = 0.0;
+        for(int i = 0; i < 5; i++) {
+          vec2 nebulaPos = vec2(
+            noise(vec2(float(i) * 0.567, 0.234)),
+            noise(vec2(float(i) * 0.234, 0.567))
+          );
+          float dist = distance(uv, nebulaPos);
+          float nebulaSize = noise(vec2(float(i) * 0.345, 0.678)) * 0.3 + 0.2;
+          float nebulaLife = mod(uTime * 0.5 + float(i) * 10.0, 6.28);
+          float nebulaIntensity = sin(nebulaLife) * 0.4 + 0.6;
+          nebulaField += exp(-dist * 8.0) * nebulaIntensity * intensity;
+        }
+        return nebulaField;
+      }
+      
+      // 银河类型
+      vec3 getGalaxyType(int type) {
+        if(type == 0) {
+          // 紫色银河
+          return vec3(0.8, 0.4, 1.0);
+        } else if(type == 1) {
+          // 蓝色银河
+          return vec3(0.4, 0.6, 1.0);
+        } else {
+          // 绿色银河
+          return vec3(0.4, 1.0, 0.6);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 银河漩涡效果
+        float galaxyField = galaxy(uv, uVortexStrength);
+        
+        // 星星效果
+        float starField = stars(uv, uStarDensity);
+        
+        // 星云效果
+        float nebulaField = nebula(uv, 0.4);
+        
+        // 颜色计算
+        vec3 baseColor = getGalaxyType(uGalaxyType);
+        vec3 finalColor = baseColor * (galaxyField * 0.5 + starField * 0.3 + nebulaField * 0.2) * uGlowIntensity;
+        
+        // 旋转效果
+        float rotationEffect = sin(uTime * uRotationSpeed) * 0.1 + 0.9;
+        finalColor *= rotationEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uVortexStrength: { value: galaxyParams.vortexStrength },
+        uRotationSpeed: { value: galaxyParams.rotationSpeed },
+        uStarDensity: { value: galaxyParams.starDensity },
+        uGlowIntensity: { value: galaxyParams.glowIntensity },
+        uSpiralArms: { value: galaxyParams.spiralArms },
+        uGalaxyType: { value: galaxyParams.galaxyType },
+        uShowNebula: { value: galaxyParams.showNebula }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const galaxyTorus = new THREE.Mesh(geometry, material);
+    scene.add(galaxyTorus);
+
+    // 更新银河信息显示
+    function updateGalaxyInfo() {
+      const galaxyElement = document.getElementById('galaxyInfo');
+      let strength = "弱";
+      if(galaxyParams.vortexStrength > 0.5) strength = "中";
+      if(galaxyParams.vortexStrength > 0.8) strength = "强";
+      
+      let speed = "慢";
+      if(galaxyParams.rotationSpeed > 0.4) speed = "中等";
+      if(galaxyParams.rotationSpeed > 0.7) speed = "快";
+      
+      galaxyElement.textContent = `漩涡强度: ${strength} | 旋转速度: ${speed}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 银河参数控制
+    const galaxyFolder = gui.addFolder('银河效果参数');
+    galaxyFolder.add(galaxyParams, 'vortexStrength', 0.1, 1.2).name('漩涡强度');
+    galaxyFolder.add(galaxyParams, 'rotationSpeed', 0.1, 1.0).name('旋转速度');
+    galaxyFolder.add(galaxyParams, 'starDensity', 0.1, 1.0).name('星星密度');
+    galaxyFolder.add(galaxyParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    galaxyFolder.add(galaxyParams, 'spiralArms', 0.1, 1.0).name('螺旋臂');
+    galaxyFolder.add(galaxyParams, 'showNebula').name('显示星云');
+    
+    // 银河类型控制
+    const galaxyTypes = {
+      "紫色银河": 0,
+      "蓝色银河": 1,
+      "绿色银河": 2
+    };
+    galaxyFolder.add(galaxyParams, 'galaxyType', galaxyTypes).name('银河类型');
+    
+    galaxyFolder.open();
+
+    // 参数变化时更新材质和银河信息
+    gui.onChange(() => {
+      material.uniforms.uVortexStrength.value = galaxyParams.vortexStrength;
+      material.uniforms.uRotationSpeed.value = galaxyParams.rotationSpeed;
+      material.uniforms.uStarDensity.value = galaxyParams.starDensity;
+      material.uniforms.uGlowIntensity.value = galaxyParams.glowIntensity;
+      material.uniforms.uSpiralArms.value = galaxyParams.spiralArms;
+      material.uniforms.uGalaxyType.value = galaxyParams.galaxyType;
+      material.uniforms.uShowNebula.value = galaxyParams.showNebula;
+      
+      updateGalaxyInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转银河
+      galaxyTorus.rotation.y += galaxyParams.rotationSpeed * 0.01;
+      galaxyTorus.rotation.x += galaxyParams.rotationSpeed * 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化银河信息显示
+    updateGalaxyInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

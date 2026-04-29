@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js全息投影效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #003300 0%, #001100 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #66ff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #66ff66;
+      border: 1px solid #66ff66;
+      box-shadow: 0 0 20px #66ff66;
+    }
+    .hologram-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #ff66ff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff66ff;
+      border: 1px solid #ff66ff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">💡 全息投影效果 - 实时渲染 💡</div>
+  <div class="hologram-info" id="hologramInfo">投影强度: 高 | 扫描频率: 快速</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变全息效果<br>
+    • 实时交互：体验未来科技
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x003300);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 全息投影效果参数
+    const hologramParams = {
+      projectionIntensity: 0.9,
+      scanFrequency: 0.8,
+      hologramDensity: 0.7,
+      glowIntensity: 1.3,
+      dataStream: 0.6,
+      hologramType: 0,
+      showGrid: true
+    };
+
+    // 创建立方体几何体，作为全息投影的载体
+    const geometry = new THREE.BoxGeometry(3, 3, 3);
+
+    // 顶点着色器代码 - 全息投影效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uProjectionIntensity;
+      uniform float uScanFrequency;
+      uniform float uDataStream;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 全息投影效果
+        float projection = sin(position.x * 3.0 + uTime * uProjectionIntensity) * 
+                          cos(position.y * 4.0 + uTime * uProjectionIntensity * 0.8) *
+                          sin(position.z * 3.0 + uTime * uProjectionIntensity * 0.6);
+        
+        // 扫描频率
+        float scan = sin(position.x * 5.0 + uTime * uScanFrequency * 2.0) *
+                    cos(position.z * 5.0 + uTime * uScanFrequency * 2.0);
+        
+        // 数据流效果
+        float data = sin(position.x * uDataStream * 6.0) *
+                    cos(position.y * uDataStream * 8.0);
+        
+        vec3 newPosition = position + normal * (projection + scan * 0.5 + data * 0.3) * 0.15;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 全息投影效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uProjectionIntensity;
+      uniform float uScanFrequency;
+      uniform float uHologramDensity;
+      uniform float uGlowIntensity;
+      uniform float uDataStream;
+      uniform int uHologramType;
+      uniform bool uShowGrid;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 全息投影效果
+      float holographicProjection(vec2 uv, float intensity) {
+        float hologramField = 0.0;
+        
+        // 多层全息投影
+        hologramField += sin(uv.x * 4.0 + uTime * 0.3) * 
+                        cos(uv.y * 6.0 + uTime * 0.5);
+        hologramField += sin(uv.x * 6.0 + uTime * 0.7) * 
+                        cos(uv.y * 8.0 + uTime * 0.9) * 0.7;
+        hologramField += sin(uv.x * 8.0 + uTime * 1.1) * 
+                        cos(uv.y * 10.0 + uTime * 1.3) * 0.4;
+        
+        return hologramField * intensity;
+      }
+      
+      // 全息数据点效果
+      float hologramData(vec2 uv, float density) {
+        float dataField = 0.0;
+        for(int i = 0; i < 20; i++) {
+          vec2 dataPos = vec2(
+            noise(vec2(float(i) * 0.234, 0.567)),
+            noise(vec2(float(i) * 0.567, 0.891))
+          );
+          float dist = distance(uv, dataPos);
+          float dataSize = noise(vec2(float(i) * 0.891, 0.234)) * 0.04 + 0.02;
+          float dataLife = mod(uTime * 1.8 + float(i) * 10.0, 6.28);
+          float dataIntensity = sin(dataLife) * 0.7 + 0.3;
+          dataField += exp(-dist * 50.0) * dataIntensity * density;
+        }
+        return dataField;
+      }
+      
+      // 网格效果
+      float hologramGrid(vec2 uv, float intensity) {
+        if(!uShowGrid) return 0.0;
+        
+        float gridField = 0.0;
+        
+        // 水平网格线
+        gridField += sin(uv.x * 20.0) * 0.1;
+        
+        // 垂直网格线
+        gridField += sin(uv.y * 20.0) * 0.1;
+        
+        // 扫描线效果
+        gridField += sin(uv.y * 30.0 + uTime * 3.0) * 0.05;
+        
+        return gridField * intensity;
+      }
+      
+      // 全息类型
+      vec3 getHologramType(int type) {
+        if(type == 0) {
+          // 绿色全息
+          return vec3(0.2, 1.0, 0.4);
+        } else if(type == 1) {
+          // 蓝色全息
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 紫色全息
+          return vec3(0.8, 0.2, 1.0);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 全息投影效果
+        float hologramField = holographicProjection(uv, uProjectionIntensity);
+        
+        // 全息数据点效果
+        float dataField = hologramData(uv, uHologramDensity);
+        
+        // 网格效果
+        float gridField = hologramGrid(uv, 0.3);
+        
+        // 颜色计算
+        vec3 baseColor = getHologramType(uHologramType);
+        vec3 finalColor = baseColor * (hologramField * 0.5 + dataField * 0.3 + gridField * 0.2) * uGlowIntensity;
+        
+        // 扫描效果
+        float scanEffect = sin(uTime * uScanFrequency) * 0.2 + 0.8;
+        finalColor *= scanEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uProjectionIntensity: { value: hologramParams.projectionIntensity },
+        uScanFrequency: { value: hologramParams.scanFrequency },
+        uHologramDensity: { value: hologramParams.hologramDensity },
+        uGlowIntensity: { value: hologramParams.glowIntensity },
+        uDataStream: { value: hologramParams.dataStream },
+        uHologramType: { value: hologramParams.hologramType },
+        uShowGrid: { value: hologramParams.showGrid }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const hologramCube = new THREE.Mesh(geometry, material);
+    scene.add(hologramCube);
+
+    // 更新全息信息显示
+    function updateHologramInfo() {
+      const hologramElement = document.getElementById('hologramInfo');
+      let intensity = "低";
+      if(hologramParams.projectionIntensity > 0.5) intensity = "中";
+      if(hologramParams.projectionIntensity > 0.8) intensity = "高";
+      
+      let frequency = "慢";
+      if(hologramParams.scanFrequency > 0.4) frequency = "正常";
+      if(hologramParams.scanFrequency > 0.7) frequency = "快速";
+      
+      hologramElement.textContent = `投影强度: ${intensity} | 扫描频率: ${frequency}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 全息参数控制
+    const hologramFolder = gui.addFolder('全息效果参数');
+    hologramFolder.add(hologramParams, 'projectionIntensity', 0.1, 1.2).name('投影强度');
+    hologramFolder.add(hologramParams, 'scanFrequency', 0.1, 1.0).name('扫描频率');
+    hologramFolder.add(hologramParams, 'hologramDensity', 0.1, 1.0).name('数据密度');
+    hologramFolder.add(hologramParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    hologramFolder.add(hologramParams, 'dataStream', 0.1, 0.9).name('数据流');
+    hologramFolder.add(hologramParams, 'showGrid').name('显示网格');
+    
+    // 全息类型控制
+    const hologramTypes = {
+      "绿色全息": 0,
+      "蓝色全息": 1,
+      "紫色全息": 2
+    };
+    hologramFolder.add(hologramParams, 'hologramType', hologramTypes).name('全息类型');
+    
+    hologramFolder.open();
+
+    // 参数变化时更新材质和全息信息
+    gui.onChange(() => {
+      material.uniforms.uProjectionIntensity.value = hologramParams.projectionIntensity;
+      material.uniforms.uScanFrequency.value = hologramParams.scanFrequency;
+      material.uniforms.uHologramDensity.value = hologramParams.hologramDensity;
+      material.uniforms.uGlowIntensity.value = hologramParams.glowIntensity;
+      material.uniforms.uDataStream.value = hologramParams.dataStream;
+      material.uniforms.uHologramType.value = hologramParams.hologramType;
+      material.uniforms.uShowGrid.value = hologramParams.showGrid;
+      
+      updateHologramInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转全息立方体
+      hologramCube.rotation.y += hologramParams.scanFrequency * 0.01;
+      hologramCube.rotation.x += hologramParams.scanFrequency * 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化全息信息显示
+    updateHologramInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

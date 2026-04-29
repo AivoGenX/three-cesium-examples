@@ -1,0 +1,598 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>蘑菇 - Three.js示例 | ThreeLab</title>
+  <meta name="keywords" content="蘑菇,Three.js,WebGL,3D图形">
+  <meta name="description" content="蘑菇形状的着色器效果，包含光照和纹理细节">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="ThreeLab">
+  <meta name="generator" content="ThreeLab Static Generator">
+  <link rel="canonical" href="https://threelab.cn/static/-----three-js-----threelab.html">
+  
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="蘑菇 - Three.js示例 | ThreeLab">
+  <meta property="og:description" content="蘑菇形状的着色器效果，包含光照和纹理细节">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://threelab.cn/static/-----three-js-----threelab.html">
+  <meta property="og:image" content="https://threelab.cn/logo.png">
+  <meta property="og:site_name" content="ThreeLab">
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="蘑菇 - Three.js示例 | ThreeLab">
+  <meta name="twitter:description" content="蘑菇形状的着色器效果，包含光照和纹理细节">
+  <meta name="twitter:image" content="https://threelab.cn/logo.png">
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "蘑菇 - Three.js示例 | ThreeLab",
+    "description": "蘑菇形状的着色器效果，包含光照和纹理细节",
+    "url": "https://threelab.cn/static/-----three-js-----threelab.html",
+    "author": {
+      "@type": "Organization",
+      "name": "ThreeLab"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "ThreeLab",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://threelab.cn/logo.png"
+      }
+    }
+  }
+  </script>
+  <style>
+     /* 基础样式重置 */
+     * {
+       margin: 0;
+       padding: 0;
+       box-sizing: border-box;
+     }
+     
+     /* CSS变量定义 */
+     :root {
+       --primary-color: #007acc;
+       --secondary-color: #00c6ff;
+       --accent-color: #667eea;
+       --dark-color: #2c3e50;
+       --light-color: #f8f9fa;
+       --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+       --gradient-accent: linear-gradient(135deg, #667eea, #764ba2);
+       --shadow-soft: 0 10px 30px rgba(0,0,0,0.1);
+       --shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+     }
+     
+     /* 动画定义 */
+     @keyframes fadeInUp {
+       from {
+         opacity: 0;
+         transform: translateY(30px);
+       }
+       to {
+         opacity: 1;
+         transform: translateY(0);
+       }
+     }
+     
+     @keyframes float {
+       0%, 100% {
+         transform: translateY(0px);
+       }
+       50% {
+         transform: translateY(-10px);
+       }
+     }
+     
+     @keyframes glow {
+       0%, 100% {
+         box-shadow: 0 0 20px rgba(0, 122, 204, 0.3);
+       }
+       50% {
+         box-shadow: 0 0 30px rgba(0, 122, 204, 0.6);
+       }
+     }
+     
+     @keyframes gradientShift {
+       0% {
+         background-position: 0% 50%;
+       }
+       50% {
+         background-position: 100% 50%;
+       }
+       100% {
+         background-position: 0% 50%;
+       }
+     }
+     
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: #333;
+       background: var(--gradient-accent);
+       background-size: 400% 400%;
+       animation: gradientShift 15s ease infinite;
+       min-height: 100vh;
+       position: relative;
+       overflow-x: hidden;
+     }
+     
+     /* 背景装饰元素 */
+     body::before {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: 0;
+       width: 100%;
+       height: 100%;
+       background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                   radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%);
+       z-index: -1;
+     }
+     
+     /* 主容�?*/
+     .container {
+       max-width: 1200px;
+       margin: 0 auto;
+       background: rgba(255, 255, 255, 0.95);
+       backdrop-filter: blur(10px);
+       padding: 40px;
+       border-radius: 25px;
+       box-shadow: var(--shadow-soft);
+       margin-top: 40px;
+       margin-bottom: 40px;
+       border: 1px solid rgba(255, 255, 255, 0.2);
+       animation: fadeInUp 0.8s ease-out;
+       position: relative;
+       overflow: hidden;
+     }
+     
+     .container::before {
+       content: '';
+       position: absolute;
+       top: -50%;
+       left: -50%;
+       width: 200%;
+       height: 200%;
+       background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+       transform: rotate(45deg);
+       animation: shine 3s infinite;
+     }
+     
+     @keyframes shine {
+       0% {
+         transform: translateX(-100%) translateY(-100%) rotate(45deg);
+       }
+       100% {
+         transform: translateX(100%) translateY(100%) rotate(45deg);
+       }
+     }
+     
+     /* 头部样式 */
+     header {
+       text-align: center;
+       margin-bottom: 40px;
+       padding-bottom: 20px;
+       position: relative;
+     }
+     
+     header::after {
+       content: '';
+       position: absolute;
+       bottom: 0;
+       left: 50%;
+       transform: translateX(-50%);
+       width: 100px;
+       height: 3px;
+       background: var(--gradient-primary);
+       border-radius: 2px;
+     }
+     
+     h1 {
+       font-size: 3em;
+       color: var(--dark-color);
+       margin-bottom: 15px;
+       background: var(--gradient-primary);
+       -webkit-background-clip: text;
+       -webkit-text-fill-color: transparent;
+       background-clip: text;
+       text-shadow: 0 5px 15px rgba(0,0,0,0.1);
+       animation: float 3s ease-in-out infinite;
+     }
+    
+    h2 {
+       font-size: 2.2em;
+       color: var(--dark-color);
+       margin: 40px 0 25px;
+       padding: 15px 20px;
+       background: linear-gradient(90deg, rgba(0,122,204,0.1), transparent);
+       border-left: 5px solid var(--primary-color);
+       border-radius: 0 10px 10px 0;
+       position: relative;
+       overflow: hidden;
+     }
+     
+     h2::before {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: -100%;
+       width: 100%;
+       height: 100%;
+       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+       animation: slide 3s infinite;
+     }
+     
+     @keyframes slide {
+       0% { left: -100%; }
+       100% { left: 100%; }
+     }
+     
+     h3 {
+       font-size: 1.6em;
+       color: var(--dark-color);
+       margin: 30px 0 20px;
+       padding: 10px 15px;
+       background: linear-gradient(90deg, rgba(0,198,255,0.1), transparent);
+       border-left: 4px solid var(--secondary-color);
+       border-radius: 0 8px 8px 0;
+     }
+     
+     /* 内容区域 */
+     .content {
+       line-height: 1.8;
+       color: #555;
+       font-size: 1.1em;
+       animation: fadeInUp 0.6s ease-out 0.2s both;
+     }
+     
+     /* 导航链接 */
+     .back-link {
+       display: inline-flex;
+       align-items: center;
+       gap: 8px;
+       margin-top: 30px;
+       padding: 12px 24px;
+       background: var(--gradient-primary);
+       color: white;
+       text-decoration: none;
+       border-radius: 25px;
+       font-weight: 600;
+       transition: all 0.3s ease;
+       position: relative;
+       overflow: hidden;
+       box-shadow: var(--shadow-soft);
+     }
+     
+     .back-link::before {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: -100%;
+       width: 100%;
+       height: 100%;
+       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+       transition: left 0.5s;
+     }
+     
+     .back-link:hover {
+       transform: translateY(-3px);
+       box-shadow: var(--shadow-hover);
+     }
+     
+     .back-link:hover::before {
+       left: 100%;
+     }
+     
+     /* 示例网格布局 */
+     .example-grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+       gap: 35px;
+       margin: 50px 0;
+       animation: fadeInUp 0.8s ease-out 0.4s both;
+     }
+     
+     /* 示例卡片 */
+     .example-card {
+       border: none;
+       border-radius: 20px;
+       padding: 30px;
+       background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,249,250,0.8));
+       backdrop-filter: blur(10px);
+       box-shadow: var(--shadow-soft);
+       transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+       position: relative;
+       overflow: hidden;
+       border: 1px solid rgba(255,255,255,0.3);
+     }
+     
+     .example-card::before {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: 0;
+       right: 0;
+       height: 5px;
+       background: var(--gradient-primary);
+       transform: scaleX(0);
+       transform-origin: left;
+       transition: transform 0.4s ease;
+     }
+     
+     .example-card:hover::before {
+       transform: scaleX(1);
+     }
+     
+     .example-card:hover {
+       transform: translateY(-8px) scale(1.02);
+       box-shadow: var(--shadow-hover);
+       animation: glow 2s ease-in-out infinite;
+     }
+    
+    .example-image {
+       width: 100%;
+       height: 240px;
+       object-fit: cover;
+       border-radius: 15px;
+       margin-bottom: 20px;
+       transition: all 0.4s ease;
+       filter: brightness(0.95) contrast(1.05);
+       position: relative;
+       overflow: hidden;
+     }
+     
+     .example-image::after {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: 0;
+       right: 0;
+       bottom: 0;
+       background: linear-gradient(45deg, rgba(0,122,204,0.1), transparent);
+       opacity: 0;
+       transition: opacity 0.3s ease;
+     }
+     
+     .example-card:hover .example-image {
+       transform: scale(1.08) rotate(1deg);
+       filter: brightness(1.05) contrast(1.1);
+     }
+     
+     .example-card:hover .example-image::after {
+       opacity: 1;
+     }
+     
+     .example-title {
+       font-size: 1.5em;
+       font-weight: 800;
+       color: var(--dark-color);
+       margin-bottom: 10px;
+       background: linear-gradient(45deg, var(--dark-color), #34495e);
+       -webkit-background-clip: text;
+       -webkit-text-fill-color: transparent;
+       background-clip: text;
+       text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+     }
+     
+     .example-author {
+       color: var(--primary-color);
+       font-size: 1em;
+       margin-bottom: 15px;
+       font-style: italic;
+       font-weight: 500;
+       display: flex;
+       align-items: center;
+       gap: 8px;
+     }
+     
+     .example-author::before {
+       content: '👤';
+       font-size: 0.9em;
+     }
+     
+     .example-description {
+       font-size: 1em;
+       line-height: 1.7;
+       color: #666;
+       margin-bottom: 25px;
+       padding: 15px;
+       background: rgba(248, 249, 250, 0.8);
+       border-radius: 10px;
+       border-left: 3px solid var(--secondary-color);
+     }
+     
+     .example-link {
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       gap: 8px;
+       padding: 14px 28px;
+       background: var(--gradient-primary);
+       color: white;
+       text-decoration: none;
+       border-radius: 30px;
+       font-weight: 600;
+       transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+       text-align: center;
+       min-width: 140px;
+       position: relative;
+       overflow: hidden;
+       box-shadow: var(--shadow-soft);
+     }
+     
+     .example-link::before {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: -100%;
+       width: 100%;
+       height: 100%;
+       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+       transition: left 0.6s;
+     }
+     
+     .example-link:hover {
+       transform: translateY(-3px) scale(1.05);
+       box-shadow: var(--shadow-hover);
+       background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+     }
+     
+     .example-link:hover::before {
+       left: 100%;
+     }
+    
+    /* 详细页面样式 */
+    .example-detail {
+      background: #f8f9fa;
+      padding: 30px;
+      border-radius: 15px;
+      margin: 30px 0;
+    }
+    
+    .example-detail .example-card {
+      background: white;
+      margin-bottom: 30px;
+    }
+    
+    /* 响应式设�?*/
+    @media (max-width: 768px) {
+      .container {
+        margin: 20px;
+        padding: 20px;
+      }
+      
+      h1 {
+        font-size: 2em;
+      }
+      
+      .example-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      
+      .example-card {
+        padding: 20px;
+      }
+    }
+    
+    /* 列表样式 */
+    ul {
+      list-style: none;
+      margin: 20px 0;
+    }
+    
+    ul li {
+      padding: 10px 0;
+      padding-left: 25px;
+      position: relative;
+    }
+    
+    ul li::before {
+      content: '�?;
+      position: absolute;
+      left: 0;
+      color: #007acc;
+      font-weight: bold;
+    }
+    
+    /* 段落样式 */
+    p {
+      margin-bottom: 20px;
+      line-height: 1.8;
+    }
+    
+    /* 页脚样式 */
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      color: #7f8c8d;
+      font-size: 0.9em;
+    }
+  </style>
+
+<!-- 百度统计 -->
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?f95f2d5f4a69f60f0cc3501cf12bc76d";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>蘑菇 - Three.js示例 | ThreeLab</h1>
+      <nav aria-label="面包屑导�?>
+        <a href="static-index.html" class="back-link">首页</a>
+        <span style="margin: 0 10px; color: #ccc;">�?/span>
+        <span style="color: #7f8c8d;">蘑菇 - Three.js示例</span>
+      </nav>
+    </header>
+    
+    <main class="content">
+      
+    <h2>蘑菇 - 详细示例</h2>
+    <p>这是一个蘑菇的详细示例页面，展示了完整的技术实现和效果�?/p>
+    
+    <div class="example-detail">
+      <div class="example-card">
+        <img src="/threeExamples/shader/mushroomShader.jpg" alt="蘑菇" class="example-image">
+        <div class="example-title">蘑菇</div>
+        <div class="example-author">作�? bubinyang</div>
+        <div class="example-description">蘑菇形状的着色器效果，包含光照和纹理细节</div>
+        <a href="http://threelab.cn/examples/Three.js案例/shader/mushroomShader" class="example-link" target="_blank">查看原始示例</a>
+      </div>
+      
+      <h3>技术特�?/h3>
+      <ul>
+        <li>基于Three.js和WebGL技�?/li>
+        <li>高性能GPU渲染</li>
+        <li>实时交互效果</li>
+        <li>跨平台兼容�?/li>
+      </ul>
+      
+      <h3>实现原理</h3>
+      <p>该示例使用了先进的WebGL技术实现：</p>
+      <ul>
+        <li>顶点着色器：处理几何体顶点数据</li>
+        <li>片段着色器：计算像素颜色和光照</li>
+        <li>纹理映射：应用材质和贴图</li>
+        <li>动画系统：实现动态效�?/li>
+      </ul>
+      
+      <h3>应用场景</h3>
+      <p>该技术可以应用于�?/p>
+      <ul>
+        <li>3D数据可视�?/li>
+        <li>游戏开�?/li>
+        <li>虚拟现实</li>
+        <li>科学计算可视�?/li>
+      </ul>
+      
+      <h3>相关资源</h3>
+      <p>要了解更多相关信息，请访问：</p>
+      <p><a href="http://threelab.cn/" target="_blank">ThreeLab主页�?/a></p>
+      <p><a href="shader.html">返回着色器示例列表</a></p>
+    </div>
+  
+    </main>
+    
+    <footer>
+      <p>© 2026 ThreeLab - Three.js和Cesium开源示例集�?/p>
+      <p>联系我们: <a href="mailto:2945853209@qq.com" style="color: #007acc;">2945853209@qq.com</a></p>
+    </footer>
+  </div>
+</body>
+</html>

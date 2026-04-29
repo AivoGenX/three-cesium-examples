@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>赛博城市 · 径向扫描 Demo</title>
+
+  <!-- 让浏览器认识 "three" 与 "three/addons/" 的裸模块路径 -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    /* 全屏无滚动条 threelab*/
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000;}
+    #box{width:100%;height:100%;}
+  </style>
+</head>
+
+<body>
+  <!-- 渲染画布 -->
+  <div id="box"></div>
+
+  <!-- 业务脚本 -->
+  <script type="module">
+    /* ==========================================================
+       0. 引入 Three.js 相关模块
+    ========================================================== */
+    import * as THREE           from 'three';
+    import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+    import { FBXLoader }        from 'three/addons/loaders/FBXLoader.js';
+
+    /* ==========================================================
+       1. 基础场景、相机、渲染器
+    ========================================================== */
+    const box        = document.getElementById('box');
+    const scene      = new THREE.Scene();
+    const camera     = new THREE.PerspectiveCamera(75, box.clientWidth/box.clientHeight, 0.1, 100000);
+    camera.position.set(157, 545, -987);
+
+    const renderer   = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      logarithmicDepthBuffer: true
+    });
+    renderer.setSize(box.clientWidth, box.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio * 2);   // 高分屏更清晰
+    renderer.setClearColor(0x000000, 0);                  // 透明背景
+    box.appendChild(renderer.domElement);
+
+    /* 控制器 */
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    /* ==========================================================
+       2. 灯光
+    ========================================================== */
+    const dirLight = new THREE.DirectionalLight(0xffffff, 3.8);
+    dirLight.position.set(83, 61, -183);
+    dirLight.target.position.set(10, -11, -194);
+    scene.add(dirLight);
+
+    const pointLight = new THREE.PointLight(0xffffff, 2);
+    pointLight.position.set(-60, 182, -98);
+    scene.add(pointLight);
+
+    /* ==========================================================
+       3. 简易星空背景（粒子）
+    ========================================================== */
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 6000;
+    const starPos = [];
+    for(let i=0;i<starCount;i++){
+      starPos.push(
+        THREE.MathUtils.randFloatSpread(4000),
+        THREE.MathUtils.randFloatSpread(4000),
+        THREE.MathUtils.randFloatSpread(4000)
+      );
+    }
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({color:0x00ffff, size:1.2, transparent:true, opacity:.6});
+    scene.add(new THREE.Points(starGeo, starMat));
+
+    /* ==========================================================
+       4. 加载 FBX 城市模型
+    ========================================================== */
+  
+    let cityModel = null;
+
+    new FBXLoader().load(FILE_HOST + 'files/model/city.FBX', obj => {
+      scene.add(obj);
+      obj.scale.set(0.04, 0.04, 0.04);      // 模型巨大，缩小
+      obj.position.set(224, -9, -49);       // 平移到合适位置
+      cityModel = obj;
+
+      /* 给所有网格附加径向扫描着色器 */
+      attachRadialScanShader(obj);
+    });
+
+    /* ==========================================================
+       5. 渲染循环
+    ========================================================== */
+    function animate(){
+      requestAnimationFrame(animate);
+      controls.update();
+      /* 如果 attachRadialScanShader 给 model 挂了 render 方法，则每帧调用 */
+      cityModel && cityModel.render && cityModel.render();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    /* ==========================================================
+       6. 窗口大小自适应
+    ========================================================== */
+    window.addEventListener('resize', () =>{
+      renderer.setSize(box.clientWidth, box.clientHeight);
+      camera.aspect = box.clientWidth / box.clientHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    /* ==========================================================
+       7. 径向扫描着色器封装
+          逻辑：以 center 为中心，内半径 innerCircleWidth、宽 circleWidth 的圆环
+          颜色由 diff → color3 渐变，强度由 intensity 控制
+    ========================================================== */
+    function attachRadialScanShader(model){
+      /* 收集所有材质，去重 */
+      const materials = [];
+      model.traverse(child=>{
+        if(child.isMesh) materials.push(child.material);
+      });
+      const uniqueMats = [...new Set(materials)];
+
+      /* 统一 Uniforms */
+      const uniforms = {
+        innerCircleWidth: { value: 480 },  // 内圆半径
+        circleWidth:      { value: 160 },  // 圆环带宽
+        circleMax:        { value: 940 },  // 扫描最大半径
+        circleSpeed:      { value: 1.5 },  // 每帧推进像素
+        diff:             { value: new THREE.Color(0x6edbe8) }, // 起始色
+        color3:           { value: new THREE.Color(0x1919f9) }, // 终止色
+        center:           { value: new THREE.Vector3(-1,0,0) },// 圆心（世界坐标）
+        intensity:        { value: 4.0 },  // 亮度倍率
+        isDisCard:        { value: false } // 圆环外是否直接丢弃
+      };
+
+      /* 注入 GLSL */
+      uniqueMats.forEach(mat=>{
+        mat.onBeforeCompile = shader=>{
+          /* 把自定义 uniform 挂进去 */
+          Object.assign(shader.uniforms, uniforms);
+
+          /* ---------- Vertex Shader ----------
+             关键：把世界坐标 v_position 传给片元着色器 */
+          shader.vertexShader = shader.vertexShader.replace(
+            'void main() {',
+            `
+            varying vec3 v_position;
+            void main(){
+              v_position = (modelMatrix * vec4(position,1.0)).xyz;
+            `
+          );
+
+          /* ---------- Fragment Shader ----------
+             关键：计算距离 → 圆环 → 渐变颜色 */
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <common>',
+            `
+            #include <common>
+            uniform float innerCircleWidth;
+            uniform float circleWidth;
+            uniform vec3  diff;
+            uniform vec3  color3;
+            uniform vec3  center;
+            uniform float intensity;
+            uniform bool  isDisCard;
+            varying vec3  v_position;
+            `
+          );
+
+          shader.fragmentShader = shader.fragmentShader.replace(
+            'vec4 diffuseColor = vec4( diffuse, opacity );',
+            `
+            vec4 diffuseColor;
+            float dis = distance(v_position, center);
+            if(dis > innerCircleWidth && dis < innerCircleWidth + circleWidth){
+              float r = (dis - innerCircleWidth) / circleWidth;
+              #ifdef USE_MAP
+                vec3 tex = texture2D(map, vUv).rgb;
+                if(isDisCard && length(tex)<0.1) discard;
+              #endif
+              diffuseColor = vec4(mix(diff,color3,r) * intensity, opacity);
+            }else{
+              if(isDisCard) discard;
+              else diffuseColor = vec4(diffuse, opacity);
+            }
+            `
+          );
+
+          mat.needsUpdate = true;
+        };
+      });
+
+      /* 给 model 挂一个每帧更新 innerCircleWidth 的函数 */
+      model.render = () => {
+        if(uniforms.innerCircleWidth.value < uniforms.circleMax.value){
+          uniforms.innerCircleWidth.value += uniforms.circleSpeed.value;
+        }else{
+          uniforms.innerCircleWidth.value = 0;   // 循环扫描
+        }
+      };
+    }
+  </script>
+</body>
+</html>

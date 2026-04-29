@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>可定制颜色的罗盘</title>
+ 
+
+  <!-- 将 CDN 路径改为本地相对路径 -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    /* 布局样式：全屏无滚动条 */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #1f1f1f;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #box {
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* 颜色控制面板样式 */
+    .color-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 30, 30, 0.8);
+      padding: 15px;
+      border-radius: 10px;
+      backdrop-filter: blur(5px);
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .color-control {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      font-size: 12px;
+      width: 80px;
+    }
+    
+    .color-picker {
+      width: 40px;
+      height: 40px;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+    }
+    
+    .color-picker::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    
+    .color-picker::-webkit-color-swatch {
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <!-- 画布容器 -->
+  <div id="box"></div>
+  
+  <!-- 颜色控制面板 -->
+  <div class="color-controls">
+    <div class="color-control">
+      <label>主色调</label>
+      <input type="color" id="primaryColor" class="color-picker" value="#ffffff">
+    </div>
+    <div class="color-control">
+      <label>次级色调</label>
+      <input type="color" id="secondaryColor" class="color-picker" value="#ffddaa">
+    </div>
+    <div class="color-control">
+      <label>强调色</label>
+      <input type="color" id="accentColor" class="color-picker" value="#ff6600">
+    </div>
+    <div class="color-control">
+      <label>背景色</label>
+      <input type="color" id="bgColor" class="color-picker" value="#1f1f1f">
+    </div>
+  </div>
+
+  <script type="module">
+  /******************************************************************
+   * 引入 Three.js 核心与 OrbitControls
+   * 注意：必须在同级目录下存在 /libs/threejs/build/ 和 /libs/threejs/examples/
+   ******************************************************************/
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  // 颜色转换工具函数 - 将十六进制颜色转为RGB
+  function hexToRgb(hex) {
+    // 移除#号
+    hex = hex.replace('#', '');
+    
+    // 解析RGB值
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+    
+    return new THREE.Vector3(r, g, b);
+  }
+
+  // 获取容器 DOM
+  const box = document.getElementById('box');
+
+  /* ---------- 1. 创建场景 ---------- */
+  const scene = new THREE.Scene();
+
+  /* ---------- 2. 创建相机 ---------- */
+  const camera = new THREE.PerspectiveCamera(
+    75,                          // 视野角
+    box.clientWidth / box.clientHeight, // 宽高比
+    0.1,                         // 近平面
+    1000                         // 远平面
+  );
+  camera.position.set(0, 0, 0.6); // 拉近一点便于观察 1×1 平面
+
+  /* ---------- 3. 创建渲染器 ---------- */
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,             // 抗锯齿
+    alpha: true,                 // 透明背景
+    logarithmicDepthBuffer: true // 深度缓冲精度
+  });
+  renderer.setSize(box.clientWidth, box.clientHeight);
+  box.appendChild(renderer.domElement);
+
+  /* ---------- 4. 创建交互控制器 ---------- */
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; // 阻尼效果，使旋转更平滑
+
+  /* ---------- 5. 监听窗口大小变化 ---------- */
+  window.addEventListener('resize', () => {
+    renderer.setSize(box.clientWidth, box.clientHeight);
+    camera.aspect = box.clientWidth / box.clientHeight;
+    camera.updateProjectionMatrix();
+    uniforms.iResolution.value.set(box.clientWidth, box.clientHeight);
+  });
+
+  /* ---------- 6. 自定义着色器 - 带颜色参数 ---------- */
+  // 传递到着色器的全局变量，包含颜色参数
+  const uniforms = {
+    iTime: { value: 0 }, // 动画时间
+    iResolution: { value: new THREE.Vector2(box.clientWidth, box.clientHeight) },
+    primaryColor: { value: hexToRgb('#ffffff') },    // 主色调
+    secondaryColor: { value: hexToRgb('#ffddaa') },  // 次级色调
+    accentColor: { value: hexToRgb('#ff6600') }      // 强调色
+  };
+
+  // 几何体：1×1 平面
+  const geometry = new THREE.PlaneGeometry(1, 1);
+
+  // 材质：使用 ShaderMaterial 以便写 GLSL
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    side: THREE.DoubleSide, // 双面可见
+    vertexShader: `
+      varying vec2 vUv;
+
+      void main() {
+        vUv = uv;
+        // 将顶点坐标转换到裁剪空间
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float iTime;
+      uniform vec2  iResolution;
+      uniform vec3  primaryColor;
+      uniform vec3  secondaryColor;
+      uniform vec3  accentColor;
+      varying vec2  vUv;
+
+      /* ------------ 工具函数 ------------ */
+      const float PI = 3.14159265359;
+
+      // 2D 旋转矩阵
+      vec2 rotate(vec2 p, float rad) {
+        float c = cos(rad), s = sin(rad);
+        return mat2(c, -s, s, c) * p;
+      }
+
+      // 2D 平移
+      vec2 translate(vec2 p, vec2 diff) { return p - diff; }
+
+      // 2D 缩放
+      vec2 scale(vec2 p, float r) { return p * r; }
+
+      // 绘制圆环
+      float circle(float pre, vec2 p, float r1, float r2, float power) {
+        float len = length(p);
+        float d = min(abs(len - r1), abs(len - r2));
+        if (len > r1 && len < r2) pre /= exp(d) / r2;
+        float res = power / d;
+        return clamp(pre + res, 0.0, 1.0);
+      }
+
+      // 绘制矩形环
+      float rectangle(float pre, vec2 p, vec2 half1, vec2 half2, float power) {
+        p = abs(p);
+        float dx1 = (p.y < half1.y) ? abs(half1.x - p.x) : length(p - half1);
+        float dx2 = (p.y < half2.y) ? abs(half2.x - p.x) : length(p - half2);
+        float dy1 = (p.x < half1.x) ? abs(half1.y - p.y) : length(p - half1);
+        float dy2 = (p.x < half2.x) ? abs(half2.y - p.y) : length(p - half2);
+        float d = min(min(dx1, dx2), min(dy1, dy2));
+        float res = power / d;
+        return clamp(pre + res, 0.0, 1.0);
+      }
+
+      // 绘制辐射状图案
+      float radiation(float pre, vec2 p, float r1, float r2, int num, float power) {
+        float angle = 2.0 * PI / float(num);
+        float d = 1e10;
+        for (int i = 0; i < 360; i++) {
+          if (i >= num) break;
+          float _d = (r1 < p.y && p.y < r2) ? abs(p.x) : min(length(p - vec2(0.0, r1)), length(p - vec2(0.0, r2)));
+          d = min(d, _d);
+          p = rotate(p, angle);
+        }
+        float res = power / d;
+        return clamp(pre + res, 0.0, 1.0);
+      }
+
+      /* ------------ 主计算 ------------ */
+      vec3 calc(vec2 p) {
+        float dst = 0.0;
+
+        // 外圈圆环 + 辐射线 - 使用主色调
+        {
+          vec2 q = p;
+          q = scale(q, sin(PI * iTime) * 0.02 + 1.1);
+          q = rotate(q, iTime * PI / 6.0);
+          dst = circle(dst, q, 0.85, 0.9, 0.006);
+          dst = radiation(dst, q, 0.87, 0.88, 36, 0.0008);
+        }
+
+        // 六边形环 - 使用次级色调
+        {
+          vec2 q = rotate(p, iTime * PI / 6.0);
+          const int n = 6; float angle = PI / float(n);
+          q = rotate(q, floor(atan(q.x, q.y) / angle + 0.5) * angle);
+          for (int i = 0; i < n; i++) {
+            dst = rectangle(dst, q, vec2(0.85 / sqrt(2.0)), vec2(0.85 / sqrt(2.0)), 0.0015);
+            q = rotate(q, angle);
+          }
+        }
+
+        // 内部小圆点 - 使用强调色
+        {
+          vec2 q = rotate(p, iTime * PI / 6.0);
+          const int n = 12; float angle = 2.0 * PI / float(n);
+          q = rotate(q, angle * 0.5);
+          for (int i = 0; i < n; i++) {
+            dst = circle(dst, q - vec2(0.0, 0.875), 0.001, 0.05, 0.004);
+            dst = circle(dst, q - vec2(0.0, 0.875), 0.001, 0.001, 0.008);
+            q = rotate(q, angle);
+          }
+        }
+
+        // 内圈圆环 - 使用主色调
+        {
+          vec2 q = p;
+          dst = circle(dst, q, 0.5, 0.55, 0.002);
+        }
+
+        // 三角形环 - 使用次级色调
+        {
+          vec2 q = rotate(p, -iTime * PI / 6.0);
+          const int n = 3; float angle = PI / float(n);
+          q = rotate(q, floor(atan(q.x, q.y) / angle + 0.5) * angle);
+          for (int i = 0; i < n; i++) {
+            dst = rectangle(dst, q, vec2(0.36), vec2(0.36), 0.0015);
+            q = rotate(q, angle);
+          }
+        }
+
+        // 更内部小圆点 - 使用强调色
+        {
+          vec2 q = rotate(p, -iTime * PI / 6.0);
+          const int n = 12; float angle = 2.0 * PI / float(n);
+          q = rotate(q, angle * 0.5);
+          for (int i = 0; i < n; i++) {
+            dst = circle(dst, q - vec2(0.0, 0.53), 0.001, 0.035, 0.004);
+            dst = circle(dst, q - vec2(0.0, 0.53), 0.001, 0.001, 0.001);
+            q = rotate(q, angle);
+          }
+        }
+
+        // 12 辐射线 - 使用主色调
+        {
+          vec2 q = rotate(p, iTime * PI / 6.0);
+          dst = radiation(dst, q, 0.25, 0.3, 12, 0.005);
+        }
+
+        // 中心旋转小圆 - 使用次级色调和强调色的混合
+        {
+          vec2 q = rotate(p, -iTime * PI / 6.0);
+          q = scale(q, sin(PI * iTime) * 0.04 + 1.1);
+          for (float i = 0.0; i < 6.0; i++) {
+            float r = 0.13 - i * 0.01;
+            q = translate(q, vec2(0.1, 0.0));
+            dst = circle(dst, q, r, r, 0.002);
+            q = translate(q, -vec2(0.1, 0.0));
+            q = rotate(q, -iTime * PI / 12.0);
+          }
+          dst = circle(dst, q, 0.04, 0.04, 0.004);
+        }
+
+        // 应用颜色混合 
+        vec3 color = mix(primaryColor, secondaryColor, smoothstep(0.2, 0.8, dst));
+        color = mix(color, accentColor, pow(smoothstep(0.7, 1.0, dst), 2.0));
+        
+        // 增强主色调的影响，确保其可见性
+        color = mix(color, primaryColor, 0.3);
+        
+        // 最终颜色：高次方提亮
+        return pow(dst, 2.5) * color;
+      }
+
+      /* ------------ 入口函数 ------------ */
+      void main() {
+        vec2 uv = (vUv - 0.5) * 2.0; // 将 UV 从 [0,1] 映射到 [-1,1]
+        gl_FragColor = vec4(calc(uv), 1.0);
+      }
+    `
+  });
+
+  /* ---------- 7. 创建网格并加入场景 ---------- */
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  /* ---------- 8. 颜色控制逻辑 ---------- */
+  // 获取颜色选择器元素
+  const primaryColorPicker = document.getElementById('primaryColor');
+  const secondaryColorPicker = document.getElementById('secondaryColor');
+  const accentColorPicker = document.getElementById('accentColor');
+  const bgColorPicker = document.getElementById('bgColor');
+  
+  // 设置初始背景色
+  document.body.style.backgroundColor = bgColorPicker.value;
+  
+  // 颜色变化事件监听
+  primaryColorPicker.addEventListener('input', (e) => {
+    uniforms.primaryColor.value = hexToRgb(e.target.value);
+  });
+  
+  secondaryColorPicker.addEventListener('input', (e) => {
+    uniforms.secondaryColor.value = hexToRgb(e.target.value);
+  });
+  
+  accentColorPicker.addEventListener('input', (e) => {
+    uniforms.accentColor.value = hexToRgb(e.target.value);
+  });
+  
+  bgColorPicker.addEventListener('input', (e) => {
+    document.body.style.backgroundColor = e.target.value;
+  });
+
+  /* ---------- 9. 动画循环 ---------- */
+  function animate() {
+    uniforms.iTime.value += 0.01; // 驱动着色器动画
+    controls.update();             // 更新 OrbitControls
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+  </script>
+</body>
+</html>

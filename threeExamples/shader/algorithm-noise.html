@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js算法噪声着色器效果</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #0a0a2a 0%, #1a1a3a 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      box-shadow: 0 0 20px #ff6b6b;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🔢 算法噪声着色器效果 - 实时渲染 🔢</div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x0a0a2a);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,5)的位置观察场景
+    camera.position.set(0, 0, 5)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 创建几何体和材质
+    // ============================================================================
+    
+    // 创建平面几何体，作为噪声效果的载体
+    // 参数：宽度，高度，宽度分段数，高度分段数
+    const geometry = new THREE.PlaneGeometry(8, 8, 256, 256);
+
+    // 创建自定义着色器材质，实现多种噪声算法效果
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,               // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让效果更亮
+      uniforms: {
+        // 时间变量，用于动画效果
+        uTime: { value: 0.0 },
+        // 噪声类型选择：0=白噪声, 1=值噪声, 2=柏林噪声, 3=分形噪声
+        uNoiseType: { value: 0 },
+        // 噪声频率，控制噪声的细节程度
+        uFrequency: { value: 4.0 },
+        // 噪声强度，控制噪声的明显程度
+        uIntensity: { value: 1.0 },
+        // 分形噪声的迭代次数
+        uOctaves: { value: 4 },
+        // 分形噪声的持久性
+        uPersistence: { value: 0.5 },
+        // 颜色渐变参数
+        uColor1: { value: new THREE.Color(0xff6b6b) }, // 主色
+        uColor2: { value: new THREE.Color(0x4ecdc4) }, // 辅色
+        uColor3: { value: new THREE.Color(0x45b7d1) }, // 高光色
+      },
+      
+      // ============================================================================
+      // 顶点着色器：处理顶点位置和变形
+      // ============================================================================
+      vertexShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform float uIntensity;      // 强度参数
+        uniform int uNoiseType;        // 噪声类型
+        
+        // 传递到片元着色器的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vNoise;          // 噪声值
+        
+        // ============================================================================
+        // 白噪声函数：最简单的随机噪声
+        // 原理：使用伪随机数生成器产生随机值
+        // 特点：完全随机，无连续性
+        // ============================================================================
+        float whiteNoise(vec2 p) {
+          // 使用三角函数和乘法产生伪随机数
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+        
+        // ============================================================================
+        // 值噪声函数：基于网格的插值噪声
+        // 原理：在网格点上生成随机值，然后进行插值
+        // 特点：比白噪声更平滑，有连续性
+        // ============================================================================
+        float valueNoise(vec2 p) {
+          // 计算网格坐标
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          
+          // 网格四个角的随机值
+          float a = whiteNoise(i);
+          float b = whiteNoise(i + vec2(1.0, 0.0));
+          float c = whiteNoise(i + vec2(0.0, 1.0));
+          float d = whiteNoise(i + vec2(1.0, 1.0));
+          
+          // 平滑插值函数
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          
+          // 双线性插值
+          return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
+        
+        // ============================================================================
+        // 柏林噪声函数：基于梯度的噪声
+        // 原理：在网格点上生成随机梯度向量，然后计算点积
+        // 特点：最自然的噪声，广泛用于地形生成等
+        // ============================================================================
+        float perlinNoise(vec2 p) {
+          // 网格坐标计算
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          
+          // 网格四个角的随机梯度向量
+          vec2 gradA = normalize(vec2(whiteNoise(i), whiteNoise(i + vec2(13.43, 61.21))) - 0.5);
+          vec2 gradB = normalize(vec2(whiteNoise(i + vec2(1.0, 0.0)), whiteNoise(i + vec2(14.43, 61.21))) - 0.5);
+          vec2 gradC = normalize(vec2(whiteNoise(i + vec2(0.0, 1.0)), whiteNoise(i + vec2(13.43, 62.21))) - 0.5);
+          vec2 gradD = normalize(vec2(whiteNoise(i + vec2(1.0, 1.0)), whiteNoise(i + vec2(14.43, 62.21))) - 0.5);
+          
+          // 计算四个角到当前点的向量
+          vec2 distA = f;
+          vec2 distB = f - vec2(1.0, 0.0);
+          vec2 distC = f - vec2(0.0, 1.0);
+          vec2 distD = f - vec2(1.0, 1.0);
+          
+          // 计算点积（梯度向量与距离向量的点积）
+          float dotA = dot(gradA, distA);
+          float dotB = dot(gradB, distB);
+          float dotC = dot(gradC, distC);
+          float dotD = dot(gradD, distD);
+          
+          // 平滑插值函数
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          
+          // 双线性插值
+          return mix(mix(dotA, dotB, u.x), mix(dotC, dotD, u.x), u.y) * 2.0;
+        }
+        
+        // ============================================================================
+        // 分形噪声函数：多层噪声叠加
+        // 原理：在不同频率上叠加噪声，产生自然的分形效果
+        // 特点：适合模拟自然地形、云层等复杂结构
+        // ============================================================================
+        float fractalNoise(vec2 p, int octaves, float persistence) {
+          float total = 0.0;
+          float frequency = 1.0;
+          float amplitude = 1.0;
+          float maxValue = 0.0;
+          
+          for(int i = 0; i < octaves; i++) {
+            total += perlinNoise(p * frequency) * amplitude;
+            maxValue += amplitude;
+            amplitude *= persistence;
+            frequency *= 2.0;
+          }
+          
+          return total / maxValue;
+        }
+        
+        // ============================================================================
+        // 主顶点着色器函数
+        // ============================================================================
+        void main() {
+          // 传递UV坐标到片元着色器
+          vUv = uv;
+          vPosition = position;
+          
+          // 根据噪声类型选择不同的噪声函数
+          float noiseValue = 0.0;
+          if(uNoiseType == 0) {
+            // 白噪声：完全随机
+            noiseValue = whiteNoise(position.xy * 4.0 + uTime * 0.5);
+          } else if(uNoiseType == 1) {
+            // 值噪声：网格插值
+            noiseValue = valueNoise(position.xy * 2.0 + uTime * 0.3);
+          } else if(uNoiseType == 2) {
+            // 柏林噪声：梯度噪声
+            noiseValue = perlinNoise(position.xy * 3.0 + uTime * 0.2);
+          } else {
+            // 分形噪声：多层叠加
+            noiseValue = fractalNoise(position.xy * 2.0 + uTime * 0.1, 4, 0.5);
+          }
+          
+          vNoise = noiseValue;
+          
+          // 根据噪声值对顶点位置进行变形
+          vec3 newPosition = position;
+          newPosition.z += noiseValue * uIntensity * 2.0;
+          
+          // 设置最终顶点位置
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      
+      // ============================================================================
+      // 片元着色器：处理像素颜色
+      // ============================================================================
+      fragmentShader: `
+        // 统一变量声明
+        uniform float uTime;           // 时间变量
+        uniform vec3 uColor1;          // 主色
+        uniform vec3 uColor2;          // 辅色
+        uniform vec3 uColor3;          // 高光色
+        
+        // 从顶点着色器传递的变量
+        varying vec2 vUv;              // UV坐标
+        varying vec3 vPosition;        // 顶点位置
+        varying float vNoise;          // 噪声值
+        
+        void main() {
+          // 基础颜色计算：根据噪声值进行颜色插值
+          vec3 baseColor = mix(uColor1, uColor2, vNoise);
+          
+          // 添加高光效果：在噪声值较高的区域添加高光色
+          float highlight = smoothstep(0.7, 0.9, vNoise);
+          baseColor = mix(baseColor, uColor3, highlight);
+          
+          // 添加时间动画效果：颜色随时间变化
+          float timeEffect = sin(uTime * 0.5) * 0.1 + 0.9;
+          baseColor *= timeEffect;
+          
+          // 根据UV坐标添加边缘渐变效果
+          float edgeFade = 1.0 - length(vUv - 0.5) * 2.0;
+          edgeFade = smoothstep(0.0, 0.3, edgeFade);
+          
+          // 最终颜色输出
+          gl_FragColor = vec4(baseColor, edgeFade);
+        }
+      `
+    });
+
+    // 创建网格对象并添加到场景
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 噪声类型控制
+    const noiseTypes = {
+      "白噪声": 0,
+      "值噪声": 1,
+      "柏林噪声": 2,
+      "分形噪声": 3
+    };
+    
+    gui.add(material.uniforms.uNoiseType, 'value', noiseTypes).name('噪声类型');
+    gui.add(material.uniforms.uIntensity, 'value', 0.1, 5.0).name('强度');
+    gui.add(material.uniforms.uFrequency, 'value', 0.5, 10.0).name('频率');
+    
+    // 颜色控制
+    const colorFolder = gui.addFolder('颜色设置');
+    colorFolder.addColor(material.uniforms.uColor1, 'value').name('主色');
+    colorFolder.addColor(material.uniforms.uColor2, 'value').name('辅色');
+    colorFolder.addColor(material.uniforms.uColor3, 'value').name('高光色');
+    colorFolder.open();
+    
+    // 分形噪声参数（仅当选择分形噪声时有效）
+    const fractalFolder = gui.addFolder('分形参数');
+    fractalFolder.add(material.uniforms.uOctaves, 'value', 1, 8, 1).name('迭代次数');
+    fractalFolder.add(material.uniforms.uPersistence, 'value', 0.1, 0.9).name('持久性');
+    fractalFolder.open();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间变量，驱动动画效果
+      material.uniforms.uTime.value += 0.01;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

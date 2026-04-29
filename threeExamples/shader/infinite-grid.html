@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced 3D Environment</title>
+    <!-- 配置Three.js模块导入映射 -->
+    <script type="importmap">
+     {
+          "imports": {
+            "three": "/libs/threejs/build/three.module.js",
+            "three/addons/": "/libs/threejs/examples/jsm/"
+          }
+        }
+    </script>
+    <style>
+        /* 基础样式重置与布局设置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            background-color: #1a1a2e;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- 3D渲染容器 -->
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        // 导入Three.js核心模块和必要组件
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { Sky } from 'three/addons/objects/Sky.js';
+
+        // 初始化场景核心组件
+        const container = document.getElementById('canvas-container');
+        
+        // 创建场景实例 - 所有3D对象的容器
+        const scene = new THREE.Scene();
+        
+        // 创建透视相机 - 模拟人眼视角
+        // 参数: 视野角度, 宽高比, 近裁剪面, 远裁剪面
+        const camera = new THREE.PerspectiveCamera(
+            55, 
+            container.clientWidth / container.clientHeight, 
+            0.1, 
+            1000000000
+        );
+        // 设置相机初始位置
+        camera.position.set(1200, 800, 1500);
+        
+        // 创建WebGL渲染器 - 负责将3D场景绘制到屏幕
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,        // 启用抗锯齿，使边缘更平滑
+            alpha: true,            // 支持透明背景
+            logarithmicDepthBuffer: true  // 处理远距离物体的深度精度问题
+        });
+        // 设置渲染器尺寸以匹配容器
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        // 提高渲染质量 - 启用物理正确的光照模式
+        renderer.useLegacyLights = false;
+        // 将渲染器的DOM元素添加到页面
+        container.appendChild(renderer.domElement);
+        
+        // 创建轨道控制器 - 允许用户通过鼠标/触摸交互场景
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;      // 启用阻尼效果，使旋转更平滑
+        controls.dampingFactor = 0.05;      // 阻尼系数，值越小旋转越平滑
+        controls.enableZoom = true;         // 允许缩放
+        controls.zoomSpeed = 0.7;           // 缩放速度
+        controls.enablePan = true;          // 允许平移
+        controls.panSpeed = 0.5;            // 平移速度
+
+        // 场景光照系统配置
+        // 添加环境光 - 提供基础照明，消除全黑区域
+        const ambientLight = new THREE.AmbientLight(0x1a237e, 0.6); // 深蓝色调环境光
+        scene.add(ambientLight);
+        
+        // 添加方向光 - 模拟太阳光，产生阴影和方向性照明
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(100, 200, 80);  // 光源位置
+        directionalLight.castShadow = true;           // 启用阴影投射
+        
+        // 优化阴影质量
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 50;
+        directionalLight.shadow.camera.far = 2000;
+        scene.add(directionalLight);
+
+        // 创建天空盒 - 模拟大气效果
+        const sky = new Sky();
+        sky.scale.setScalar(450000);  // 调整天空盒大小
+        
+        // 配置天空盒材质参数
+        const skyUniforms = sky.material.uniforms;
+        // 设置太阳位置 (使用球坐标转换)
+        skyUniforms.sunPosition.value = new THREE.Vector3().setFromSphericalCoords(
+            1, 
+            THREE.MathUtils.degToRad(70),  // 高度角
+            THREE.MathUtils.degToRad(190)  // 方位角
+        );
+        // 配置大气散射效果
+        skyUniforms.rayleigh.value = 3.2;       // 瑞利散射 - 影响天空颜色
+        skyUniforms.mieCoefficient.value = 0.005; // 米氏散射系数 - 影响太阳周围光晕
+        skyUniforms.mieDirectionalG.value = 0.8;  // 米氏散射方向性
+        
+        scene.add(sky);
+
+        /**
+         * 自定义无限网格辅助类
+         * 实现一个可以无限延伸的网格，随着距离增加逐渐淡出
+         */
+        class AdvancedGridHelper extends THREE.Mesh {
+            /**
+             * 构造函数
+             * @param {number} minorSize - 次要网格线间距
+             * @param {number} majorSize - 主要网格线间距
+             * @param {THREE.Color} color - 网格线颜色
+             * @param {number} maxDistance - 网格最大可见距离
+             * @param {string} axes - 网格所在平面的轴配置
+             */
+            constructor(
+                minorSize = 10, 
+                majorSize = 100, 
+                color = new THREE.Color(0x8899aa), 
+                maxDistance = 10000, 
+                axes = 'xzy'
+            ) {
+                // 创建立方体几何体作为基础
+                const geometry = new THREE.PlaneGeometry(2, 2, 1, 1);
+                
+                // 提取平面所在的轴
+                const planeAxes = axes.substring(0, 2);
+                
+                // 创建自定义着色器材质
+                const material = new THREE.ShaderMaterial({
+                    side: THREE.DoubleSide,          // 双面可见
+                    uniforms: {
+                        uMinorSize: { value: minorSize },  // 次要网格大小
+                        uMajorSize: { value: majorSize },  // 主要网格大小
+                        uColor: { value: color },          // 网格颜色
+                        uMaxDistance: { value: maxDistance } // 最大可见距离
+                    },
+                    transparent: true,               // 启用透明度
+                    vertexShader: `
+                        varying vec3 vWorldPos;
+                        uniform float uMaxDistance;
+                        
+                        void main() {
+                            // 计算世界空间位置
+                            vec3 pos = position.${axes} * uMaxDistance;
+                            pos.${planeAxes} += cameraPosition.${planeAxes};
+                            vWorldPos = pos;
+                            
+                            // 计算最终顶点位置
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        varying vec3 vWorldPos;
+                        uniform float uMinorSize;
+                        uniform float uMajorSize;
+                        uniform vec3 uColor;
+                        uniform float uMaxDistance;
+                        
+                        // 计算网格线函数
+                        float getGridLine(float size) {
+                            vec2 gridCoords = vWorldPos.${planeAxes} / size;
+                            vec2 grid = abs(fract(gridCoords - 0.5) - 0.5) / fwidth(gridCoords);
+                            return 1.0 - min(min(grid.x, grid.y), 1.0);
+                        }
+                        
+                        void main() {
+                            // 计算距离衰减因子
+                            float distanceFactor = 1.0 - min(
+                                distance(cameraPosition.${planeAxes}, vWorldPos.${planeAxes}) / uMaxDistance, 
+                                1.0
+                            );
+                            
+                            // 计算网格线
+                            float minorGrid = getGridLine(uMinorSize);
+                            float majorGrid = getGridLine(uMajorSize);
+                            
+                            // 混合网格线并应用衰减
+                            float gridAlpha = mix(majorGrid, minorGrid, minorGrid) * pow(distanceFactor, 3.0);
+                            
+                            // 主要网格线更粗
+                            gridAlpha = mix(gridAlpha * 0.5, gridAlpha, majorGrid);
+                            
+                            // 设置最终颜色
+                            gl_FragColor = vec4(uColor, gridAlpha);
+                            
+                            // 丢弃完全透明的像素
+                            if (gl_FragColor.a <= 0.0) discard;
+                        }
+                    `,
+                    extensions: {
+                        derivatives: true  // 启用GLSL导数函数
+                    }
+                });
+                
+                super(geometry, material);
+                this.frustumCulled = false;  // 禁用视锥体剔除，确保始终可见
+            }
+        }
+
+        // 创建并添加无限网格到场景
+        const gridHelper = new AdvancedGridHelper(
+            15,    // 次要网格间距
+            150,   // 主要网格间距
+            new THREE.Color(0x607d8b),  // 网格颜色 - 深青色
+            12000  // 最大可见距离
+        );
+        scene.add(gridHelper);
+
+        /**
+         * 动画循环函数
+         * 负责更新场景状态并持续渲染
+         */
+        function animate() {
+            // 请求下一帧动画
+            requestAnimationFrame(animate);
+            
+            // 更新控制器状态以保持阻尼效果
+            controls.update();
+            
+            // 渲染场景
+            renderer.render(scene, camera);
+        }
+        
+        // 启动动画循环
+        animate();
+
+        /**
+         * 窗口大小变化处理函数
+         * 确保渲染器和相机适配新的窗口尺寸
+         */
+        function handleResize() {
+            // 更新渲染器尺寸
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            
+            // 更新相机宽高比
+            camera.aspect = container.clientWidth / container.clientHeight;
+            
+            // 更新相机投影矩阵
+            camera.updateProjectionMatrix();
+        }
+        
+        // 监听窗口大小变化事件
+        window.addEventListener('resize', handleResize);
+    </script>
+</body>
+</html>

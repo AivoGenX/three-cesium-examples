@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <!-- 这里可以添加CSS样式文件 -->
+  </head>
+  <body>
+     <script type="importmap">
+      {
+        "imports": {
+          "three": "/libs/threejs/build/three.module.js",
+          "three/addons/": "/libs/threejs/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module"> 
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { FontLoader } from "three/addons/loaders/FontLoader.js";
+      import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+      
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth/window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(1, 2, 3);
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        logarithmicDepthBuffer: true,
+      });
+      renderer.setSize(window.innerWidth,window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.01;
+
+      window.onresize = () => {
+        renderer.setSize(window.innerWidth,window.innerHeight);
+        camera.aspect = window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+      };
+
+      scene.add(new THREE.AxesHelper(1000));
+
+      scene.add(new THREE.AmbientLight(0x404040, 5));
+
+      let directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight.castShadow = true;
+      directionalLight.position.set(0, 50, 0);
+
+      scene.add(directionalLight);
+
+      const TEXT = [
+        "three.js",
+        "tres.js",
+        "react-three-fiber",
+        "cesium",
+        "javascript",
+        "html",
+        "babylon",
+        "webgl",
+        "glsl",
+        "shader",
+        "css",
+        "vue",
+        "vite",
+      ];
+
+      const radius = 2;
+      const segments = 64;
+      const rings = 64;
+      const geometry = new THREE.SphereGeometry(radius, segments, rings);
+
+      const widthSegments = 32; // 横向细分段数
+      const heightSegments = 32; // 纵向细分段数
+
+      // 生成顶点数据
+      const positions = [];
+      for (let phiIndex = 0; phiIndex <= heightSegments; phiIndex++) {
+        const phi = (phiIndex * Math.PI) / heightSegments;
+        for (let thetaIndex = 0; thetaIndex <= widthSegments; thetaIndex++) {
+          const theta = (thetaIndex * 2 * Math.PI) / widthSegments;
+
+          // 计算点的坐标
+          const x = radius * Math.sin(phi) * Math.cos(theta);
+          const y = radius * Math.sin(phi) * Math.sin(theta);
+          const z = radius * Math.cos(phi);
+
+          positions.push(x, y, z);
+        }
+      }
+
+      // 创建球体材质
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x00ff00, // 球体的颜色
+        transparent: true, // 开启透明
+        opacity: 0, // 设置透明度
+      });
+
+      // 创建球体网格
+      const sphere = new THREE.Mesh(geometry, material);
+      scene.add(sphere);
+
+      const fontUrl = "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json";
+      const font = await new Promise((resolve) =>
+        new FontLoader().load(fontUrl, (f) => resolve(f))
+      );
+
+      const totalCount = positions.length;
+      const savePos = [];
+      const textMeshes = [];
+      const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0x96ceb4, 0xffeaa7, 0xdfe6e9, 0x74b9ff, 0xa29bfe];
+
+      for (let i = 0; i < totalCount; i += 3) {
+        const x = positions[i];
+        const y = positions[i + 1];
+        const z = positions[i + 2];
+        const pos = new THREE.Vector3(x, y, z);
+
+        const textIndex = Math.floor(Math.random() * TEXT.length);
+        const textGeometry = new TextGeometry(TEXT[textIndex], {
+          font,
+          size: 0.05,
+          height: 0.002,
+          curveSegments: 4,
+          bevelEnabled: false,
+        });
+        textGeometry.computeBoundingBox();
+        if (textGeometry.boundingBox) {
+          const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
+          const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y;
+          textGeometry.translate(-textWidth / 2, -textHeight / 2, 0);
+
+          const colorIndex = Math.floor(Math.random() * colors.length);
+          const textMaterial = new THREE.MeshBasicMaterial({ color: colors[colorIndex] });
+          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+          const normal = new THREE.Vector3(pos.x, pos.y, pos.z).normalize();
+          textMesh.position.copy(normal.multiplyScalar(radius + 0.05));
+          textMesh.lookAt(new THREE.Vector3(pos.x * 2, pos.y * 2, pos.z * 2));
+
+          const isClose = savePos.some((p) => p.distanceTo(textMesh.position) <= 0.4);
+          if (!isClose) {
+            sphere.add(textMesh);
+            textMeshes.push(textMesh);
+            savePos.push(textMesh.position);
+          }
+        }
+      }
+
+      let animTime = 0;
+      function animate() {
+        animTime += 0.01;
+        textMeshes.forEach((mesh, idx) => {
+          const scale = 1 + Math.sin(animTime * 2 + idx * 0.1) * 0.2;
+          mesh.scale.setScalar(scale);
+        });
+        controls.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+      animate();
+      </script>
+  </body>
+</html>

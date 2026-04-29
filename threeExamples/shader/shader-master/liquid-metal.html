@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js液态金属着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #333333 0%, #000000 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #cccccc;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #cccccc;
+      border: 1px solid #cccccc;
+      box-shadow: 0 0 20px #cccccc;
+    }
+    .metal-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #00ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #00ffff;
+      border: 1px solid #00ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ff9900;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff9900;
+      border: 1px solid #ff9900;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">💧 液态金属 - 实时渲染 💧</div>
+  <div class="metal-info" id="metalInfo">流动性: 中等 | 表面张力: 高</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变金属效果<br>
+    • 实时交互：体验液态金属
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x333333);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(75, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 液态金属参数
+    const metalParams = {
+      fluidity: 1.2,
+      surfaceTension: 0.8,
+      viscosity: 0.6,
+      reflection: 1.5,
+      rippleEffect: 0.7,
+      metalType: 0,
+      showRipples: true
+    };
+
+    // 创建立方体几何体，作为液态金属的载体
+    const geometry = new THREE.BoxGeometry(3, 3, 3, 32, 32, 32);
+
+    // 顶点着色器代码 - 液态金属效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uFluidity;
+      uniform float uSurfaceTension;
+      uniform float uRippleEffect;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 液态流动效果
+        float fluidFlow = sin(position.x * 3.0 + uTime * uFluidity) * 
+                         cos(position.y * 3.0 + uTime * uFluidity) *
+                         sin(position.z * 3.0 + uTime * uFluidity);
+        
+        // 表面张力效果
+        float tension = sin(length(position) * 4.0 + uTime * uSurfaceTension);
+        
+        // 涟漪效果
+        float ripple = sin(position.x * 6.0 + uTime * uRippleEffect * 2.0) * 
+                      cos(position.z * 6.0 + uTime * uRippleEffect * 2.0);
+        
+        vec3 newPosition = position + normal * (fluidFlow + tension + ripple) * 0.15;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 液态金属效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uFluidity;
+      uniform float uSurfaceTension;
+      uniform float uViscosity;
+      uniform float uReflection;
+      uniform float uRippleEffect;
+      uniform int uMetalType;
+      uniform bool uShowRipples;
+      
+      // 金属反射效果
+      float metalReflection(vec3 normal, vec3 viewDir, float intensity) {
+        float reflection = dot(normal, viewDir);
+        return pow(1.0 - abs(reflection), intensity);
+      }
+      
+      // 液态流动效果
+      float liquidFlow(vec2 uv, float fluidity) {
+        float flow = 0.0;
+        
+        // 多层流动
+        flow += sin(uv.x * 8.0 + uTime * fluidity);
+        flow += cos(uv.y * 8.0 + uTime * fluidity * 1.3);
+        flow += sin(uv.x * 12.0 + uv.y * 12.0 + uTime * fluidity * 0.7);
+        
+        return flow * 0.3;
+      }
+      
+      // 涟漪效果
+      float ripples(vec2 uv, float effect) {
+        if(!uShowRipples) return 0.0;
+        
+        float ripple = 0.0;
+        for(int i = 0; i < 3; i++) {
+          vec2 center = vec2(0.5, 0.5);
+          float dist = distance(uv, center);
+          float wave = sin(dist * 15.0 - uTime * effect * 3.0 + float(i) * 2.0);
+          ripple += wave * 0.1;
+        }
+        return ripple;
+      }
+      
+      // 金属类型
+      vec3 getMetalType(int type) {
+        if(type == 0) {
+          // 水银 - 银色
+          return vec3(0.9, 0.9, 0.9);
+        } else if(type == 1) {
+          // 黄金 - 金色
+          return vec3(1.0, 0.8, 0.2);
+        } else {
+          // 铜 - 铜色
+          return vec3(0.8, 0.5, 0.2);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        vec3 viewDir = normalize(-vPosition);
+        
+        // 金属反射效果
+        float reflection = metalReflection(vNormal, viewDir, uReflection);
+        
+        // 液态流动效果
+        float flow = liquidFlow(uv, uFluidity);
+        
+        // 涟漪效果
+        float ripple = ripples(uv, uRippleEffect);
+        
+        // 颜色计算
+        vec3 baseColor = getMetalType(uMetalType);
+        vec3 finalColor = baseColor * (reflection * 0.6 + flow * 0.3 + ripple * 0.1) * uViscosity;
+        
+        // 高光效果
+        float specular = pow(max(0.0, dot(vNormal, viewDir)), 8.0);
+        finalColor += vec3(1.0) * specular * 0.5;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uFluidity: { value: metalParams.fluidity },
+        uSurfaceTension: { value: metalParams.surfaceTension },
+        uViscosity: { value: metalParams.viscosity },
+        uReflection: { value: metalParams.reflection },
+        uRippleEffect: { value: metalParams.rippleEffect },
+        uMetalType: { value: metalParams.metalType },
+        uShowRipples: { value: metalParams.showRipples }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const metalCube = new THREE.Mesh(geometry, material);
+    scene.add(metalCube);
+
+    // 更新金属信息显示
+    function updateMetalInfo() {
+      const metalElement = document.getElementById('metalInfo');
+      let fluidity = "低";
+      if(metalParams.fluidity > 0.8) fluidity = "中等";
+      if(metalParams.fluidity > 1.2) fluidity = "高";
+      
+      let tension = "低";
+      if(metalParams.surfaceTension > 0.5) tension = "中等";
+      if(metalParams.surfaceTension > 0.8) tension = "高";
+      
+      metalElement.textContent = `流动性: ${fluidity} | 表面张力: ${tension}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 金属参数控制
+    const metalFolder = gui.addFolder('液态金属参数');
+    metalFolder.add(metalParams, 'fluidity', 0.1, 2.0).name('流动性');
+    metalFolder.add(metalParams, 'surfaceTension', 0.1, 1.2).name('表面张力');
+    metalFolder.add(metalParams, 'viscosity', 0.1, 1.5).name('粘稠度');
+    metalFolder.add(metalParams, 'reflection', 0.1, 2.0).name('反射强度');
+    metalFolder.add(metalParams, 'rippleEffect', 0.1, 1.2).name('涟漪效果');
+    metalFolder.add(metalParams, 'showRipples').name('显示涟漪');
+    
+    // 金属类型控制
+    const metalTypes = {
+      "水银": 0,
+      "黄金": 1,
+      "铜": 2
+    };
+    metalFolder.add(metalParams, 'metalType', metalTypes).name('金属类型');
+    
+    metalFolder.open();
+
+    // 参数变化时更新材质和金属信息
+    gui.onChange(() => {
+      material.uniforms.uFluidity.value = metalParams.fluidity;
+      material.uniforms.uSurfaceTension.value = metalParams.surfaceTension;
+      material.uniforms.uViscosity.value = metalParams.viscosity;
+      material.uniforms.uReflection.value = metalParams.reflection;
+      material.uniforms.uRippleEffect.value = metalParams.rippleEffect;
+      material.uniforms.uMetalType.value = metalParams.metalType;
+      material.uniforms.uShowRipples.value = metalParams.showRipples;
+      
+      updateMetalInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转金属立方体
+      metalCube.rotation.x += 0.005;
+      metalCube.rotation.y += 0.007;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化金属信息显示
+    updateMetalInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

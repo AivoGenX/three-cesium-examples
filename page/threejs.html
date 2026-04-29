@@ -1,0 +1,743 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three.js示例集合 | ThreeLab</title>
+  <meta name="keywords" content="Three.js,WebGL,3D图形,JavaScript,三维开�?开源示�?>
+  <meta name="description" content="ThreeLab提供的Three.js示例集合，包含各�?D图形效果和交互式场景">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="ThreeLab">
+  <meta name="generator" content="ThreeLab Static Generator">
+  <link rel="canonical" href="https://threelab.cn/static/three-js-------threelab.html">
+  
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Three.js示例集合 | ThreeLab">
+  <meta property="og:description" content="ThreeLab提供的Three.js示例集合，包含各�?D图形效果和交互式场景">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://threelab.cn/static/three-js-------threelab.html">
+  <meta property="og:image" content="https://threelab.cn/logo.png">
+  <meta property="og:site_name" content="ThreeLab">
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Three.js示例集合 | ThreeLab">
+  <meta name="twitter:description" content="ThreeLab提供的Three.js示例集合，包含各�?D图形效果和交互式场景">
+  <meta name="twitter:image" content="https://threelab.cn/logo.png">
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Three.js示例集合 | ThreeLab",
+    "description": "ThreeLab提供的Three.js示例集合，包含各�?D图形效果和交互式场景",
+    "url": "https://threelab.cn/static/three-js-------threelab.html",
+    "author": {
+      "@type": "Organization",
+      "name": "ThreeLab"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "ThreeLab",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://threelab.cn/logo.png"
+      }
+    }
+  }
+  </script>
+  
+  <!-- 外部CSS样式�?-->
+  <link rel="stylesheet" href="css/style.css">
+
+<!-- 百度统计 -->
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?f95f2d5f4a69f60f0cc3501cf12bc76d";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Three.js示例集合 | ThreeLab</h1>
+      <p class="content">ThreeLab提供的Three.js示例集合，包含各�?D图形效果和交互式场景</p>
+    </header>
+    
+    <main>
+      
+    <h2>Three.js示例分类</h2>
+    
+    
+      <div class="category-section">
+        <h3>官方资源</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/threeexamples.png" alt="Three.js官方示例" class="example-image">
+              <h4 class="example-title">Three.js官方示例</h4>
+              <p class="example-author">mrdoob</p>
+              <p class="example-description">Three.js官方提供的完整WebGL三维图形库示例集合，包含各种3D渲染、动画和交互效果的实战案�?..</p>
+              <a href="threejsAuthor.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/sandcastle.png" alt="Cesium官方示例" class="example-image">
+              <h4 class="example-title">Cesium官方示例</h4>
+              <p class="example-author">CesiumGS</p>
+              <p class="example-description">Cesium官方提供的三维地球和地理信息系统开发示例，包含地形、影像、矢量数据等完整的三维地图应用案�?..</p>
+              <a href="cesiumAuthor.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/ThreeChineseExamples.png" alt="threejs官网实例 - 优化�? class="example-image">
+              <h4 class="example-title">threejs官网实例 - 优化�?/h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">Three.js官网实例的中文优化版本，提供详细的中文文档和实战案例，适合三维可视化开发学�?..</p>
+              <a href="ThreeChineseExamples.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="official.html" class="example-link">查看全部官方资源示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>着色器</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/shader_planet.jpg" alt="着色器行星" class="example-image">
+              <h4 class="example-title">着色器行星</h4>
+              <p class="example-author">nico</p>
+              <p class="example-description">使用Three.js和自定义GLSL着色器实现�?D行星效果，包含大气层、云层和动态光照的三维渲染技�?..</p>
+              <a href="shader_planet.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/mosaicShader.jpg" alt="马赛�? class="example-image">
+              <h4 class="example-title">马赛�?/h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">基于Three.js实现的马赛克着色器效果，通过像素化处理和动态颜色变换实现独特的视觉风格...</p>
+              <a href="mosaicShader.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/mushroom.jpg" alt="蘑菇" class="example-image">
+              <h4 class="example-title">蘑菇</h4>
+              <p class="example-author">bubinyang</p>
+              <p class="example-description">使用Three.js实现的蘑菇形态着色器效果，模拟有机生物的三维渲染和材质表�?..</p>
+              <a href="mushroom.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="shader.html" class="example-link">查看全部着色器示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>高级着色器效果</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/algorithmNoise.png" alt="算法噪声着色器" class="example-image">
+              <h4 class="example-title">算法噪声着色器</h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">使用three.js实现多种噪声算法的着色器效果，包括白噪声、值噪声、柏林噪声和分形噪声...</p>
+              <a href="algorithmNoise.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/mathFunctions.png" alt="数学函数着色器" class="example-image">
+              <h4 class="example-title">数学函数着色器</h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">使用three.js实现多种数学函数的可视化着色器效果，包括三角函数、指数函数和对数函数...</p>
+              <a href="mathFunctions.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/physicsSimulation.png" alt="物理模拟着色器" class="example-image">
+              <h4 class="example-title">物理模拟着色器</h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">使用three.js实现多种物理现象的着色器模拟，包括波动、热传导、流体和电磁�?..</p>
+              <a href="physicsSimulation.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="advanced_shader.html" class="example-link">查看全部高级着色器效果示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>数学运算</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/mathematical/middleSchoolMath3D.png" alt="初中数学函数可视�? class="example-image">
+              <h4 class="example-title">初中数学函数可视�?/h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">使用three.js实现初中数学函数可视化三维场景，包括一次函数、二次函数、三角函数、反比例函数和绝对值函数的立体图像展示...</p>
+              <a href="middleSchoolMath3D.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/mathematical/geometryTransform3D.png" alt="几何图形变换" class="example-image">
+              <h4 class="example-title">几何图形变换</h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">使用three.js实现几何图形变换三维场景，包括平移、旋转、缩放、对称和组合变换的立体展�?..</p>
+              <a href="geometryTransform3D.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/mathematical/coordinateSystem3D.png" alt="坐标系和函数图像" class="example-image">
+              <h4 class="example-title">坐标系和函数图像</h4>
+              <p class="example-author">AivoGenX</p>
+              <p class="example-description">使用three.js实现坐标系和函数图像三维场景，展示直角坐标系、极坐标系、柱坐标系和球坐标系下的立体函数图像特征...</p>
+              <a href="coordinateSystem3D.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="math_operations.html" class="example-link">查看全部数学运算示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>三维地球</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="undefined/threeExamples/images/3dEarth.png" alt="3D地球" class="example-image">
+              <h4 class="example-title">3D地球</h4>
+              <p class="example-author">RainManGO</p>
+              <p class="example-description">Three.js 3D地球示例，展�?D地球的三维渲染效�?..</p>
+              <a href="3dEarth.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/3dEarth2.jpg" alt="虚幻地球" class="example-image">
+              <h4 class="example-title">虚幻地球</h4>
+              <p class="example-author">GhostCatcg</p>
+              <p class="example-description">Three.js 虚幻地球示例，展示虚幻地球的三维渲染效果...</p>
+              <a href="3dEarth2.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/earth/pointsEarth.png" alt="粒子地球" class="example-image">
+              <h4 class="example-title">粒子地球</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">使用three.粒子地球...</p>
+              <a href="pointsEarth.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="3dearth.html" class="example-link">查看全部三维地球示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>智慧城市</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/smartCity.jpg" alt="智慧城市特效" class="example-image">
+              <h4 class="example-title">智慧城市特效</h4>
+              <p class="example-author">193Eric</p>
+              <p class="example-description">Three.js 智慧城市特效示例，展示智慧城市特效的三维渲染效果...</p>
+              <a href="smartCity.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/cityLine.jpg" alt="城市线条" class="example-image">
+              <h4 class="example-title">城市线条</h4>
+              <p class="example-author">superzay</p>
+              <p class="example-description">使用three.js城市线条...</p>
+              <a href="cityLine.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/codeCloud.jpg" alt="代码�? class="example-image">
+              <h4 class="example-title">代码�?/h4>
+              <p class="example-author">yiiiiiiqianyao</p>
+              <p class="example-description">使用three.js代码�?..</p>
+              <a href="codeCloud.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="smartCity.html" class="example-link">查看全部智慧城市示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>行业应用</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="undefined/threeExamples/images/fengji.jpg" alt="风机" class="example-image">
+              <h4 class="example-title">风机</h4>
+              <p class="example-author">fengtianxi001</p>
+              <p class="example-description">Three.js 风机示例，展示风机的三维渲染效果...</p>
+              <a href="feng_ji.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="IndustryApplications.html" class="example-link">查看全部行业应用示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>高级案例</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/roaming.jpg" alt="漫游模拟�? class="example-image">
+              <h4 class="example-title">漫游模拟�?/h4>
+              <p class="example-author">junhong-chen</p>
+              <p class="example-description">Three.js 漫游模拟器示例，展示漫游模拟器的三维渲染效果...</p>
+              <a href="roaming.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/taohuating.jpg" alt="桃花�? class="example-image">
+              <h4 class="example-title">桃花�?/h4>
+              <p class="example-author">huan_meng_hai_yan</p>
+              <p class="example-description">Three.js 桃花亭示例，展示桃花亭的三维渲染效果...</p>
+              <a href="taohuating.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/openSource/ziTengHua.jpg" alt="紫藤�? class="example-image">
+              <h4 class="example-title">紫藤�?/h4>
+              <p class="example-author">huan_meng_hai_yan</p>
+              <p class="example-description">Three.js 紫藤花示例，展示紫藤花的三维渲染效果...</p>
+              <a href="ziTengHua.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="advancedExamples.html" class="example-link">查看全部高级案例示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>水效�?/h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeSymbol/water/waterA.png" alt="波浪效果" class="example-image">
+              <h4 class="example-title">波浪效果</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">使用three水效�?..</p>
+              <a href="undefined.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/waterSky.jpg" alt="水天一�? class="example-image">
+              <h4 class="example-title">水天一�?/h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">使用three.js水天一�?..</p>
+              <a href="waterSky.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="water.html" class="example-link">查看全部水效果示�?/a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>闪耀发光</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/ShiningGlowing/fireball.png" alt="火球效果" class="example-image">
+              <h4 class="example-title">火球效果</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">Three.js 火球效果示例，展示火球效果的三维渲染效果...</p>
+              <a href="fireball.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="ShiningGlowing.html" class="example-link">查看全部闪耀发光示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>体图�?/h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/RotateCube.png" alt="动态光影立方体" class="example-image">
+              <h4 class="example-title">动态光影立方体</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">Three.js 动态光影立方体示例，展示动态光影立方体的三维渲染效�?..</p>
+              <a href="RotateCube.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/pieCharts.jpg" alt="3D饼图" class="example-image">
+              <h4 class="example-title">3D饼图</h4>
+              <p class="example-author">superzay</p>
+              <p class="example-description">使用three.js制作3D饼图...</p>
+              <a href="pieCharts.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeTutorial/basic/3DCircle.png" alt="扩散半球" class="example-image">
+              <h4 class="example-title">扩散半球</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">Three.js 扩散半球示例，展示扩散半球的三维渲染效果...</p>
+              <a href="3DCircle.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="PrimitiveBody.html" class="example-link">查看全部体图元示�?/a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>线图�?/h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/flowLight.jpg" alt="流光" class="example-image">
+              <h4 class="example-title">流光</h4>
+              <p class="example-author">yjsdszz</p>
+              <p class="example-description">使用three.js流光...</p>
+              <a href="flowLight.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/diffuseLine.jpg" alt="发散飞线" class="example-image">
+              <h4 class="example-title">发散飞线</h4>
+              <p class="example-author">stonerao</p>
+              <p class="example-description">使用three.js发散飞线...</p>
+              <a href="diffuseLine.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="line.html" class="example-link">查看全部线图元示�?/a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>应用场景</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/matrixOperation.jpg" alt="矩阵操作" class="example-image">
+              <h4 class="example-title">矩阵操作</h4>
+              <p class="example-author">alwxkxk</p>
+              <p class="example-description">矩阵操作...</p>
+              <a href="matrixOperation.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/topology.jpg" alt="简�?d拓扑�? class="example-image">
+              <h4 class="example-title">简�?d拓扑�?/h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">使用three.js制作3d拓扑�?..</p>
+              <a href="topology.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/nav_mesh/nav.jpg" alt="模型导航" class="example-image">
+              <h4 class="example-title">模型导航</h4>
+              <p class="example-author">nico</p>
+              <p class="example-description">模型导航...</p>
+              <a href="model_navigation.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="application.html" class="example-link">查看全部应用场景示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>粒子</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/particle/z2586300277.jpg" alt="大象" class="example-image">
+              <h4 class="example-title">大象</h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">Three.js 大象示例，展示大象的三维渲染效果...</p>
+              <a href="z2586300277.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/particle/galaxyStar.jpg" alt="星系" class="example-image">
+              <h4 class="example-title">星系</h4>
+              <p class="example-author">kavalcio</p>
+              <p class="example-description">使用three.js星系...</p>
+              <a href="galaxyStar.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/imageParticle.jpg" alt="颗粒图像" class="example-image">
+              <h4 class="example-title">颗粒图像</h4>
+              <p class="example-author">superzay</p>
+              <p class="example-description">使用three.js颗粒图像...</p>
+              <a href="imageParticle.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="particle.html" class="example-link">查看全部粒子示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>扩展功能</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/expand/loadTiles.jpg" alt="加载3dtiles" class="example-image">
+              <h4 class="example-title">加载3dtiles</h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">使用three加载3dtiles...</p>
+              <a href="loadTiles.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/application/lineMeasure.jpg" alt="测量" class="example-image">
+              <h4 class="example-title">测量</h4>
+              <p class="example-author">yjsdszz</p>
+              <p class="example-description">Three.js 测量示例，展示测量的三维渲染效果...</p>
+              <a href="lineMeasure.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="expand.html" class="example-link">查看全部扩展功能示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>后期处理</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/shader/gaussianBlur.jpg" alt="高斯模糊" class="example-image">
+              <h4 class="example-title">高斯模糊</h4>
+              <p class="example-author">hafly</p>
+              <p class="example-description">使用three.js高斯模糊...</p>
+              <a href="gaussianBlur.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/effectComposer/selectBloomPass.jpg" alt="辉光-postprocessing" class="example-image">
+              <h4 class="example-title">辉光-postprocessing</h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">使用three.js辉光通道...</p>
+              <a href="selectBloomPass.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/effectComposer/customMaskPass.jpg" alt="自定义遮罩通道" class="example-image">
+              <h4 class="example-title">自定义遮罩通道</h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">使用three.js自定义遮罩通道...</p>
+              <a href="customMaskPass.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="effectComposer.html" class="example-link">查看全部后期处理示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>物理应用</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/physics/threeForce.jpg" alt="力导向图" class="example-image">
+              <h4 class="example-title">力导向图</h4>
+              <p class="example-author">vasturiano</p>
+              <p class="example-description">Three.js 力导向图示例，展示力导向图的三维渲染效果...</p>
+              <a href="threeForce.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/physics/physicsMesh.jpg" alt="物理cannon使用" class="example-image">
+              <h4 class="example-title">物理cannon使用</h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">Three.js 物理cannon使用示例，展示物理cannon使用的三维渲染效�?..</p>
+              <a href="physicsMesh.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="physics.html" class="example-link">查看全部物理应用示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>基础案例</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeTutorial/basic/modelLoad.jpg" alt="gltf/fbx/obj模型加载" class="example-image">
+              <h4 class="example-title">gltf/fbx/obj模型加载</h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">使用three.html模型加载...</p>
+              <a href="modelLoad.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeTutorial/basic/outlinePass.jpg" alt="轮廓�? class="example-image">
+              <h4 class="example-title">轮廓�?/h4>
+              <p class="example-author">z2586300277</p>
+              <p class="example-description">使用three轮廓�?..</p>
+              <a href="outlinePass.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeTutorial/basic/gradientTriangle.jpg" alt="渐变三角�? class="example-image">
+              <h4 class="example-title">渐变三角�?/h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">使用three.html渐变三角�?..</p>
+              <a href="gradientTriangle.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="basic.html" class="example-link">查看全部基础案例示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>入门实例</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeTutorial/basic/入门.png" alt="入门" class="example-image">
+              <h4 class="example-title">入门</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">使用three.html入门...</p>
+              <a href="入门.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeTutorial/basic/辅助�?png" alt="辅助�? class="example-image">
+              <h4 class="example-title">辅助�?/h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">使用three.html辅助�?..</p>
+              <a href="辅助�?html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeTutorial/basic/光线.png" alt="光线" class="example-image">
+              <h4 class="example-title">光线</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">使用three.html光线...</p>
+              <a href="光线.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="case.html" class="example-link">查看全部入门实例示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>相关工具</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/tools/sketchfab.jpg" alt="sketchfab免费模型" class="example-image">
+              <h4 class="example-title">sketchfab免费模型</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">Three.js sketchfab免费模型示例，展示sketchfab免费模型的三维渲染效�?..</p>
+              <a href="sketchfab_model.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="undefined/threeExamples/images/shaderToy.jpg" alt="开源shader社区" class="example-image">
+              <h4 class="example-title">开源shader社区</h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">Three.js 开源shader社区示例，展示开源shader社区的三维渲染效�?..</p>
+              <a href="shaderToy.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/tools/skyBox_image.jpg" alt="免费hdr全景图资�? class="example-image">
+              <h4 class="example-title">免费hdr全景图资�?/h4>
+              <p class="example-author">giser2017</p>
+              <p class="example-description">Three.js 免费hdr全景图资源示例，展示免费hdr全景图资源的三维渲染效果...</p>
+              <a href="skyBox_image.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="tools.html" class="example-link">查看全部相关工具示例</a>
+        </div>
+      </div>
+    
+      <div class="category-section">
+        <h3>相关工具</h3>
+        <div class="example-grid">
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/tools/gltf_report.jpg" alt="gltf在线draco压缩工具" class="example-image">
+              <h4 class="example-title">gltf在线draco压缩工具</h4>
+              <p class="example-author">donmccurdy</p>
+              <p class="example-description">Three.js gltf在线draco压缩工具示例，展示gltf在线draco压缩工具的三维渲染效�?..</p>
+              <a href="gltf_report.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/tools/skyBox_Make.jpg" alt="hdr制作天空�? class="example-image">
+              <h4 class="example-title">hdr制作天空�?/h4>
+              <p class="example-author">matheowis</p>
+              <p class="example-description">Three.js hdr制作天空盒示例，展示hdr制作天空盒的三维渲染效果...</p>
+              <a href="skyBox_Make.html" class="example-link">详情查看</a>
+            </div>
+          
+            <div class="example-card">
+              <img src="https://threelab.cn/threeExamples/tools/make_json_font.jpg" alt="字体转Three使用json字体" class="example-image">
+              <h4 class="example-title">字体转Three使用json字体</h4>
+              <p class="example-author">gero3</p>
+              <p class="example-description">Three.js 字体转Three使用json字体示例，展示字体转Three使用json字体的三维渲染效�?..</p>
+              <a href="make_json_font.html" class="example-link">详情查看</a>
+            </div>
+          
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="tools.html" class="example-link">查看全部相关工具示例</a>
+        </div>
+      </div>
+    
+    
+    <div class="breadcrumb">
+      <a href="static-index.html">首页</a>
+      <span>></span>
+      <span>Three.js示例</span>
+    </div>
+  
+    </main>
+    
+    <footer>
+      <p>© 2026 ThreeLab - Three.js和Cesium开源示例集�?/p>
+      <p>联系我们: <a href="mailto:2945853209@qq.com" style="color: #007acc;">2945853209@qq.com</a></p>
+    </footer>
+  </div>
+</body>
+</html>

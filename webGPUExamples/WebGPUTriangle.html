@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGPU Triangle Example</title>
+</head>
+<body>
+    <!-- Canvas元素用于显示WebGPU渲染的结果 -->
+    <canvas id="webgpu-canvas" width="800" height="600"></canvas>
+    <script type="module">
+        const render = async () => {
+            // 1. 获取WebGPU适配器和设备
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+                console.error("WebGPU is not supported on this browser.");
+                return;
+            }
+            const device = await adapter.requestDevice();
+
+            // 2. 获取Canvas上下文并配置WebGPU
+            const canvas = document.querySelector('canvas');
+            const ctx = canvas.getContext('webgpu');
+            if (!ctx) {
+                console.error("WebGPU context is not available.");
+                return;
+            }
+            const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+            ctx.configure({
+                device: device,
+                format: canvasFormat, // 使用画布的首选像素格式
+            });
+
+            // 3. 创建命令编码器
+            const encoder = device.createCommandEncoder();
+
+            // 4. 开始渲染通道
+            const pass = encoder.beginRenderPass({
+                colorAttachments: [
+                    {
+                        view: ctx.getCurrentTexture().createView(), // 渲染目标视图
+                        loadOp: 'clear', // 清除画布
+                        clearValue: { r: 0.6, g: 0.8, b: 0.9, a: 1 }, // 清除颜色（浅蓝色）
+                        storeOp: 'store', // 存储渲染结果
+                    },
+                ],
+            });
+
+            // 5. 定义三角形的顶点数据
+            const vertices = new Float32Array([
+                -0.5, -0.5, // 左下角
+                0.5, -0.5,  // 右下角
+                0.5, 0.5,   // 右上角
+            ]);
+
+            // 6. 创建GPU缓冲区并上传顶点数据
+            const vertexBuffer = device.createBuffer({
+                label: 'Triangle Vertices', // 缓冲区标签
+                size: vertices.byteLength, // 缓冲区大小
+                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, // 用途：顶点数据 + 可写入
+            });
+            device.queue.writeBuffer(vertexBuffer, 0, vertices); // 将顶点数据复制到GPU缓冲区
+
+            // 7. 定义顶点缓冲区布局
+            const vertexBufferLayout = {
+                arrayStride: 2 * 4, // 每组数据的字节数（2个32位浮点数）
+                attributes: [
+                    {
+                        format: 'float32x2', // 每个顶点属性的格式
+                        offset: 0, // 属性在每组数据中的偏移量
+                        shaderLocation: 0, // 顶点着色器中的位置
+                    },
+                ],
+            };
+
+            // 8. 创建着色器模块
+            const shaderModule = device.createShaderModule({
+                label: 'Triangle Shaders', // 着色器模块标签
+                code: `
+                    @vertex
+                    fn vertexMain(@location(0) pos: vec2f) -> @builtin(position) vec4f {
+                        return vec4f(pos, 0, 1); // 将顶点位置转换为裁剪空间
+                    }
+
+                    @fragment
+                    fn fragmentMain() -> @location(0) vec4f {
+                        return vec4f(1, 0, 0, 1); // 返回红色
+                    }
+                `,
+            });
+
+            // 9. 创建渲染流水线
+            const pipeline = device.createRenderPipeline({
+                label: 'Triangle Pipeline', // 流水线标签
+                layout: 'auto', // 自动生成流水线布局
+                vertex: {
+                    module: shaderModule, // 顶点着色器模块
+                    entryPoint: 'vertexMain', // 顶点着色器入口函数
+                    buffers: [vertexBufferLayout], // 顶点缓冲区布局
+                },
+                fragment: {
+                    module: shaderModule, // 片段着色器模块
+                    entryPoint: 'fragmentMain', // 片段着色器入口函数
+                    targets: [
+                        {
+                            format: canvasFormat, // 渲染目标格式
+                        },
+                    ],
+                },
+            });
+
+            // 10. 设置渲染流水线和顶点缓冲区
+            pass.setPipeline(pipeline);
+            pass.setVertexBuffer(0, vertexBuffer);
+
+            // 11. 绘制三角形
+            pass.draw(vertices.length / 2); // 绘制3个顶点
+
+            // 12. 结束渲染通道并提交命令缓冲区
+            pass.end();
+            const commandBuffer = encoder.finish();
+            device.queue.submit([commandBuffer]);
+        };
+
+        // 调用渲染函数
+        render();
+    </script>
+</body>
+</html>

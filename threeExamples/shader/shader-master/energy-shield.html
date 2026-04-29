@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js能量护盾着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #003366 0%, #000033 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00ffff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00ffff;
+      border: 1px solid #00ffff;
+      box-shadow: 0 0 20px #00ffff;
+    }
+    .shield-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #ff9900;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff9900;
+      border: 1px solid #ff9900;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ff00ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff00ff;
+      border: 1px solid #ff00ff;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🛡️ 能量护盾 - 实时渲染 🛡️</div>
+  <div class="shield-info" id="shieldInfo">护盾强度: 中等 | 能量等级: 高</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变护盾效果<br>
+    • 实时交互：体验能量护盾
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x003366);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(75, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 能量护盾参数
+    const shieldParams = {
+      shieldStrength: 1.5,
+      energyLevel: 0.8,
+      pulseSpeed: 0.7,
+      glowIntensity: 1.2,
+      hexagonSize: 0.6,
+      shieldType: 0,
+      showHexagons: true
+    };
+
+    // 创建二十面体几何体，作为能量护盾的载体
+    const geometry = new THREE.IcosahedronGeometry(2.5, 3);
+
+    // 顶点着色器代码 - 能量护盾效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uShieldStrength;
+      uniform float uPulseSpeed;
+      uniform float uHexagonSize;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 护盾脉冲效果
+        float pulse = sin(uTime * uPulseSpeed) * 0.3 + 0.7;
+        
+        // 六边形网格效果
+        float hexagon = sin(position.x * uHexagonSize * 4.0 + uTime * 0.5) * 
+                       cos(position.y * uHexagonSize * 4.0 + uTime * 0.5) *
+                       sin(position.z * uHexagonSize * 4.0 + uTime * 0.5);
+        
+        vec3 newPosition = position + normal * (pulse + hexagon) * 0.2 * uShieldStrength;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 能量护盾效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uShieldStrength;
+      uniform float uEnergyLevel;
+      uniform float uPulseSpeed;
+      uniform float uGlowIntensity;
+      uniform float uHexagonSize;
+      uniform int uShieldType;
+      uniform bool uShowHexagons;
+      
+      // 六边形网格效果
+      float hexagonGrid(vec2 uv, float size) {
+        if(!uShowHexagons) return 0.0;
+        
+        vec2 grid = uv * size * 10.0;
+        vec2 hex = fract(grid);
+        float hexagon = 1.0 - smoothstep(0.0, 0.1, length(hex - 0.5));
+        return hexagon * 0.3;
+      }
+      
+      // 护盾脉冲效果
+      float shieldPulse(vec2 uv, float speed) {
+        float pulse = sin(uTime * speed) * 0.5 + 0.5;
+        float radial = length(uv);
+        return pulse * exp(-radial * 2.0);
+      }
+      
+      // 能量波动效果
+      float energyWave(vec2 uv, float strength) {
+        float wave = 0.0;
+        
+        // 多层能量波
+        wave += sin(uv.x * 8.0 + uTime * 2.0) * 
+                cos(uv.y * 8.0 + uTime * 2.0);
+        wave += sin(uv.x * 12.0 + uTime * 3.0) * 
+                cos(uv.y * 12.0 + uTime * 3.0) * 0.5;
+        
+        return wave * strength;
+      }
+      
+      // 护盾类型
+      vec3 getShieldType(int type) {
+        if(type == 0) {
+          // 蓝色护盾
+          return vec3(0.0, 0.5, 1.0);
+        } else if(type == 1) {
+          // 绿色护盾
+          return vec3(0.0, 1.0, 0.5);
+        } else {
+          // 紫色护盾
+          return vec3(0.8, 0.2, 1.0);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv * 2.0 - 1.0;
+        
+        // 六边形网格
+        float hexagons = hexagonGrid(uv, uHexagonSize);
+        
+        // 护盾脉冲
+        float pulse = shieldPulse(uv, uPulseSpeed);
+        
+        // 能量波动
+        float energy = energyWave(uv, uEnergyLevel);
+        
+        // 颜色计算
+        vec3 baseColor = getShieldType(uShieldType);
+        vec3 finalColor = baseColor * (hexagons * 0.4 + pulse * 0.3 + energy * 0.3) * uShieldStrength;
+        
+        // 发光效果
+        float glow = 1.0 - length(uv) * 0.8;
+        finalColor *= glow * uGlowIntensity;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uShieldStrength: { value: shieldParams.shieldStrength },
+        uEnergyLevel: { value: shieldParams.energyLevel },
+        uPulseSpeed: { value: shieldParams.pulseSpeed },
+        uGlowIntensity: { value: shieldParams.glowIntensity },
+        uHexagonSize: { value: shieldParams.hexagonSize },
+        uShieldType: { value: shieldParams.shieldType },
+        uShowHexagons: { value: shieldParams.showHexagons }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const shield = new THREE.Mesh(geometry, material);
+    scene.add(shield);
+
+    // 更新护盾信息显示
+    function updateShieldInfo() {
+      const shieldElement = document.getElementById('shieldInfo');
+      let strength = "低";
+      if(shieldParams.shieldStrength > 1.0) strength = "中等";
+      if(shieldParams.shieldStrength > 1.5) strength = "高";
+      
+      let energy = "低";
+      if(shieldParams.energyLevel > 0.5) energy = "中等";
+      if(shieldParams.energyLevel > 0.8) energy = "高";
+      
+      shieldElement.textContent = `护盾强度: ${strength} | 能量等级: ${energy}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 护盾参数控制
+    const shieldFolder = gui.addFolder('能量护盾参数');
+    shieldFolder.add(shieldParams, 'shieldStrength', 0.1, 2.5).name('护盾强度');
+    shieldFolder.add(shieldParams, 'energyLevel', 0.1, 1.5).name('能量等级');
+    shieldFolder.add(shieldParams, 'pulseSpeed', 0.1, 1.5).name('脉冲速度');
+    shieldFolder.add(shieldParams, 'glowIntensity', 0.1, 2.0).name('发光强度');
+    shieldFolder.add(shieldParams, 'hexagonSize', 0.1, 1.2).name('六边形大小');
+    shieldFolder.add(shieldParams, 'showHexagons').name('显示六边形');
+    
+    // 护盾类型控制
+    const shieldTypes = {
+      "蓝色护盾": 0,
+      "绿色护盾": 1,
+      "紫色护盾": 2
+    };
+    shieldFolder.add(shieldParams, 'shieldType', shieldTypes).name('护盾类型');
+    
+    shieldFolder.open();
+
+    // 参数变化时更新材质和护盾信息
+    gui.onChange(() => {
+      material.uniforms.uShieldStrength.value = shieldParams.shieldStrength;
+      material.uniforms.uEnergyLevel.value = shieldParams.energyLevel;
+      material.uniforms.uPulseSpeed.value = shieldParams.pulseSpeed;
+      material.uniforms.uGlowIntensity.value = shieldParams.glowIntensity;
+      material.uniforms.uHexagonSize.value = shieldParams.hexagonSize;
+      material.uniforms.uShieldType.value = shieldParams.shieldType;
+      material.uniforms.uShowHexagons.value = shieldParams.showHexagons;
+      
+      updateShieldInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转护盾
+      shield.rotation.x += 0.004;
+      shield.rotation.y += 0.006;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化护盾信息显示
+    updateShieldInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

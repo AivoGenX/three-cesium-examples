@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js量子纠缠效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #003366 0%, #001122 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #66ffcc;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #66ffcc;
+      border: 1px solid #66ffcc;
+      box-shadow: 0 0 20px #66ffcc;
+    }
+    .quantum-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #ff66ff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff66ff;
+      border: 1px solid #ff66ff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">⚛️ 量子纠缠效果 - 实时渲染 ⚛️</div>
+  <div class="quantum-info" id="quantumInfo">纠缠强度: 中等 | 粒子密度: 高</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变量子纠缠效果<br>
+    • 实时交互：体验量子世界
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x003366);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 量子纠缠效果参数
+    const quantumParams = {
+      entanglementStrength: 0.8,
+      particleDensity: 0.7,
+      quantumState: 0.6,
+      glowIntensity: 1.2,
+      waveFunction: 0.7,
+      quantumType: 0,
+      showConnections: true
+    };
+
+    // 创建两个球体几何体，作为纠缠粒子的载体
+    const geometry1 = new THREE.SphereGeometry(1.5, 32, 16);
+    const geometry2 = new THREE.SphereGeometry(1.5, 32, 16);
+
+    // 顶点着色器代码 - 量子纠缠效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uEntanglementStrength;
+      uniform float uQuantumState;
+      uniform float uWaveFunction;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 量子纠缠效果
+        float entanglement = sin(position.x * 4.0 + uTime * uEntanglementStrength) * 
+                            cos(position.y * 5.0 + uTime * uEntanglementStrength * 0.8) *
+                            sin(position.z * 4.0 + uTime * uEntanglementStrength * 0.6);
+        
+        // 量子态波动
+        float quantumWave = sin(position.x * 6.0 + uTime * uQuantumState * 2.0) *
+                           cos(position.z * 6.0 + uTime * uQuantumState * 2.0);
+        
+        // 波函数效果
+        float waveFunction = sin(position.x * uWaveFunction * 8.0) *
+                           cos(position.y * uWaveFunction * 10.0);
+        
+        vec3 newPosition = position + normal * (entanglement + quantumWave * 0.5 + waveFunction * 0.3) * 0.15;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 量子纠缠效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uEntanglementStrength;
+      uniform float uParticleDensity;
+      uniform float uQuantumState;
+      uniform float uGlowIntensity;
+      uniform float uWaveFunction;
+      uniform int uQuantumType;
+      uniform bool uShowConnections;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 量子纠缠效果
+      float quantumEntanglement(vec2 uv, float strength) {
+        float quantumField = 0.0;
+        
+        // 多层量子纠缠
+        quantumField += sin(uv.x * 5.0 + uTime * 0.4) * 
+                       cos(uv.y * 7.0 + uTime * 0.6);
+        quantumField += sin(uv.x * 7.0 + uTime * 0.8) * 
+                       cos(uv.y * 9.0 + uTime * 1.0) * 0.6;
+        quantumField += sin(uv.x * 9.0 + uTime * 1.2) * 
+                       cos(uv.y * 11.0 + uTime * 1.4) * 0.3;
+        
+        return quantumField * strength;
+      }
+      
+      // 量子粒子效果
+      float quantumParticles(vec2 uv, float density) {
+        float particleField = 0.0;
+        for(int i = 0; i < 20; i++) {
+          vec2 particlePos = vec2(
+            noise(vec2(float(i) * 0.234, 0.567)),
+            noise(vec2(float(i) * 0.567, 0.891))
+          );
+          float dist = distance(uv, particlePos);
+          float particleSize = noise(vec2(float(i) * 0.891, 0.234)) * 0.04 + 0.02;
+          float particleLife = mod(uTime * 2.0 + float(i) * 10.0, 6.28);
+          float particleIntensity = sin(particleLife) * 0.7 + 0.3;
+          particleField += exp(-dist * 50.0) * particleIntensity * density;
+        }
+        return particleField;
+      }
+      
+      // 纠缠连接效果
+      float entanglementConnections(vec2 uv, float intensity) {
+        if(!uShowConnections) return 0.0;
+        
+        float connectionField = 0.0;
+        for(int i = 0; i < 8; i++) {
+          float angle = float(i) * 0.785; // 45度间隔
+          vec2 connectionDir = vec2(cos(angle), sin(angle));
+          float connectionDist = dot(uv - vec2(0.5, 0.5), connectionDir);
+          float connectionWave = sin(connectionDist * 8.0 + uTime * 3.0);
+          connectionField += connectionWave * 0.1 * intensity;
+        }
+        return connectionField;
+      }
+      
+      // 量子类型
+      vec3 getQuantumType(int type) {
+        if(type == 0) {
+          // 蓝色量子
+          return vec3(0.2, 0.6, 1.0);
+        } else if(type == 1) {
+          // 绿色量子
+          return vec3(0.2, 1.0, 0.4);
+        } else {
+          // 紫色量子
+          return vec3(0.8, 0.2, 1.0);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 量子纠缠效果
+        float quantumField = quantumEntanglement(uv, uEntanglementStrength);
+        
+        // 量子粒子效果
+        float particleField = quantumParticles(uv, uParticleDensity);
+        
+        // 纠缠连接效果
+        float connectionField = entanglementConnections(uv, 0.4);
+        
+        // 颜色计算
+        vec3 baseColor = getQuantumType(uQuantumType);
+        vec3 finalColor = baseColor * (quantumField * 0.5 + particleField * 0.3 + connectionField * 0.2) * uGlowIntensity;
+        
+        // 量子态波动效果
+        float stateEffect = sin(uTime * uQuantumState) * 0.3 + 0.7;
+        finalColor *= stateEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uEntanglementStrength: { value: quantumParams.entanglementStrength },
+        uParticleDensity: { value: quantumParams.particleDensity },
+        uQuantumState: { value: quantumParams.quantumState },
+        uGlowIntensity: { value: quantumParams.glowIntensity },
+        uWaveFunction: { value: quantumParams.waveFunction },
+        uQuantumType: { value: quantumParams.quantumType },
+        uShowConnections: { value: quantumParams.showConnections }
+      }
+    });
+
+    // 创建两个纠缠粒子并添加到场景中
+    const particle1 = new THREE.Mesh(geometry1, material);
+    const particle2 = new THREE.Mesh(geometry2, material);
+    
+    particle1.position.set(-2, 0, 0);
+    particle2.position.set(2, 0, 0);
+    
+    scene.add(particle1);
+    scene.add(particle2);
+
+    // 更新量子信息显示
+    function updateQuantumInfo() {
+      const quantumElement = document.getElementById('quantumInfo');
+      let strength = "弱";
+      if(quantumParams.entanglementStrength > 0.5) strength = "中等";
+      if(quantumParams.entanglementStrength > 0.8) strength = "强";
+      
+      let density = "低";
+      if(quantumParams.particleDensity > 0.5) density = "中";
+      if(quantumParams.particleDensity > 0.8) density = "高";
+      
+      quantumElement.textContent = `纠缠强度: ${strength} | 粒子密度: ${density}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 量子参数控制
+    const quantumFolder = gui.addFolder('量子效果参数');
+    quantumFolder.add(quantumParams, 'entanglementStrength', 0.1, 1.2).name('纠缠强度');
+    quantumFolder.add(quantumParams, 'particleDensity', 0.1, 1.0).name('粒子密度');
+    quantumFolder.add(quantumParams, 'quantumState', 0.1, 1.0).name('量子态');
+    quantumFolder.add(quantumParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    quantumFolder.add(quantumParams, 'waveFunction', 0.1, 0.9).name('波函数');
+    quantumFolder.add(quantumParams, 'showConnections').name('显示连接');
+    
+    // 量子类型控制
+    const quantumTypes = {
+      "蓝色量子": 0,
+      "绿色量子": 1,
+      "紫色量子": 2
+    };
+    quantumFolder.add(quantumParams, 'quantumType', quantumTypes).name('量子类型');
+    
+    quantumFolder.open();
+
+    // 参数变化时更新材质和量子信息
+    gui.onChange(() => {
+      material.uniforms.uEntanglementStrength.value = quantumParams.entanglementStrength;
+      material.uniforms.uParticleDensity.value = quantumParams.particleDensity;
+      material.uniforms.uQuantumState.value = quantumParams.quantumState;
+      material.uniforms.uGlowIntensity.value = quantumParams.glowIntensity;
+      material.uniforms.uWaveFunction.value = quantumParams.waveFunction;
+      material.uniforms.uQuantumType.value = quantumParams.quantumType;
+      material.uniforms.uShowConnections.value = quantumParams.showConnections;
+      
+      updateQuantumInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转纠缠粒子
+      particle1.rotation.y += quantumParams.quantumState * 0.01;
+      particle2.rotation.y += quantumParams.quantumState * 0.01;
+      
+      // 纠缠运动
+      particle1.position.y = Math.sin(material.uniforms.uTime.value * quantumParams.entanglementStrength) * 0.5;
+      particle2.position.y = Math.cos(material.uniforms.uTime.value * quantumParams.entanglementStrength) * 0.5;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化量子信息显示
+    updateQuantumInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js晶体矩阵生长着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #002200 0%, #000000 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00ff00;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #00ff00;
+      border: 1px solid #00ff00;
+      box-shadow: 0 0 20px #00ff00;
+    }
+    .crystal-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #00ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #00ffff;
+      border: 1px solid #00ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ff00ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ff00ff;
+      border: 1px solid #ff00ff;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">💎 晶体矩阵生长 - 实时渲染 💎</div>
+  <div class="crystal-info" id="crystalInfo">晶体生长度: 65% | 矩阵密度: 中等</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变晶体生长效果<br>
+    • 实时交互：体验晶体矩阵形成
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x002200);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 晶体矩阵参数
+    const crystalParams = {
+      growthSpeed: 1.2,
+      crystalDensity: 0.8,
+      matrixSize: 0.7,
+      refractionIntensity: 1.5,
+      glowEffect: 1.0,
+      growthPattern: 0,
+      showLattice: true
+    };
+
+    // 创建立方体几何体，作为晶体矩阵的载体
+    const geometry = new THREE.BoxGeometry(4, 4, 4, 32, 32, 32);
+
+    // 顶点着色器代码 - 晶体矩阵生长效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uGrowthSpeed;
+      uniform float uMatrixSize;
+      uniform int uGrowthPattern;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 晶体生长效果
+        float growth = 0.0;
+        if(uGrowthPattern == 0) {
+          // 径向生长
+          growth = sin(length(position) * 3.0 + uTime * uGrowthSpeed);
+        } else if(uGrowthPattern == 1) {
+          // 层状生长
+          growth = sin(position.y * 4.0 + uTime * uGrowthSpeed);
+        } else {
+          // 随机生长
+          growth = sin(position.x * 2.0 + position.y * 2.0 + position.z * 2.0 + uTime * uGrowthSpeed);
+        }
+        
+        // 晶体变形
+        vec3 newPosition = position + normal * growth * 0.2 * uMatrixSize;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 晶体矩阵生长效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uGrowthSpeed;
+      uniform float uCrystalDensity;
+      uniform float uRefractionIntensity;
+      uniform float uGlowEffect;
+      uniform bool uShowLattice;
+      
+      // 晶格线效果
+      float crystalLattice(vec3 pos, float density) {
+        vec3 lattice = fract(pos * density * 8.0);
+        float lines = 1.0 - smoothstep(0.0, 0.05, min(min(lattice.x, lattice.y), lattice.z));
+        return lines * 0.4;
+      }
+      
+      // 折射效果
+      float refractionEffect(vec3 normal, vec3 viewDir, float intensity) {
+        float refraction = dot(normal, viewDir);
+        return pow(1.0 - abs(refraction), intensity);
+      }
+      
+      // 晶体面效果
+      float crystalFaces(vec3 pos, float density) {
+        float faces = 0.0;
+        
+        // 六个晶体面
+        faces += sin(pos.x * density * 6.0 + uTime * uGrowthSpeed * 0.5);
+        faces += cos(pos.y * density * 6.0 + uTime * uGrowthSpeed * 0.7);
+        faces += sin(pos.z * density * 6.0 + uTime * uGrowthSpeed * 0.9);
+        
+        return faces * 0.3;
+      }
+      
+      void main() {
+        // 基础晶体颜色
+        vec3 baseColor = vec3(0.0, 0.8, 0.3);
+        
+        // 晶体面效果
+        float faces = crystalFaces(vPosition, uCrystalDensity);
+        
+        // 折射效果
+        vec3 viewDir = normalize(-vPosition);
+        float refraction = refractionEffect(vNormal, viewDir, uRefractionIntensity);
+        
+        // 晶格线
+        float lattice = uShowLattice ? crystalLattice(vPosition, uCrystalDensity) : 0.0;
+        
+        // 生长脉冲
+        float growthPulse = sin(uTime * uGrowthSpeed) * 0.3 + 0.7;
+        
+        // 最终颜色计算
+        vec3 finalColor = baseColor * (faces * 0.4 + refraction * 0.3 + lattice * 0.3) * growthPulse;
+        
+        // 边缘发光效果
+        float edgeGlow = 1.0 - smoothstep(0.3, 0.7, length(vUv - 0.5));
+        finalColor += baseColor * edgeGlow * uGlowEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uGrowthSpeed: { value: crystalParams.growthSpeed },
+        uCrystalDensity: { value: crystalParams.crystalDensity },
+        uMatrixSize: { value: crystalParams.matrixSize },
+        uRefractionIntensity: { value: crystalParams.refractionIntensity },
+        uGlowEffect: { value: crystalParams.glowEffect },
+        uGrowthPattern: { value: crystalParams.growthPattern },
+        uShowLattice: { value: crystalParams.showLattice }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const crystalCube = new THREE.Mesh(geometry, material);
+    scene.add(crystalCube);
+
+    // 更新晶体信息显示
+    function updateCrystalInfo() {
+      const crystalElement = document.getElementById('crystalInfo');
+      const growth = (crystalParams.growthSpeed * 50).toFixed(0);
+      let density = "低";
+      if(crystalParams.crystalDensity > 0.5) density = "中等";
+      if(crystalParams.crystalDensity > 1.0) density = "高";
+      crystalElement.textContent = `晶体生长度: ${growth}% | 矩阵密度: ${density}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 晶体参数控制
+    const crystalFolder = gui.addFolder('晶体矩阵参数');
+    crystalFolder.add(crystalParams, 'growthSpeed', 0.1, 3.0).name('生长速度');
+    crystalFolder.add(crystalParams, 'crystalDensity', 0.1, 1.5).name('晶体密度');
+    crystalFolder.add(crystalParams, 'matrixSize', 0.1, 1.5).name('矩阵大小');
+    crystalFolder.add(crystalParams, 'refractionIntensity', 0.1, 2.5).name('折射强度');
+    crystalFolder.add(crystalParams, 'glowEffect', 0.1, 2.0).name('发光效果');
+    crystalFolder.add(crystalParams, 'showLattice').name('显示晶格');
+    
+    // 生长模式控制
+    const growthPatterns = {
+      "径向生长": 0,
+      "层状生长": 1,
+      "随机生长": 2
+    };
+    crystalFolder.add(crystalParams, 'growthPattern', growthPatterns).name('生长模式');
+    
+    crystalFolder.open();
+
+    // 参数变化时更新材质和晶体信息
+    gui.onChange(() => {
+      material.uniforms.uGrowthSpeed.value = crystalParams.growthSpeed;
+      material.uniforms.uCrystalDensity.value = crystalParams.crystalDensity;
+      material.uniforms.uMatrixSize.value = crystalParams.matrixSize;
+      material.uniforms.uRefractionIntensity.value = crystalParams.refractionIntensity;
+      material.uniforms.uGlowEffect.value = crystalParams.glowEffect;
+      material.uniforms.uGrowthPattern.value = crystalParams.growthPattern;
+      material.uniforms.uShowLattice.value = crystalParams.showLattice;
+      
+      updateCrystalInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转晶体
+      crystalCube.rotation.x += 0.005;
+      crystalCube.rotation.y += 0.008;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化晶体信息显示
+    updateCrystalInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

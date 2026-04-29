@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js时间扭曲效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1a0033 0%, #0a001a 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff66ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff66ff;
+      border: 1px solid #ff66ff;
+      box-shadow: 0 0 20px #ff66ff;
+    }
+    .time-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #66ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #66ffff;
+      border: 1px solid #66ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">⏰ 时间扭曲效果 - 实时渲染 ⏰</div>
+  <div class="time-info" id="timeInfo">扭曲强度: 中等 | 时间流速: 正常</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变时间扭曲效果<br>
+    • 实时交互：体验时空扭曲
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a0033);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 时间扭曲效果参数
+    const timeParams = {
+      warpStrength: 0.7,
+      timeFlow: 0.6,
+      distortion: 0.8,
+      glowIntensity: 1.2,
+      rippleEffect: 0.7,
+      timeType: 0,
+      showParticles: true
+    };
+
+    // 创建球体几何体，作为时间扭曲的载体
+    const geometry = new THREE.SphereGeometry(3, 64, 32);
+
+    // 顶点着色器代码 - 时间扭曲效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uWarpStrength;
+      uniform float uTimeFlow;
+      uniform float uDistortion;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 时间扭曲效果
+        float warp = sin(position.x * 3.0 + uTime * uWarpStrength) * 
+                    cos(position.y * 4.0 + uTime * uWarpStrength * 0.8) *
+                    sin(position.z * 3.0 + uTime * uWarpStrength * 0.6);
+        
+        // 时间流动效果
+        float flow = sin(position.x * 5.0 + uTime * uTimeFlow * 2.0) *
+                    cos(position.z * 5.0 + uTime * uTimeFlow * 2.0);
+        
+        // 扭曲效果
+        float distortion = sin(position.x * uDistortion * 6.0) *
+                          cos(position.y * uDistortion * 8.0);
+        
+        vec3 newPosition = position + normal * (warp + flow * 0.5 + distortion * 0.3) * 0.2;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 时间扭曲效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uWarpStrength;
+      uniform float uTimeFlow;
+      uniform float uDistortion;
+      uniform float uGlowIntensity;
+      uniform float uRippleEffect;
+      uniform int uTimeType;
+      uniform bool uShowParticles;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 时间扭曲效果
+      float timeWarp(vec2 uv, float strength) {
+        float warpField = 0.0;
+        
+        // 多层时间扭曲
+        warpField += sin(uv.x * 4.0 + uTime * 0.3) * 
+                    cos(uv.y * 6.0 + uTime * 0.5);
+        warpField += sin(uv.x * 6.0 + uTime * 0.7) * 
+                    cos(uv.y * 8.0 + uTime * 0.9) * 0.7;
+        warpField += sin(uv.x * 8.0 + uTime * 1.1) * 
+                    cos(uv.y * 10.0 + uTime * 1.3) * 0.4;
+        
+        return warpField * strength;
+      }
+      
+      // 时间粒子效果
+      float timeParticles(vec2 uv, float density) {
+        if(!uShowParticles) return 0.0;
+        
+        float particleField = 0.0;
+        for(int i = 0; i < 25; i++) {
+          vec2 particlePos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, particlePos);
+          float particleSize = noise(vec2(float(i) * 0.789, 0.123)) * 0.05 + 0.03;
+          float particleLife = mod(uTime * 1.5 + float(i) * 8.0, 6.28);
+          float particleIntensity = sin(particleLife) * 0.8 + 0.2;
+          particleField += exp(-dist * 40.0) * particleIntensity * density;
+        }
+        return particleField;
+      }
+      
+      // 涟漪效果
+      float ripple(vec2 uv, float effect) {
+        float rippleField = 0.0;
+        
+        // 时间涟漪
+        rippleField += sin(distance(uv, vec2(0.5, 0.5)) * 12.0 - uTime * effect * 3.0) * 0.5;
+        
+        // 扭曲涟漪
+        rippleField += sin(uv.x * 8.0 + uTime * effect * 2.0) * 
+                      cos(uv.y * 8.0 + uTime * effect * 2.5) * 0.3;
+        
+        return rippleField;
+      }
+      
+      // 时间类型
+      vec3 getTimeType(int type) {
+        if(type == 0) {
+          // 紫色时间
+          return vec3(0.8, 0.2, 1.0);
+        } else if(type == 1) {
+          // 蓝色时间
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 绿色时间
+          return vec3(0.2, 1.0, 0.4);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 时间扭曲效果
+        float warpField = timeWarp(uv, uWarpStrength);
+        
+        // 时间粒子效果
+        float particleField = timeParticles(uv, 0.3);
+        
+        // 涟漪效果
+        float rippleField = ripple(uv, uRippleEffect);
+        
+        // 颜色计算
+        vec3 baseColor = getTimeType(uTimeType);
+        vec3 finalColor = baseColor * (warpField * 0.5 + particleField * 0.3 + rippleField * 0.2) * uGlowIntensity;
+        
+        // 时间流动效果
+        float flowEffect = sin(uTime * uTimeFlow) * 0.2 + 0.8;
+        finalColor *= flowEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uWarpStrength: { value: timeParams.warpStrength },
+        uTimeFlow: { value: timeParams.timeFlow },
+        uDistortion: { value: timeParams.distortion },
+        uGlowIntensity: { value: timeParams.glowIntensity },
+        uRippleEffect: { value: timeParams.rippleEffect },
+        uTimeType: { value: timeParams.timeType },
+        uShowParticles: { value: timeParams.showParticles }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const timeSphere = new THREE.Mesh(geometry, material);
+    scene.add(timeSphere);
+
+    // 更新时间信息显示
+    function updateTimeInfo() {
+      const timeElement = document.getElementById('timeInfo');
+      let strength = "弱";
+      if(timeParams.warpStrength > 0.5) strength = "中等";
+      if(timeParams.warpStrength > 0.8) strength = "强";
+      
+      let flow = "慢";
+      if(timeParams.timeFlow > 0.4) flow = "正常";
+      if(timeParams.timeFlow > 0.7) flow = "快";
+      
+      timeElement.textContent = `扭曲强度: ${strength} | 时间流速: ${flow}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 时间参数控制
+    const timeFolder = gui.addFolder('时间效果参数');
+    timeFolder.add(timeParams, 'warpStrength', 0.1, 1.2).name('扭曲强度');
+    timeFolder.add(timeParams, 'timeFlow', 0.1, 1.0).name('时间流速');
+    timeFolder.add(timeParams, 'distortion', 0.1, 1.0).name('扭曲程度');
+    timeFolder.add(timeParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    timeFolder.add(timeParams, 'rippleEffect', 0.1, 0.9).name('涟漪效果');
+    timeFolder.add(timeParams, 'showParticles').name('显示粒子');
+    
+    // 时间类型控制
+    const timeTypes = {
+      "紫色时间": 0,
+      "蓝色时间": 1,
+      "绿色时间": 2
+    };
+    timeFolder.add(timeParams, 'timeType', timeTypes).name('时间类型');
+    
+    timeFolder.open();
+
+    // 参数变化时更新材质和时间信息
+    gui.onChange(() => {
+      material.uniforms.uWarpStrength.value = timeParams.warpStrength;
+      material.uniforms.uTimeFlow.value = timeParams.timeFlow;
+      material.uniforms.uDistortion.value = timeParams.distortion;
+      material.uniforms.uGlowIntensity.value = timeParams.glowIntensity;
+      material.uniforms.uRippleEffect.value = timeParams.rippleEffect;
+      material.uniforms.uTimeType.value = timeParams.timeType;
+      material.uniforms.uShowParticles.value = timeParams.showParticles;
+      
+      updateTimeInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转时间球体
+      timeSphere.rotation.y += timeParams.timeFlow * 0.01;
+      timeSphere.rotation.x += timeParams.timeFlow * 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化时间信息显示
+    updateTimeInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

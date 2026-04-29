@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js虚拟现实效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #663366 0%, #331133 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #cc66ff;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #cc66ff;
+      border: 1px solid #cc66ff;
+      box-shadow: 0 0 20px #cc66ff;
+    }
+    .vr-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #66ffff;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #66ffff;
+      border: 1px solid #66ffff;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🕶️ 虚拟现实效果 - 实时渲染 🕶️</div>
+  <div class="vr-info" id="vrInfo">沉浸度: 高 | 分辨率: 4K</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变虚拟现实效果<br>
+    • 实时交互：体验数字世界
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x663366);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 虚拟现实效果参数
+    const vrParams = {
+      immersionLevel: 0.8,
+      resolution: 0.7,
+      pixelDensity: 0.6,
+      glowIntensity: 1.2,
+      refreshRate: 0.8,
+      vrType: 0,
+      showPixels: true
+    };
+
+    // 创建立方体几何体，作为虚拟现实的载体
+    const geometry = new THREE.BoxGeometry(3, 3, 3);
+
+    // 顶点着色器代码 - 虚拟现实效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uImmersionLevel;
+      uniform float uResolution;
+      uniform float uRefreshRate;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 沉浸度效果
+        float immersion = sin(position.x * 3.0 + uTime * uImmersionLevel) * 
+                         cos(position.y * 4.0 + uTime * uImmersionLevel * 0.8) *
+                         sin(position.z * 3.0 + uTime * uImmersionLevel * 0.6);
+        
+        // 分辨率
+        float resolution = sin(position.x * 5.0 + uTime * uResolution * 2.0) *
+                          cos(position.z * 5.0 + uTime * uResolution * 2.0);
+        
+        // 刷新率
+        float refresh = sin(position.x * uRefreshRate * 6.0) *
+                       cos(position.y * uRefreshRate * 8.0);
+        
+        vec3 newPosition = position + normal * (immersion + resolution * 0.5 + refresh * 0.3) * 0.15;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 虚拟现实效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uImmersionLevel;
+      uniform float uResolution;
+      uniform float uPixelDensity;
+      uniform float uGlowIntensity;
+      uniform float uRefreshRate;
+      uniform int uVrType;
+      uniform bool uShowPixels;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 虚拟现实效果
+      float virtualReality(vec2 uv, float immersion) {
+        float vrField = 0.0;
+        
+        // 多层虚拟现实
+        vrField += sin(uv.x * 4.0 + uTime * 0.3) * 
+                  cos(uv.y * 6.0 + uTime * 0.5);
+        vrField += sin(uv.x * 6.0 + uTime * 0.7) * 
+                  cos(uv.y * 8.0 + uTime * 0.9) * 0.7;
+        vrField += sin(uv.x * 8.0 + uTime * 1.1) * 
+                  cos(uv.y * 10.0 + uTime * 1.3) * 0.4;
+        
+        return vrField * immersion;
+      }
+      
+      // 像素效果
+      float pixels(vec2 uv, float density) {
+        float pixelField = 0.0;
+        for(int i = 0; i < 20; i++) {
+          vec2 pixelPos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, pixelPos);
+          float pixelSize = noise(vec2(float(i) * 0.789, 0.123)) * 0.04 + 0.02;
+          float pixelLife = mod(uTime * 1.5 + float(i) * 8.0, 6.28);
+          float pixelIntensity = sin(pixelLife) * 0.7 + 0.3;
+          pixelField += exp(-dist * 45.0) * pixelIntensity * density;
+        }
+        return pixelField;
+      }
+      
+      // VR类型
+      vec3 getVrType(int type) {
+        if(type == 0) {
+          // 增强现实
+          return vec3(0.2, 0.8, 0.4);
+        } else if(type == 1) {
+          // 虚拟现实
+          return vec3(0.2, 0.6, 1.0);
+        } else {
+          // 混合现实
+          return vec3(1.0, 0.4, 0.2);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 虚拟现实效果
+        float vrValue = virtualReality(uv, uImmersionLevel);
+        
+        // 像素效果
+        float pixelValue = pixels(uv, uPixelDensity);
+        
+        // 颜色计算
+        vec3 baseColor = getVrType(uVrType);
+        vec3 finalColor = baseColor * (vrValue * 0.6 + pixelValue * 0.4) * uGlowIntensity;
+        
+        // 刷新率效果
+        float refreshEffect = sin(uTime * uRefreshRate) * 0.2 + 0.8;
+        finalColor *= refreshEffect;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uImmersionLevel: { value: vrParams.immersionLevel },
+        uResolution: { value: vrParams.resolution },
+        uPixelDensity: { value: vrParams.pixelDensity },
+        uGlowIntensity: { value: vrParams.glowIntensity },
+        uRefreshRate: { value: vrParams.refreshRate },
+        uVrType: { value: vrParams.vrType },
+        uShowPixels: { value: vrParams.showPixels }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const vrCube = new THREE.Mesh(geometry, material);
+    scene.add(vrCube);
+
+    // 更新虚拟现实信息显示
+    function updateVrInfo() {
+      const vrElement = document.getElementById('vrInfo');
+      let immersion = "低";
+      if(vrParams.immersionLevel > 0.5) immersion = "中";
+      if(vrParams.immersionLevel > 0.8) immersion = "高";
+      
+      let resolution = "HD";
+      if(vrParams.resolution > 0.4) resolution = "2K";
+      if(vrParams.resolution > 0.7) resolution = "4K";
+      
+      vrElement.textContent = `沉浸度: ${immersion} | 分辨率: ${resolution}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 虚拟现实参数控制
+    const vrFolder = gui.addFolder('虚拟现实效果参数');
+    vrFolder.add(vrParams, 'immersionLevel', 0.1, 1.2).name('沉浸度');
+    vrFolder.add(vrParams, 'resolution', 0.1, 1.0).name('分辨率');
+    vrFolder.add(vrParams, 'pixelDensity', 0.1, 1.0).name('像素密度');
+    vrFolder.add(vrParams, 'glowIntensity', 0.1, 1.8).name('发光强度');
+    vrFolder.add(vrParams, 'refreshRate', 0.1, 0.9).name('刷新率');
+    vrFolder.add(vrParams, 'showPixels').name('显示像素');
+    
+    // VR类型控制
+    const vrTypes = {
+      "增强现实": 0,
+      "虚拟现实": 1,
+      "混合现实": 2
+    };
+    vrFolder.add(vrParams, 'vrType', vrTypes).name('VR类型');
+    
+    vrFolder.open();
+
+    // 参数变化时更新材质和虚拟现实信息
+    gui.onChange(() => {
+      material.uniforms.uImmersionLevel.value = vrParams.immersionLevel;
+      material.uniforms.uResolution.value = vrParams.resolution;
+      material.uniforms.uPixelDensity.value = vrParams.pixelDensity;
+      material.uniforms.uGlowIntensity.value = vrParams.glowIntensity;
+      material.uniforms.uRefreshRate.value = vrParams.refreshRate;
+      material.uniforms.uVrType.value = vrParams.vrType;
+      material.uniforms.uShowPixels.value = vrParams.showPixels;
+      
+      updateVrInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 旋转虚拟现实立方体
+      vrCube.rotation.y += vrParams.immersionLevel * 0.01;
+      vrCube.rotation.x += vrParams.immersionLevel * 0.005;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化虚拟现实信息显示
+    updateVrInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

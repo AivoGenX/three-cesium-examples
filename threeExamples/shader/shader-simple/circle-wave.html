@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js波纹效果演示</title>
+  <!-- 这里可以添加CSS样式文件 -->
+</head>
+
+<body>
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a2e)
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(50, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(1,1,1)的位置观察场景
+    camera.position.set(1, 1, 1)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 创建平面几何体，作为波纹效果的载体
+    const geometry = new THREE.PlaneGeometry(2, 2);
+
+    // 加载波纹纹理，这是实现波纹效果的基础纹理
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load(
+      "/threeExamples/shader/shader-simple/wave.png",
+      (tex) => {
+        console.log("纹理加载成功");
+      },
+      undefined,
+      (err) => {
+        console.error("纹理加载失败:", err);
+        // 使用默认颜色替代
+      }
+    );
+    // 设置纹理在水平和垂直方向上重复
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+
+    // 创建自定义着色器材质，实现波纹效果的核心部分
+    const material = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,          // 双面渲染
+      transparent: true,             // 启用透明度
+      blending: THREE.AdditiveBlending, // 添加混合模式让效果更亮
+      uniforms: {
+        uTime: { value: 0.0 },           // 时间变量，控制波纹动画
+        uScanTex: { value: texture },    // 波纹纹理
+        uScanColor: { value: new THREE.Color(0x00ffff) },    // 主要扫描颜色
+        uScanColorDark: { value: new THREE.Color(0x0088ff) } // 暗部扫描颜色
+      },
+      // 顶点着色器：处理几何体顶点，传递纹理坐标和位置信息给片段着色器
+      vertexShader: `
+        varying vec2 vUv;         // 传递给片段着色器的纹理坐标
+        varying vec3 vPosition;   // 传递给片段着色器的顶点位置
+        void main() {
+            vUv = uv;
+            vPosition = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+      // 片段着色器：计算每个像素的颜色，实现波纹效果的核心逻辑
+      fragmentShader: `
+        // 波纹原点和波纹扩展速度常量
+        #define uScanOrigin vec3(0.0, 0.0, 0.0)
+        #define uScanWaveRatio1 3.2
+        #define uScanWaveRatio2 2.8
+
+        uniform float uTime;           // 时间变量
+        uniform sampler2D uScanTex;    // 波纹纹理
+        uniform vec3 uScanColor;       // 波纹主颜色
+        uniform vec3 uScanColorDark;   // 波纹暗部颜色
+        
+        varying vec2 vUv;              // 从顶点着色器传递的纹理坐标
+        varying vec3 vPosition;        // 从顶点着色器传递的顶点位置
+
+        // 计算圆形波纹效果
+        float circleWave(vec3 p, vec3 origin, float distRatio) {
+            float t = uTime;
+            float dist = distance(p, origin) * distRatio;  // 计算到原点的距离并应用缩放
+            float radialMove = fract(dist - t);            // 创建随时间移动的波纹
+            float fadeOutMask = 1.0 - smoothstep(1.0, 3.0, dist); // 波纹随距离衰减
+            radialMove *= fadeOutMask;
+            float cutInitialMask = 1.0 - step(t, dist);    // 控制波纹从中心向外扩展
+            return radialMove * cutInitialMask;
+        }
+
+        // 根据位置和纹理计算波纹颜色
+        vec3 getScanColor(vec3 worldPos, vec2 uv, vec3 col) {
+            // 从纹理采样，获取波纹基础图案
+            float scanMask = texture2D(uScanTex, uv).r;
+            
+            // 计算两种不同速度的波纹效果，形成层次感
+            float cw = circleWave(worldPos, uScanOrigin, uScanWaveRatio1);
+            float cw2 = circleWave(worldPos, uScanOrigin, uScanWaveRatio2);
+            
+            // 为第一种波纹创建遮罩，控制波纹的显示范围和强度
+            float mask1 = smoothstep(0.3, 0.0, 1.0 - cw);
+            mask1 *= (1.0 + scanMask * 0.7);  // 结合纹理增强效果
+            
+            // 为第二种波纹创建遮罩
+            float mask2 = smoothstep(0.07, 0.0, 1.0 - cw2) * 0.8;
+            mask1 += mask2;
+            
+            // 创建波纹边缘高亮效果
+            float mask3 = smoothstep(0.09, 0.0, 1.0 - cw) * 1.5;
+            mask1 += mask3;
+
+            // 根据遮罩强度混合两种颜色，形成波纹的颜色变化
+            vec3 scanCol = mix(uScanColorDark, uScanColor, mask1);
+            return scanCol * mask1; // 返回最终的波纹颜色
+        }
+
+        void main() {
+            vec3 col = vec3(0.0);
+            // 计算波纹颜色，纹理坐标乘以10.0增强波纹密度
+            col = getScanColor(vPosition, vUv * 10.0, col);
+            
+            // 根据颜色强度计算透明度，使波纹边缘更柔和
+            float alpha = length(col);
+            
+            gl_FragColor = vec4(col, alpha);
+        }
+    `
+    });
+
+    // 创建网格对象，将几何体和材质组合，并添加到场景中
+    const mesh = new THREE.Mesh(geometry, material);
+    // 将平面旋转90度，使其水平放置
+    mesh.rotation.x = Math.PI / 2
+    scene.add(mesh);
+
+    // 创建图形界面控制器，允许用户交互调整参数
+    const gui = new GUI()
+    const params = {
+      uScanColor: '#00ffff',         // 波纹主颜色
+      uScanColorDark: '#0088ff'      // 波纹暗部颜色
+    }
+
+    // 添加颜色控制器，允许用户修改波纹主颜色
+    gui.addColor(params, 'uScanColor').onChange((value) => {
+      material.uniforms.uScanColor.value.set(value)
+    })
+
+    // 添加颜色控制器，允许用户修改波纹暗部颜色
+    gui.addColor(params, 'uScanColorDark').onChange((value) => {
+      material.uniforms.uScanColorDark.value.set(value)
+    })
+
+    // 动画循环函数，驱动整个场景的渲染和更新
+    animate()
+
+    function animate() {
+      // 请求下一帧动画
+      requestAnimationFrame(animate)
+      
+      // 更新控制器状态
+      controls.update()
+      
+      // 渲染场景
+      renderer.render(scene, camera)
+      
+      // 更新时间变量，驱动波纹动画
+      material.uniforms.uTime.value += 0.005;
+    }
+  </script>
+</body>
+
+</html>

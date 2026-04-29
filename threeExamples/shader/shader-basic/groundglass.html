@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 图像滤镜效果</title>
+    <!-- 配置模块导入映射 -->
+      <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: #121212;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 渲染容器 -->
+    <div id="canvas-container"></div>
+
+    <script type="module">
+      // 导入所需模块
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+      /**
+       * 主应用类
+       * 封装了Three.js场景初始化和滤镜效果实现
+       */
+      class ImageFilterApp {
+        constructor() {
+          // 获取DOM容器
+          this.container = document.getElementById("canvas-container");
+
+          // 初始化应用
+          this.initThreeJS();
+          this.createFilterEffect();
+          this.setupGuiControls();
+          this.startAnimation();
+          this.handleResize();
+        }
+
+        /**
+         * 初始化Three.js基础组件
+         * 包括场景、相机、渲染器和控制器
+         */
+        initThreeJS() {
+          // 创建场景
+          this.scene = new THREE.Scene();
+
+          // 创建透视相机
+          // 参数: 视场角, 宽高比, 近平面, 远平面
+          this.camera = new THREE.PerspectiveCamera(
+            75,
+            this.container.clientWidth / this.container.clientHeight,
+            0.1,
+            1000
+          );
+          // 设置相机位置
+          this.camera.position.z = 1;
+
+          // 创建WebGL渲染器
+          this.renderer = new THREE.WebGLRenderer({
+            antialias: true, // 启用抗锯齿
+            alpha: true, // 支持透明背景
+          });
+          // 设置渲染器尺寸
+          this.renderer.setSize(
+            this.container.clientWidth,
+            this.container.clientHeight
+          );
+          // 将渲染器DOM元素添加到容器
+          this.container.appendChild(this.renderer.domElement);
+
+          // 创建轨道控制器，允许用户交互场景
+          this.controls = new OrbitControls(
+            this.camera,
+            this.renderer.domElement
+          );
+          this.controls.enableDamping = true; // 启用阻尼效果，使交互更平滑
+        }
+
+        /**
+         * 创建滤镜效果
+         * 使用自定义着色器材质实现图像扭曲效果
+         */
+        createFilterEffect() {
+          // 顶点着色器
+          // 负责处理顶点位置和UV坐标传递
+          const vertexShader = `
+                    varying vec2 v_uv;  // 声明 varying 变量，用于向片段着色器传递UV坐标
+                    
+                    void main() {
+                        v_uv = uv;  // 将原始UV坐标传递给片段着色器
+                        // 计算顶点最终位置
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+
+          // 片段着色器
+          // 负责处理像素颜色，实现滤镜效果
+          const fragmentShader = `
+                    varying vec2 v_uv;  // 接收来自顶点着色器的UV坐标
+                    
+                    //  uniforms 变量 - 从JavaScript传递过来的值
+                    uniform sampler2D u_texture;    // 输入纹理(图像)
+                    uniform vec2 u_resolution;      // 屏幕分辨率
+                    uniform float u_distortion;     // 扭曲程度参数
+                    
+                    /**
+                     * 简单的随机数生成函数
+                     * @param {vec2} co - 二维坐标
+                     * @return {float} 0.0-1.0之间的随机值
+                     */
+                    float generateRandom(vec2 co) {
+                        // 使用dot乘积和正弦函数生成伪随机数
+                        return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+                    }
+                    
+                    void main() {
+                        // 将UV坐标转换为像素坐标
+                        vec2 pixelCoord = v_uv * u_resolution;
+                        
+                        // 生成随机偏移值，基于扭曲程度参数
+                        float randomX = generateRandom(v_uv) * u_distortion * 2.0 - u_distortion;
+                        float randomY = generateRandom(vec2(v_uv.y, v_uv.x)) * u_distortion * 2.0 - u_distortion;
+                        
+                        // 应用随机偏移
+                        vec2 distortedCoord = (pixelCoord + vec2(randomX, randomY)) / u_resolution;
+                        
+                        // 从纹理中采样颜色
+                        vec4 finalColor = texture2D(u_texture, distortedCoord);
+                        
+                        // 设置最终像素颜色
+                        gl_FragColor = finalColor;
+                    }
+                `;
+
+          // 着色器材质所需的uniforms变量
+          this.uniforms = {
+            u_texture: {
+              type: "t",
+              value: new THREE.TextureLoader().load(
+                "https://picsum.photos/id/106/800/600"
+              ),
+            },
+            u_resolution: {
+              type: "v2",
+              value: new THREE.Vector2(
+                this.container.clientWidth,
+                this.container.clientHeight
+              ),
+            },
+            u_distortion: {
+              type: "f",
+              value: 15.0, // 默认扭曲程度
+            },
+          };
+
+          // 创建自定义着色器材质
+          this.material = new THREE.ShaderMaterial({
+            uniforms: this.uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+          });
+
+          // 创建平面几何体，用于显示纹理
+          this.geometry = new THREE.PlaneGeometry(2, 2); // 全屏平面
+
+          // 创建网格对象并添加到场景
+          this.mesh = new THREE.Mesh(this.geometry, this.material);
+          this.scene.add(this.mesh);
+        }
+
+        /**
+         * 设置GUI控制器
+         * 允许用户交互调整滤镜参数
+         */
+        setupGuiControls() {
+          // 创建GUI实例
+          this.gui = new GUI({
+            width: 300,
+            closed: false,
+          });
+
+          // 添加扭曲程度控制器
+          this.gui
+            .add(this.uniforms.u_distortion, "value", 0.0, 100.0)
+            .step(1.0)
+            .name("扭曲程度")
+            .onChange((value) => {
+              // 可以在这里添加参数变化时的额外逻辑
+            });
+        }
+
+        /**
+         * 启动动画循环
+         */
+        startAnimation() {
+          // 动画循环函数
+          const animate = () => {
+            requestAnimationFrame(animate);
+
+            // 更新控制器(用于阻尼效果)
+            this.controls.update();
+
+            // 渲染场景
+            this.renderer.render(this.scene, this.camera);
+          };
+
+          // 启动动画
+          animate();
+        }
+
+        /**
+         * 处理窗口大小变化
+         */
+        handleResize() {
+          // 窗口大小变化事件处理函数
+          const onWindowResize = () => {
+            // 更新相机宽高比
+            this.camera.aspect =
+              this.container.clientWidth / this.container.clientHeight;
+            this.camera.updateProjectionMatrix();
+
+            // 更新渲染器尺寸
+            this.renderer.setSize(
+              this.container.clientWidth,
+              this.container.clientHeight
+            );
+
+            // 更新着色器中的分辨率uniform
+            this.uniforms.u_resolution.value.set(
+              this.container.clientWidth,
+              this.container.clientHeight
+            );
+          };
+
+          // 监听窗口大小变化事件
+          window.addEventListener("resize", onWindowResize);
+        }
+      }
+
+      // 当页面加载完成后初始化应用
+      window.addEventListener("load", () => {
+        new ImageFilterApp();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js坐标系和函数图像 - 三维坐标系</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      box-shadow: 0 0 20px #ff6b6b;
+    }
+    .coordinate-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #4ecdc4;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #4ecdc4;
+      border: 1px solid #4ecdc4;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #90e0ef;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #90e0ef;
+      border: 1px solid #90e0ef;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">📐 坐标系和函数图像 - 三维坐标系展示 📐</div>
+  <div class="coordinate-info" id="coordinateInfo">坐标系：笛卡尔坐标系 | 函数：z = x² + y²</div>
+  <div class="help">
+    🎯 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 切换坐标系：观察不同坐标系<br>
+    • 调整函数：体验函数图像变化<br>
+    • 显示网格：观察坐标网格
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,5,10)的位置观察场景
+    camera.position.set(0, 5, 10)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+
+    // 添加平行光
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 10, 5);
+    scene.add(directionalLight);
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 坐标系和函数参数
+    // ============================================================================
+    let coordinateSystem = null;
+    let functionSurface = null;
+    let functionPoints = null;
+    
+    const coordinateParameters = {
+      coordinateType: 0, // 0=笛卡尔, 1=极坐标, 2=柱坐标, 3=球坐标
+      functionType: 0, // 0=抛物面, 1=双曲面, 2=正弦曲面, 3=锥面, 4=马鞍面
+      a: 1.0,
+      b: 1.0,
+      c: 1.0,
+      k: 1.0,
+      showGrid: true,
+      showAxes: true,
+      showSurface: true,
+      showPoints: false,
+      gridSize: 10,
+      gridDensity: 20,
+      surfaceOpacity: 0.7
+    };
+
+    // ============================================================================
+    // 创建坐标系
+    // ============================================================================
+    function createCoordinateSystem() {
+      // 移除之前的坐标系
+      if (coordinateSystem) scene.remove(coordinateSystem);
+
+      const coordinateGroup = new THREE.Group();
+      
+      // 根据坐标系类型创建不同的坐标系
+      switch(coordinateParameters.coordinateType) {
+        case 0: // 笛卡尔坐标系
+          createCartesianCoordinates(coordinateGroup);
+          break;
+        case 1: // 极坐标系
+          createPolarCoordinates(coordinateGroup);
+          break;
+        case 2: // 柱坐标系
+          createCylindricalCoordinates(coordinateGroup);
+          break;
+        case 3: // 球坐标系
+          createSphericalCoordinates(coordinateGroup);
+          break;
+      }
+
+      scene.add(coordinateGroup);
+      coordinateSystem = coordinateGroup;
+    }
+
+    // ============================================================================
+    // 创建笛卡尔坐标系
+    // ============================================================================
+    function createCartesianCoordinates(group) {
+      // 创建坐标轴
+      if (coordinateParameters.showAxes) {
+        const axisMaterial = new THREE.LineBasicMaterial({ 
+          color: 0xff6b6b,
+          linewidth: 2
+        });
+
+        // X轴
+        const xAxisGeometry = new THREE.BufferGeometry();
+        const xAxisPoints = [
+          new THREE.Vector3(-coordinateParameters.gridSize, 0, 0),
+          new THREE.Vector3(coordinateParameters.gridSize, 0, 0)
+        ];
+        xAxisGeometry.setFromPoints(xAxisPoints);
+        const xAxis = new THREE.Line(xAxisGeometry, axisMaterial);
+        group.add(xAxis);
+
+        // Y轴
+        const yAxisGeometry = new THREE.BufferGeometry();
+        const yAxisPoints = [
+          new THREE.Vector3(0, -coordinateParameters.gridSize, 0),
+          new THREE.Vector3(0, coordinateParameters.gridSize, 0)
+        ];
+        yAxisGeometry.setFromPoints(yAxisPoints);
+        const yAxis = new THREE.Line(yAxisGeometry, axisMaterial);
+        group.add(yAxis);
+
+        // Z轴
+        const zAxisGeometry = new THREE.BufferGeometry();
+        const zAxisPoints = [
+          new THREE.Vector3(0, 0, -coordinateParameters.gridSize),
+          new THREE.Vector3(0, 0, coordinateParameters.gridSize)
+        ];
+        zAxisGeometry.setFromPoints(zAxisPoints);
+        const zAxis = new THREE.Line(zAxisGeometry, axisMaterial);
+        group.add(zAxis);
+      }
+
+      // 创建网格
+      if (coordinateParameters.showGrid) {
+        const gridHelper = new THREE.GridHelper(
+          coordinateParameters.gridSize * 2, 
+          coordinateParameters.gridDensity, 
+          0xffffff, 
+          0x333333
+        );
+        group.add(gridHelper);
+
+        // 创建垂直网格（XZ平面）
+        const verticalGrid = new THREE.GridHelper(
+          coordinateParameters.gridSize * 2, 
+          coordinateParameters.gridDensity, 
+          0xffffff, 
+          0x333333
+        );
+        verticalGrid.rotation.x = Math.PI / 2;
+        group.add(verticalGrid);
+      }
+    }
+
+    // ============================================================================
+    // 创建极坐标系
+    // ============================================================================
+    function createPolarCoordinates(group) {
+      const radius = coordinateParameters.gridSize;
+      const density = coordinateParameters.gridDensity;
+
+      // 创建极轴
+      if (coordinateParameters.showAxes) {
+        const axisMaterial = new THREE.LineBasicMaterial({ 
+          color: 0xff6b6b,
+          linewidth: 2
+        });
+
+        const axisGeometry = new THREE.BufferGeometry();
+        const axisPoints = [
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(radius, 0, 0)
+        ];
+        axisGeometry.setFromPoints(axisPoints);
+        const axis = new THREE.Line(axisGeometry, axisMaterial);
+        group.add(axis);
+      }
+
+      // 创建极坐标网格（同心圆和射线）
+      if (coordinateParameters.showGrid) {
+        const circleMaterial = new THREE.LineBasicMaterial({ 
+          color: 0x4ecdc4,
+          linewidth: 1
+        });
+
+        // 同心圆
+        for (let r = 1; r <= radius; r++) {
+          const circleGeometry = new THREE.BufferGeometry();
+          const circlePoints = [];
+          for (let theta = 0; theta <= 2 * Math.PI; theta += 0.1) {
+            circlePoints.push(new THREE.Vector3(
+              r * Math.cos(theta),
+              0,
+              r * Math.sin(theta)
+            ));
+          }
+          circleGeometry.setFromPoints(circlePoints);
+          const circle = new THREE.Line(circleGeometry, circleMaterial);
+          group.add(circle);
+        }
+
+        // 射线
+        for (let theta = 0; theta < 2 * Math.PI; theta += Math.PI / 6) {
+          const rayGeometry = new THREE.BufferGeometry();
+          const rayPoints = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(radius * Math.cos(theta), 0, radius * Math.sin(theta))
+          ];
+          rayGeometry.setFromPoints(rayPoints);
+          const ray = new THREE.Line(rayGeometry, circleMaterial);
+          group.add(ray);
+        }
+      }
+    }
+
+    // ============================================================================
+    // 创建柱坐标系
+    // ============================================================================
+    function createCylindricalCoordinates(group) {
+      // 创建Z轴
+      if (coordinateParameters.showAxes) {
+        const axisMaterial = new THREE.LineBasicMaterial({ 
+          color: 0xff6b6b,
+          linewidth: 2
+        });
+
+        const zAxisGeometry = new THREE.BufferGeometry();
+        const zAxisPoints = [
+          new THREE.Vector3(0, -coordinateParameters.gridSize, 0),
+          new THREE.Vector3(0, coordinateParameters.gridSize, 0)
+        ];
+        zAxisGeometry.setFromPoints(zAxisPoints);
+        const zAxis = new THREE.Line(zAxisGeometry, axisMaterial);
+        group.add(zAxis);
+      }
+
+      // 创建柱坐标网格
+      if (coordinateParameters.showGrid) {
+        const gridMaterial = new THREE.LineBasicMaterial({ 
+          color: 0x4ecdc4,
+          linewidth: 1
+        });
+
+        // 水平圆环
+        for (let r = 1; r <= coordinateParameters.gridSize; r++) {
+          for (let z = -coordinateParameters.gridSize; z <= coordinateParameters.gridSize; z += 2) {
+            const circleGeometry = new THREE.BufferGeometry();
+            const circlePoints = [];
+            for (let theta = 0; theta <= 2 * Math.PI; theta += 0.1) {
+              circlePoints.push(new THREE.Vector3(
+                r * Math.cos(theta),
+                z,
+                r * Math.sin(theta)
+              ));
+            }
+            circleGeometry.setFromPoints(circlePoints);
+            const circle = new THREE.Line(circleGeometry, gridMaterial);
+            group.add(circle);
+          }
+        }
+      }
+    }
+
+    // ============================================================================
+    // 创建球坐标系
+    // ============================================================================
+    function createSphericalCoordinates(group) {
+      const radius = coordinateParameters.gridSize;
+      
+      // 创建球坐标网格
+      if (coordinateParameters.showGrid) {
+        const gridMaterial = new THREE.LineBasicMaterial({ 
+          color: 0x4ecdc4,
+          linewidth: 1
+        });
+
+        // 经线（phi固定，theta变化）
+        for (let phi = 0; phi < Math.PI; phi += Math.PI / 6) {
+          const meridianGeometry = new THREE.BufferGeometry();
+          const meridianPoints = [];
+          for (let theta = 0; theta <= 2 * Math.PI; theta += 0.1) {
+            meridianPoints.push(new THREE.Vector3(
+              radius * Math.sin(phi) * Math.cos(theta),
+              radius * Math.cos(phi),
+              radius * Math.sin(phi) * Math.sin(theta)
+            ));
+          }
+          meridianGeometry.setFromPoints(meridianPoints);
+          const meridian = new THREE.Line(meridianGeometry, gridMaterial);
+          group.add(meridian);
+        }
+
+        // 纬线（theta固定，phi变化）
+        for (let theta = 0; theta < 2 * Math.PI; theta += Math.PI / 6) {
+          const parallelGeometry = new THREE.BufferGeometry();
+          const parallelPoints = [];
+          for (let phi = 0; phi <= Math.PI; phi += 0.1) {
+            parallelPoints.push(new THREE.Vector3(
+              radius * Math.sin(phi) * Math.cos(theta),
+              radius * Math.cos(phi),
+              radius * Math.sin(phi) * Math.sin(theta)
+            ));
+          }
+          parallelGeometry.setFromPoints(parallelPoints);
+          const parallel = new THREE.Line(parallelGeometry, gridMaterial);
+          group.add(parallel);
+        }
+      }
+    }
+
+    // ============================================================================
+    // 创建函数图像
+    // ============================================================================
+    function createFunctionVisualization() {
+      // 移除之前的函数图像
+      if (functionSurface) scene.remove(functionSurface);
+      if (functionPoints) scene.remove(functionPoints);
+
+      // 根据函数类型创建不同的函数图像
+      switch(coordinateParameters.functionType) {
+        case 0: // 抛物面：z = a(x² + y²)
+          createParaboloid();
+          break;
+        case 1: // 双曲面：z = a(x² - y²)
+          createHyperboloid();
+          break;
+        case 2: // 正弦曲面：z = a sin(kx) + b cos(ky)
+          createSineSurface();
+          break;
+        case 3: // 锥面：z = a√(x² + y²)
+          createConeSurface();
+          break;
+        case 4: // 马鞍面：z = a(x² - y²)
+          createSaddleSurface();
+          break;
+      }
+    }
+
+    // ============================================================================
+    // 创建抛物面
+    // ============================================================================
+    function createParaboloid() {
+      const size = coordinateParameters.gridSize;
+      const density = coordinateParameters.gridDensity;
+      const vertices = [];
+      const indices = [];
+
+      // 生成顶点
+      for (let i = 0; i <= density; i++) {
+        const x = (i / density - 0.5) * 2 * size;
+        for (let j = 0; j <= density; j++) {
+          const y = (j / density - 0.5) * 2 * size;
+          const z = coordinateParameters.a * (x * x + y * y);
+          vertices.push(x, y, z);
+        }
+      }
+
+      // 生成索引
+      for (let i = 0; i < density; i++) {
+        for (let j = 0; j < density; j++) {
+          const a = i * (density + 1) + j;
+          const b = a + 1;
+          const c = a + (density + 1);
+          const d = c + 1;
+          indices.push(a, b, d);
+          indices.push(a, d, c);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshPhongMaterial({ 
+        color: 0xff6b6b,
+        transparent: true,
+        opacity: coordinateParameters.surfaceOpacity,
+        side: THREE.DoubleSide
+      });
+
+      functionSurface = new THREE.Mesh(geometry, material);
+      scene.add(functionSurface);
+    }
+
+    // ============================================================================
+    // 创建双曲面
+    // ============================================================================
+    function createHyperboloid() {
+      const size = coordinateParameters.gridSize;
+      const density = coordinateParameters.gridDensity;
+      const vertices = [];
+      const indices = [];
+
+      for (let i = 0; i <= density; i++) {
+        const x = (i / density - 0.5) * 2 * size;
+        for (let j = 0; j <= density; j++) {
+          const y = (j / density - 0.5) * 2 * size;
+          const z = coordinateParameters.a * (x * x - y * y);
+          vertices.push(x, y, z);
+        }
+      }
+
+      for (let i = 0; i < density; i++) {
+        for (let j = 0; j < density; j++) {
+          const a = i * (density + 1) + j;
+          const b = a + 1;
+          const c = a + (density + 1);
+          const d = c + 1;
+          indices.push(a, b, d);
+          indices.push(a, d, c);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshPhongMaterial({ 
+        color: 0x4ecdc4,
+        transparent: true,
+        opacity: coordinateParameters.surfaceOpacity,
+        side: THREE.DoubleSide
+      });
+
+      functionSurface = new THREE.Mesh(geometry, material);
+      scene.add(functionSurface);
+    }
+
+    // ============================================================================
+    // 创建正弦曲面
+    // ============================================================================
+    function createSineSurface() {
+      const size = coordinateParameters.gridSize;
+      const density = coordinateParameters.gridDensity;
+      const vertices = [];
+      const indices = [];
+
+      for (let i = 0; i <= density; i++) {
+        const x = (i / density - 0.5) * 2 * size;
+        for (let j = 0; j <= density; j++) {
+          const y = (j / density - 0.5) * 2 * size;
+          const z = coordinateParameters.a * Math.sin(coordinateParameters.k * x) + 
+                    coordinateParameters.b * Math.cos(coordinateParameters.k * y);
+          vertices.push(x, y, z);
+        }
+      }
+
+      for (let i = 0; i < density; i++) {
+        for (let j = 0; j < density; j++) {
+          const a = i * (density + 1) + j;
+          const b = a + 1;
+          const c = a + (density + 1);
+          const d = c + 1;
+          indices.push(a, b, d);
+          indices.push(a, d, c);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshPhongMaterial({ 
+        color: 0xffff00,
+        transparent: true,
+        opacity: coordinateParameters.surfaceOpacity,
+        side: THREE.DoubleSide
+      });
+
+      functionSurface = new THREE.Mesh(geometry, material);
+      scene.add(functionSurface);
+    }
+
+    // ============================================================================
+    // 创建锥面
+    // ============================================================================
+    function createConeSurface() {
+      const size = coordinateParameters.gridSize;
+      const density = coordinateParameters.gridDensity;
+      const vertices = [];
+      const indices = [];
+
+      for (let i = 0; i <= density; i++) {
+        const x = (i / density - 0.5) * 2 * size;
+        for (let j = 0; j <= density; j++) {
+          const y = (j / density - 0.5) * 2 * size;
+          const z = coordinateParameters.a * Math.sqrt(x * x + y * y);
+          vertices.push(x, y, z);
+        }
+      }
+
+      for (let i = 0; i < density; i++) {
+        for (let j = 0; j < density; j++) {
+          const a = i * (density + 1) + j;
+          const b = a + 1;
+          const c = a + (density + 1);
+          const d = c + 1;
+          indices.push(a, b, d);
+          indices.push(a, d, c);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshPhongMaterial({ 
+        color: 0xff6b6b,
+        transparent: true,
+        opacity: coordinateParameters.surfaceOpacity,
+        side: THREE.DoubleSide
+      });
+
+      functionSurface = new THREE.Mesh(geometry, material);
+      scene.add(functionSurface);
+    }
+
+    // ============================================================================
+    // 创建马鞍面
+    // ============================================================================
+    function createSaddleSurface() {
+      const size = coordinateParameters.gridSize;
+      const density = coordinateParameters.gridDensity;
+      const vertices = [];
+      const indices = [];
+
+      for (let i = 0; i <= density; i++) {
+        const x = (i / density - 0.5) * 2 * size;
+        for (let j = 0; j <= density; j++) {
+          const y = (j / density - 0.5) * 2 * size;
+          const z = coordinateParameters.a * (x * x - y * y);
+          vertices.push(x, y, z);
+        }
+      }
+
+      for (let i = 0; i < density; i++) {
+        for (let j = 0; j < density; j++) {
+          const a = i * (density + 1) + j;
+          const b = a + 1;
+          const c = a + (density + 1);
+          const d = c + 1;
+          indices.push(a, b, d);
+          indices.push(a, d, c);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshPhongMaterial({ 
+        color: 0x4ecdc4,
+        transparent: true,
+        opacity: coordinateParameters.surfaceOpacity,
+        side: THREE.DoubleSide
+      });
+
+      functionSurface = new THREE.Mesh(geometry, material);
+      scene.add(functionSurface);
+    }
+
+    // ============================================================================
+    // 坐标信息显示更新函数
+    // ============================================================================
+    function updateCoordinateInfo() {
+      const infoElement = document.getElementById('coordinateInfo');
+      const coordinateType = coordinateParameters.coordinateType;
+      const functionType = coordinateParameters.functionType;
+      
+      const coordinates = ["笛卡尔坐标系", "极坐标系", "柱坐标系", "球坐标系"];
+      const functions = ["z = x² + y²", "z = x² - y²", "z = sin(kx) + cos(ky)", "z = √(x² + y²)", "z = x² - y²"];
+      
+      const coordinateName = coordinates[coordinateType];
+      const functionName = functions[functionType];
+      
+      infoElement.textContent = `坐标系：${coordinateName} | 函数：${functionName}`;
+    }
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 坐标系类型控制
+    const coordinateTypes = {
+      "笛卡尔坐标系": 0,
+      "极坐标系": 1,
+      "柱坐标系": 2,
+      "球坐标系": 3
+    };
+    
+    const coordinateController = gui.add(coordinateParameters, 'coordinateType', coordinateTypes).name('坐标系类型');
+    coordinateController.onChange(() => {
+      updateCoordinateInfo();
+      createCoordinateSystem();
+    });
+    
+    // 函数类型控制
+    const functionTypes = {
+      "抛物面": 0,
+      "双曲面": 1,
+      "正弦曲面": 2,
+      "锥面": 3,
+      "马鞍面": 4
+    };
+    
+    const functionController = gui.add(coordinateParameters, 'functionType', functionTypes).name('函数类型');
+    functionController.onChange(() => {
+      updateCoordinateInfo();
+      createFunctionVisualization();
+    });
+    
+    // 函数参数控制
+    const functionFolder = gui.addFolder('函数参数');
+    const aController = functionFolder.add(coordinateParameters, 'a', 0.1, 3.0).name('a系数');
+    const bController = functionFolder.add(coordinateParameters, 'b', 0.1, 3.0).name('b系数');
+    const kController = functionFolder.add(coordinateParameters, 'k', 0.1, 5.0).name('k系数');
+    
+    // 参数变化时更新函数图像
+    [aController, bController, kController].forEach(controller => {
+      controller.onChange(() => {
+        createFunctionVisualization();
+      });
+    });
+    
+    functionFolder.open();
+    
+    // 显示设置
+    const displayFolder = gui.addFolder('显示设置');
+    displayFolder.add(coordinateParameters, 'showAxes').name('显示坐标轴');
+    displayFolder.add(coordinateParameters, 'showGrid').name('显示网格');
+    displayFolder.add(coordinateParameters, 'showSurface').name('显示曲面');
+    displayFolder.add(coordinateParameters, 'gridSize', 5, 20).name('网格大小');
+    displayFolder.add(coordinateParameters, 'gridDensity', 10, 50).name('网格密度');
+    displayFolder.add(coordinateParameters, 'surfaceOpacity', 0.3, 1.0).name('曲面透明度');
+    
+    displayFolder.open();
+
+    // ============================================================================
+    // 初始化场景
+    // ============================================================================
+    createCoordinateSystem();
+    createFunctionVisualization();
+    updateCoordinateInfo();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ThreeLab · LoveParticlesWorld 防抄袭示例</title>
+
+    <!-- 裸模块映射 -->
+      <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/",
+        "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/+esm"
+      }
+    }
+  </script>
+
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      #watermark {
+        position: fixed;
+        right: 10px;
+        bottom: 10px;
+        color: #0ff;
+        font-size: 12px;
+        pointer-events: none;
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="watermark">ThreeLab © 2024</div>
+
+    <script type="module">
+      /* ========================================================
+       0. 模块导入
+    ======================================================== */
+      import * as THREE from "three";
+      import { gsap } from "gsap";
+
+      /* ========================================================
+       1. LoveParticlesWorld 类（重构 + 详细注释）
+    ======================================================== */
+      class LoveParticlesWorld {
+        constructor() {
+          /* 可调参数 —— 粒子数量 / 颜色主题 */
+          this.params = {
+            heartParticles: 1800, // 爱心粒子
+            starParticles: 700, // 星星粒子
+            colorCycle: 0, // 0,1,2 三种配色
+          };
+
+          this.init(); // 统一初始化
+          this.clock = new THREE.Clock();
+          this.animate(); // 开始渲染
+        }
+
+        /* --------- 1. 场景、相机、渲染器 --------- */
+        init() {
+          /* 场景 */
+          this.scene = new THREE.Scene();
+          this.scene.background = this.createGradientTexture([
+            new THREE.Color(0x1a0033),
+            new THREE.Color(0x000022),
+          ]);
+
+          /* 相机 */
+          this.camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            100
+          );
+          this.camera.position.z = 4.5;
+
+          /* 渲染器 */
+          this.renderer = new THREE.WebGLRenderer({ antialias: true });
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+          this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          document.body.appendChild(this.renderer.domElement);
+
+          /* 灯光 */
+          this.scene.add(new THREE.AmbientLight(0x404040, 1.8));
+          this.pointLight = new THREE.PointLight(0xff3388, 1.5, 100);
+          this.pointLight.position.set(0, 0, 5);
+          this.scene.add(this.pointLight);
+
+          /* 创建元素 */
+          this.createHeart();
+          this.createStars();
+          this.createGlow();
+          this.bindEvents();
+          this.addUI();
+        }
+
+        /* --------- 2. 渐变背景纹理 --------- */
+        createGradientTexture(colors) {
+          const canvas = document.createElement("canvas");
+          canvas.width = 2;
+          canvas.height = 256;
+          const ctx = canvas.getContext("2d");
+          const g = ctx.createLinearGradient(0, 0, 0, 256);
+          g.addColorStop(0, colors[0].getStyle());
+          g.addColorStop(1, colors[1].getStyle());
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, 2, 256);
+          const tex = new THREE.CanvasTexture(canvas);
+          tex.magFilter = tex.minFilter = THREE.LinearFilter;
+          return tex;
+        }
+
+        /* --------- 3. 爱心粒子 --------- */
+        createHeart() {
+          const heartMaterial = new THREE.ShaderMaterial({
+            fragmentShader: `
+        varying vec3 vColor;
+        varying vec2 vUv;
+        varying float vIntensity;
+        
+        void main() {
+          // 更强的发光效果
+          float strength = 1.0 - 2.0 * distance(vUv, vec2(0.5));
+          strength = pow(strength, 1.4); // 更柔和的边缘
+          
+          // 增强发光和颜色饱和度
+          vec3 finalColor = vColor * (1.0 + vIntensity * 0.8);
+          
+          // 更亮的白色光晕
+          finalColor += vec3(1.0) * pow(strength, 6.0) * 0.4;
+          
+          gl_FragColor = vec4(finalColor * strength, strength);
+        }
+      `,
+            vertexShader: `
+        #define PI 3.1415926535897932384626433832795
+        uniform float uTime;
+        uniform float uSize;
+        
+        attribute float aScale;
+        attribute vec3 aColor;
+        attribute float aSpeed;
+        attribute float aOffset;
+        attribute float aPhase;
+        
+        varying vec3 vColor;
+        varying vec2 vUv;
+        varying float vIntensity;
+        
+        vec3 heartShape(float t, float scale) {
+          t = aPhase + sin(uTime * 0.2) * 0.05;
+          
+          float sign = 2.0 * (step(0.5, aOffset) - 0.5);
+          t = sign * mod(-uTime * aSpeed * 0.004 + 9.0 * aSpeed * aSpeed, PI);
+          
+          float a = pow(t, 2.0) * pow((t - sign * PI), 2.0);
+          float r = 0.16 * scale; // 增大基础大小
+          
+          // 优化的心形曲线
+          float x = r * 16.0 * pow(sin(t), 2.0) * sin(t);
+          float y = r * (13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t));
+          float z = 0.13 * a * (aOffset - 0.5) * sin(12.0 * sin(0.3 * uTime + aOffset * 3.0) * t);
+          
+          // 更丰富的浮动动画
+          y += sin(uTime * 0.5) * 0.06;
+          x += cos(uTime * 0.3) * 0.04;
+          
+          return vec3(x, y, z);
+        }
+        
+        void main() {
+          vec3 heartPosition = heartShape(0.0, 1.0);
+          
+          vec4 modelPosition = modelMatrix * vec4(heartPosition, 1.0);
+          vec4 viewPosition = viewMatrix * modelPosition;
+          
+          // 更强的脉动效果
+          float pulse = 0.6 + 0.2 * sin(uTime * (0.6 + aOffset * 0.5) + aPhase * 5.0);
+          float sizeScale = aScale * uSize * pulse;
+          
+          viewPosition.xyz += position * sizeScale;
+          
+          gl_Position = projectionMatrix * viewPosition;
+          
+          vColor = aColor;
+          vUv = uv;
+          vIntensity = pulse + 0.3 * sin(uTime * aSpeed * 0.1);
+        }
+      `,
+            uniforms: {
+              uTime: { value: 0 },
+              uSize: { value: 0.38 }, // 显著增大粒子默认尺寸
+            },
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          });
+
+          const count = this.params.heartParticles;
+          const geometry = new THREE.PlaneGeometry(1, 1);
+          const instancedGeometry = new THREE.InstancedBufferGeometry();
+
+          Object.keys(geometry.attributes).forEach((attr) => {
+            instancedGeometry.attributes[attr] = geometry.attributes[attr];
+          });
+          instancedGeometry.index = geometry.index;
+
+          // 创建实例化属性数组
+          const scales = new Float32Array(count);
+          const colors = new Float32Array(count * 3);
+          const speeds = new Float32Array(count);
+          const offsets = new Float32Array(count);
+          const phases = new Float32Array(count);
+
+          // 更鲜艳的配色方案
+          this.colorSchemes = [
+            // 鲜艳粉红色系
+            [0xffffff, 0xff1177, 0xff66bb, 0xff44aa, 0xffddee],
+            // 明亮蓝紫色系
+            [0x99eeff, 0x66aaff, 0x4466ff, 0x9944ff, 0xeeddff],
+            // 金橙黄色系
+            [0xffdd22, 0xff9911, 0xff6633, 0xffdd99, 0xffbb55],
+          ];
+
+          const colorChoices = this.colorSchemes[this.params.colorCycle];
+
+          for (let i = 0; i < count; i++) {
+            // 增大粒子尺寸范围
+            scales[i] = 0.15 + Math.random() * 0.45;
+            speeds[i] = 0.5 + Math.random() * 4.0;
+            offsets[i] = Math.random();
+            phases[i] = Math.random() * Math.PI * 2;
+
+            const color = new THREE.Color(
+              colorChoices[Math.floor(Math.random() * colorChoices.length)]
+            );
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
+          }
+
+          instancedGeometry.setAttribute(
+            "aScale",
+            new THREE.InstancedBufferAttribute(scales, 1)
+          );
+          instancedGeometry.setAttribute(
+            "aColor",
+            new THREE.InstancedBufferAttribute(colors, 3)
+          );
+          instancedGeometry.setAttribute(
+            "aSpeed",
+            new THREE.InstancedBufferAttribute(speeds, 1)
+          );
+          instancedGeometry.setAttribute(
+            "aOffset",
+            new THREE.InstancedBufferAttribute(offsets, 1)
+          );
+          instancedGeometry.setAttribute(
+            "aPhase",
+            new THREE.InstancedBufferAttribute(phases, 1)
+          );
+
+          this.heart = new THREE.Mesh(instancedGeometry, heartMaterial);
+          this.scene.add(this.heart);
+        }
+
+        /* --------- 4. 星星粒子 --------- */
+        createStars() {
+          const mat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+            uniform float uTime;
+            attribute float aSize, aSpeed; attribute vec3 aColor;
+            varying vec3 vColor; varying float vSize;
+            void main(){
+              vec3 pos = position;
+              float flicker = 0.8 + 0.5 * sin(uTime * aSpeed + position.x * 100.0);
+              pos.x += sin(uTime * 0.1 * aSpeed + position.y) * 0.15;
+              pos.y += cos(uTime * 0.1 * aSpeed + position.x) * 0.15;
+              vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+              gl_PointSize = aSize * flicker * (350.0 / length(mvPos.xyz));
+              gl_Position  = projectionMatrix * mvPos;
+              vColor = aColor; vSize = flicker;
+            }
+          `,
+            fragmentShader: `
+            varying vec3 vColor; varying float vSize;
+            void main(){
+              float d = length(gl_PointCoord - vec2(0.5));
+              float str = 1.0 - smoothstep(0.0, 0.5, d);
+              vec3 c = vColor * pow(str, 1.5) * 1.5;
+              gl_FragColor = vec4(c, str * 0.8);
+            }
+          `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          });
+
+          const geo = new THREE.BufferGeometry();
+          const count = this.params.starParticles;
+          const pos = new Float32Array(count * 3);
+          const col = new Float32Array(count * 3);
+          const size = new Float32Array(count);
+          const speed = new Float32Array(count);
+
+          const starColors = [
+            new THREE.Color(0xffffff),
+            new THREE.Color(0xaaccff),
+            new THREE.Color(0xffccee),
+            new THREE.Color(0xddddff),
+          ];
+
+          for (let i = 0; i < count; i++) {
+            const r = 10 + Math.random() * 20;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+            pos[i * 3 + 2] = r * Math.cos(phi) - 15;
+
+            size[i] = 4 + Math.random();
+            speed[i] = 0.1 + Math.random() * 2;
+
+            const c = starColors[Math.floor(Math.random() * starColors.length)];
+            col[i * 3] = c.r;
+            col[i * 3 + 1] = c.g;
+            col[i * 3 + 2] = c.b;
+          }
+
+          geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+          geo.setAttribute("aColor", new THREE.BufferAttribute(col, 3));
+          geo.setAttribute("aSize", new THREE.BufferAttribute(size, 1));
+          geo.setAttribute("aSpeed", new THREE.BufferAttribute(speed, 1));
+
+          this.stars = new THREE.Points(geo, mat);
+          this.scene.add(this.stars);
+        }
+
+        /* --------- 5. 光晕 --------- */
+        createGlow() {
+          const glowGeometry = new THREE.SphereGeometry(1.8, 32, 32);
+          const glowMaterial = new THREE.ShaderMaterial({
+            fragmentShader: `
+        varying float vIntensity;
+        varying vec3 vColor;
+        
+        void main() {
+          float alpha = pow(vIntensity, 2.5) * 0.55;
+          gl_FragColor = vec4(vColor, alpha);
+        }
+      `,
+            vertexShader: `
+        uniform float uTime;
+        varying float vIntensity;
+        varying vec3 vColor;
+        
+        void main() {
+          vec3 pos = position;
+          float noise = sin(pos.x * 5.0 + uTime) * sin(pos.y * 5.0 + uTime) * sin(pos.z * 5.0 + uTime) * 0.15;
+          pos += normal * noise;
+          
+          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+          
+          vIntensity = 1.0 - length(pos) / 2.0;
+          vColor = vec3(0.95, 0.4, 0.7);
+        }
+      `,
+            uniforms: {
+              uTime: { value: 0 },
+            },
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide,
+            depthWrite: false,
+          });
+
+          this.glow = new THREE.Mesh(glowGeometry, glowMaterial);
+          this.scene.add(this.glow);
+        }
+
+        /* --------- 6. 事件绑定 --------- */
+        bindEvents() {
+          /* 鼠标移动 */
+          window.addEventListener("mousemove", (e) => {
+            const x = e.clientX / window.innerWidth - 0.5;
+            const y = e.clientY / window.innerHeight - 0.5;
+
+            gsap.to(this.camera.position, {
+              x: x * 1.0, // 增大鼠标移动的影响
+              y: -y * 1.0,
+              duration: 1.0,
+              ease: "power2.out",
+            });
+
+            gsap.to(this.pointLight.position, {
+              x: x * 4,
+              y: -y * 4,
+              duration: 1.5,
+              ease: "power1.out",
+            });
+          });
+
+          /* 点击换色 */
+          window.addEventListener("click", () => {
+            this.params.colorCycle =
+              (this.params.colorCycle + 1) % this.colorSchemes.length;
+            const scheme = this.colorSchemes[this.params.colorCycle];
+
+            /* 爱心粒子颜色更新 */
+            const colors = new Float32Array(this.params.heartParticles * 3);
+            for (let i = 0; i < this.params.heartParticles; i++) {
+              const c = new THREE.Color(
+                scheme[Math.floor(Math.random() * scheme.length)]
+              );
+              colors[i * 3] = c.r;
+              colors[i * 3 + 1] = c.g;
+              colors[i * 3 + 2] = c.b;
+            }
+            this.heart.geometry.setAttribute(
+              "aColor",
+              new THREE.InstancedBufferAttribute(colors, 3)
+            );
+
+            /* 点光源颜色同步 */
+            gsap.to(this.pointLight.color, new THREE.Color(scheme[0]));
+
+            /* 爆炸缩放 */
+            gsap
+              .to(this.heart.material.uniforms.uSize, {
+                value: 0.5,
+                duration: 0.2,
+              })
+              .then(() =>
+                gsap.to(this.heart.material.uniforms.uSize, {
+                  value: 0.38,
+                  duration: 0.5,
+                })
+              );
+          });
+
+          /* 窗口大小改变 */
+          window.addEventListener("resize", () => {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+          });
+        }
+
+        /* --------- 7. 简易 UI 提示 --------- */
+        addUI() {
+          const info = document.createElement("div");
+          info.style.cssText =
+            "position:fixed;top:10px;left:10px;color:#fff;font-size:14px;pointer-events:none;background:rgba(0,0,0,.4);padding:8px 12px;border-radius:6px;";
+          info.innerHTML =
+            "<p>✨ 移动鼠标改变视角</p><p>💖 点击屏幕切换颜色</p>";
+          document.body.appendChild(info);
+        }
+
+        /* --------- 8. 动画循环 --------- */
+        animate() {
+          const t = this.clock.getElapsedTime();
+
+          /* 更新着色器时间 */
+          if (this.heart) this.heart.material.uniforms.uTime.value = t;
+          if (this.stars) this.stars.material.uniforms.uTime.value = t;
+          if (this.glow) this.glow.material.uniforms.uTime.value = t;
+
+          /* 轻微旋转 */
+          if (this.heart) {
+            this.heart.rotation.y = Math.sin(t * 0.2) * 0.18;
+            this.heart.rotation.z = Math.sin(t * 0.1) * 0.06;
+          }
+          if (this.stars) this.stars.rotation.y = t * 0.02;
+          if (this.glow) {
+            const s = 1 + Math.sin(t * 0.8) * 0.12;
+            this.glow.scale.set(s, s, s);
+          }
+
+          this.renderer.render(this.scene, this.camera);
+          requestAnimationFrame(this.animate.bind(this));
+        }
+      }
+
+      /* ========================================================
+       启动
+    ======================================================== */
+      new LoveParticlesWorld();
+
+      /* ========================================================
+       ThreeLab  
+    ======================================================== */
+      console.log(
+        "%cThreeLab © 2024 - LoveParticlesWorld",
+        "color:#0ff;font-size:14px;background:#000;padding:4px 8px;border-radius:4px;"
+      );
+    </script>
+  </body>
+</html>

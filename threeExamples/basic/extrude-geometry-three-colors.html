@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js 挤压几何体双色分离效果</title>
+      <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        #controls {
+            position: absolute; 
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        .color-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin: 0 5px;
+            border: 1px solid #fff;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="info">
+            <h3>挤压几何体双色分离效果</h3>
+            <p>顶面: <span class="color-preview" style="background:#ffff00"></span> 黄色</p>
+            <p>底面: <span class="color-preview" style="background:#00ff00"></span> 绿色</p>
+        </div>
+        <div id="controls">
+            <button onclick="rotateX()">绕X轴旋转</button>
+            <button onclick="rotateY()">绕Y轴旋转</button>
+            <button onclick="resetRotation()">重置旋转</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';;
+
+        // 自定义ExtrudeGeometry类，实现三色分离
+        class ThreeColorExtrudeGeometry extends THREE.ExtrudeGeometry {
+            constructor(shape, options) {
+                super(shape, options);
+                
+                // 重新组织材质组
+                this.regroupFaces();
+            }
+
+            regroupFaces() {
+                const groups = this.groups;
+                const index = this.index;
+                
+                if (!index) return;
+                
+                // 清空原有分组
+                groups.length = 0;
+                
+                const position = this.attributes.position;
+                const faceCount = index.count / 3;
+                
+                // 分析每个面的法向量来确定面类型
+                for (let i = 0; i < faceCount; i++) {
+                    const a = index.getX(i * 3);
+                    const b = index.getX(i * 3 + 1);
+                    const c = index.getX(i * 3 + 2);
+                    
+                    const vA = new THREE.Vector3().fromBufferAttribute(position, a);
+                    const vB = new THREE.Vector3().fromBufferAttribute(position, b);
+                    const vC = new THREE.Vector3().fromBufferAttribute(position, c);
+                    
+                    // 计算面法向量
+                    const normal = new THREE.Vector3();
+                    const cb = new THREE.Vector3();
+                    const ab = new THREE.Vector3();
+                    
+                    cb.subVectors(vC, vB);
+                    ab.subVectors(vA, vB);
+                    cb.cross(ab);
+                    normal.copy(cb).normalize();
+                    
+                    // 根据法向量方向确定面类型
+                    let materialIndex = 2; // 默认侧面
+                    
+                    if (Math.abs(normal.y) > 0.9) {
+                        // 顶面或底面
+                        materialIndex = normal.y > 0 ? 0 : 1; // 0:顶面, 1:底面
+                    }
+                    
+                    // 添加到对应的材质组
+                    const start = i * 3;
+                    const count = 3;
+                    
+                    // 检查是否已有该材质组
+                    let groupIndex = groups.findIndex(g => g.materialIndex === materialIndex);
+                    if (groupIndex === -1) {
+                        groups.push({
+                            start: start,
+                            count: count,
+                            materialIndex: materialIndex
+                        });
+                    } else {
+                        groups[groupIndex].count += count;
+                    }
+                }
+                
+                // 重新排序分组，确保正确的渲染顺序
+                groups.sort((a, b) => a.materialIndex - b.materialIndex);
+                
+                // 重新计算起始位置
+                let currentStart = 0;
+                for (let i = 0; i < groups.length; i++) {
+                    groups[i].start = currentStart;
+                    currentStart += groups[i].count;
+                }
+            }
+        }
+
+        // 主应用类
+        class ExtrudeGeometryApp {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.gui = null;
+                this.materials = {};
+                
+                // GUI参数
+                this.params = {
+                    topColor: '#ffff00',    // 顶面颜色
+                    bottomColor: '#00ff00', // 底面颜色
+                    sideColor: '#ff0000',   // 侧面颜色
+                    opacity: 0.9,           // 透明度
+                    rotationSpeed: 0.0,     // 旋转速度
+                    autoRotate: false,      // 自动旋转
+                    reset: () => this.resetColors()
+                };
+                
+                this.init();
+            }
+
+            init() {
+                // 设置渲染器
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000000);
+                document.getElementById('container').appendChild(this.renderer.domElement);
+                
+                // 设置相机位置
+                this.camera.position.set(8, 8, 8);
+                this.camera.lookAt(0, 0, 0);
+                
+                // 添加轨道控制器
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                
+                // 添加灯光
+                this.addLights();
+                
+                // 创建挤压几何体
+                this.createExtrudeGeometry();
+                
+                // 开始动画循环
+                this.animate();
+                
+                // 窗口大小变化处理
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            addLights() {
+                // 环境光
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                // 方向光
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                this.scene.add(directionalLight);
+                
+                // 点光源
+                const pointLight = new THREE.PointLight(0xffffff, 0.5);
+                pointLight.position.set(-5, 5, 5);
+                this.scene.add(pointLight);
+            }
+
+            createExtrudeGeometry() {
+                // 1. 定义2D轮廓Shape
+                const shape = new THREE.Shape();
+                shape.moveTo(-2, -2);
+                shape.lineTo(2, -2);
+                shape.lineTo(2, 2);
+                shape.lineTo(-2, 2);
+                shape.closePath();
+                
+                // 2. 挤压参数（关闭倒角，避免额外面干扰）
+                const extrudeOptions = {
+                    depth: 3,        // 拉伸厚度
+                    bevelEnabled: false, // 关闭倒角，只保留顶、底、侧面
+                };
+                
+                // 3. 创建自定义挤压几何体
+                const geometry = new ThreeColorExtrudeGeometry(shape, extrudeOptions);
+                
+                // 4. 三材质：[顶面材质, 底面材质, 侧面材质]
+                this.materials.topMat = new THREE.MeshLambertMaterial({ 
+                    color: this.params.topColor, // 顶面颜色
+                    transparent: true,
+                    opacity: this.params.opacity
+                });
+                
+                this.materials.bottomMat = new THREE.MeshLambertMaterial({ 
+                    color: this.params.bottomColor, // 底面颜色
+                    transparent: true,
+                    opacity: this.params.opacity
+                });
+                
+                this.materials.sideMat = new THREE.MeshLambertMaterial({ 
+                    color: this.params.sideColor, // 侧面颜色
+                    transparent: true,
+                    opacity: this.params.opacity
+                });
+                
+                // 5. 传入材质数组，自动分组着色
+                this.mesh = new THREE.Mesh(geometry, [
+                    this.materials.topMat, 
+                    this.materials.bottomMat, 
+                    this.materials.sideMat
+                ]);
+                this.scene.add(this.mesh);
+                
+                // 添加辅助网格和坐标轴
+                this.addHelpers();
+                
+                // 创建GUI
+                this.createGUI();
+            }
+
+            // 创建GUI控制面板
+            createGUI() {
+                this.gui = new GUI();
+                
+                // 颜色控制
+                const colorsFolder = this.gui.addFolder('颜色控制');
+                colorsFolder.addColor(this.params, 'topColor').name('顶面颜色').onChange(value => {
+                    this.updateMaterialColor('topMat', value);
+                    this.updateInfoPanel();
+                });
+                colorsFolder.addColor(this.params, 'bottomColor').name('底面颜色').onChange(value => {
+                    this.updateMaterialColor('bottomMat', value);
+                    this.updateInfoPanel();
+                });
+                colorsFolder.open();
+                
+                // 透明度控制
+                this.gui.add(this.params, 'opacity', 0.1, 1.0).name('透明度').onChange(value => {
+                    this.updateMaterialOpacity(value);
+                });
+                
+                // 动画控制
+                const animationFolder = this.gui.addFolder('动画控制');
+                animationFolder.add(this.params, 'autoRotate').name('自动旋转');
+                animationFolder.add(this.params, 'rotationSpeed', -2.0, 2.0).name('旋转速度');
+                animationFolder.open();
+                
+                // 重置按钮
+                this.gui.add(this.params, 'reset').name('重置颜色');
+            }
+
+            // 更新材质颜色
+            updateMaterialColor(materialKey, colorValue) {
+                // 检查材质是否存在
+                if (!this.materials[materialKey]) {
+                    console.warn(`材质 ${materialKey} 不存在，跳过更新`);
+                    return;
+                }
+                
+                // 创建新的材质实例
+                const newMaterial = new THREE.MeshLambertMaterial({
+                    color: colorValue,
+                    transparent: true,
+                    opacity: this.materials[materialKey].opacity || 0.9
+                });
+                
+                // 替换旧的材质
+                this.materials[materialKey] = newMaterial;
+                
+                // 更新mesh的材质数组
+                if (this.mesh) {
+                    const materials = this.mesh.material;
+                    if (Array.isArray(materials)) {
+                        // 根据materialKey确定索引
+                        let materialIndex = 0;
+                        if (materialKey === 'bottomMat') materialIndex = 1;
+                        if (materialKey === 'sideMat') materialIndex = 2;
+                        
+                        materials[materialIndex] = newMaterial;
+                        this.mesh.material = materials; // 重新赋值以触发更新
+                    }
+                }
+            }
+
+            // 更新材质透明度
+            updateMaterialOpacity(opacity) {
+                Object.keys(this.materials).forEach(key => {
+                    if (this.materials[key]) {
+                        this.materials[key].opacity = opacity;
+                        this.materials[key].needsUpdate = true;
+                    }
+                });
+            }
+
+            // 更新信息面板颜色预览
+            updateInfoPanel() {
+                try {
+                    const topPreview = document.querySelector('#info p:nth-child(2) .color-preview');
+                    const bottomPreview = document.querySelector('#info p:nth-child(3) .color-preview');
+                    
+                    if (topPreview && this.params.topColor) topPreview.style.background = this.params.topColor;
+                    if (bottomPreview && this.params.bottomColor) bottomPreview.style.background = this.params.bottomColor;
+                } catch (error) {
+                    console.warn('更新信息面板时出错:', error);
+                }
+            }
+
+            // 重置颜色到默认值
+            resetColors() {
+                this.params.topColor = '#ffff00';
+                this.params.bottomColor = '#00ff00';
+                this.params.opacity = 0.9;
+                
+                // 重新创建所有材质
+                this.updateMaterialColor('topMat', this.params.topColor);
+                this.updateMaterialColor('bottomMat', this.params.bottomColor);
+                this.updateMaterialOpacity(this.params.opacity);
+                
+                this.updateInfoPanel();
+                
+                if (this.gui) {
+                    this.gui.updateDisplay();
+                }
+            }
+
+            addHelpers() {
+                // 网格辅助
+                const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+                this.scene.add(gridHelper);
+                
+                // 坐标轴辅助
+                const axesHelper = new THREE.AxesHelper(5);
+                this.scene.add(axesHelper);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // 自动旋转
+                if (this.params.autoRotate && this.mesh) {
+                    this.mesh.rotation.y += this.params.rotationSpeed * 0.01;
+                }
+                
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            // 旋转控制方法
+            rotateX() {
+                if (this.mesh) {
+                    this.mesh.rotation.x += Math.PI / 4;
+                }
+            }
+
+            rotateY() {
+                if (this.mesh) {
+                    this.mesh.rotation.y += Math.PI / 4;
+                }
+            }
+
+            resetRotation() {
+                if (this.mesh) {
+                    this.mesh.rotation.set(0, 0, 0);
+                }
+            }
+        }
+
+        // 启动应用
+        const app = new ExtrudeGeometryApp();
+
+        // 全局函数供按钮调用
+        window.rotateX = () => app.rotateX();
+        window.rotateY = () => app.rotateY();
+        window.resetRotation = () => app.resetRotation();
+    </script>
+</body>
+</html>

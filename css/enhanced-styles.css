@@ -1,0 +1,409 @@
+/* 增强样式 - 现代化Three.js & Cesium实例网站 */
+
+/* 现代化头部样式 */
+.modern-header {
+  background: rgba(10, 14, 26, 0.9);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  padding: 0 24px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.modern-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.modern-logo:hover {
+  background: rgba(0, 212, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.15);
+}
+
+.modern-logo img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px;
+}
+
+.modern-logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 现代化导航链接 */
+.modern-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modern-nav-link {
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: #b8c2cc;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-nav-link:hover {
+  color: #ffffff;
+  background: rgba(0, 212, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.modern-nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.modern-nav-link:hover::before {
+  left: 100%;
+}
+
+/* 现代化主导航菜单 */
+.modern-main-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modern-nav-item {
+  padding: 10px 24px;
+  border-radius: 8px;
+  color: #b8c2cc;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  position: relative;
+}
+
+.modern-nav-item:hover {
+  color: #ffffff;
+  background: rgba(0, 212, 255, 0.1);
+}
+
+.modern-nav-item.active {
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 212, 255, 0.2);
+}
+
+.modern-nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: #00d4ff;
+  border-radius: 1px;
+}
+
+/* 现代化侧边栏 */
+.modern-sidebar {
+  background: linear-gradient(180deg, rgba(10, 14, 26, 0.95) 0%, rgba(26, 31, 46, 0.9) 100%);
+  backdrop-filter: blur(15px);
+  border-right: 1px solid rgba(0, 212, 255, 0.2);
+  width: 280px;
+  height: calc(100vh - 70px);
+  overflow-y: auto;
+  position: relative;
+}
+
+.modern-sidebar-group {
+  margin: 16px 0;
+}
+
+.modern-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  color: #00d4ff;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+  margin: 0 16px;
+}
+
+.modern-group-badge {
+  background: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modern-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  margin: 4px 16px;
+  border-radius: 8px;
+  color: #b8c2cc;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.modern-sidebar-item:hover {
+  background: rgba(0, 212, 255, 0.1);
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.modern-sidebar-item.active {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+  border-left-color: #00d4ff;
+  box-shadow: 0 4px 15px rgba(0, 212, 255, 0.1);
+}
+
+.modern-item-badge {
+  background: rgba(123, 97, 255, 0.2);
+  color: #7b61ff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* 现代化内容区域 */
+.modern-content {
+  background: linear-gradient(135deg, rgba(10, 14, 26, 0.8) 0%, rgba(26, 31, 46, 0.7) 100%);
+  backdrop-filter: blur(10px);
+  border-left: 1px solid rgba(0, 212, 255, 0.1);
+  height: calc(100vh - 70px);
+  overflow-y: auto;
+  position: relative;
+  margin-top: 70px; /* 为固定头部留出空间 */
+}
+
+/* modern-content-header 样式在 modern-example.css 中定义 */
+
+.modern-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modern-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+  font-weight: 500;
+}
+
+.modern-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modern-search-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #ffffff;
+  font-size: 14px;
+  min-width: 280px;
+  transition: all 0.3s ease;
+}
+
+.modern-search-input:focus {
+  outline: none;
+  border-color: #00d4ff;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+
+.modern-search-input::placeholder {
+  color: #8a94a6;
+}
+
+/* 现代化示例卡片 */
+.modern-examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.modern-example-card {
+  background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(10, 14, 26, 0.9) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+  backdrop-filter: blur(10px);
+}
+
+.modern-example-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.5);
+}
+
+.modern-card-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff8e53 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.modern-card-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.modern-example-card:hover .modern-card-image {
+  transform: scale(1.05);
+}
+
+.modern-card-content {
+  padding: 20px;
+}
+
+.modern-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.modern-card-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modern-author-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 212, 255, 0.5);
+}
+
+.modern-author-name {
+  font-size: 12px;
+  color: #8a94a6;
+}
+
+/* 现代化分割线 */
+.modern-divider {
+  margin: 32px 24px;
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.5), transparent);
+  position: relative;
+}
+
+.modern-divider::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #00d4ff;
+  border-radius: 50%;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .modern-sidebar {
+    width: 200px;
+  }
+  
+  .modern-examples-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .modern-header {
+    padding: 0 16px;
+    height: 60px;
+  }
+  
+  .modern-logo-text {
+    font-size: 18px;
+  }
+  
+  .modern-sidebar {
+    width: 100%;
+    height: auto;
+    position: absolute;
+    z-index: 999;
+  }
+  
+  .modern-content {
+    margin-left: 0;
+  }
+  
+  .modern-examples-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+}

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>中国国旗3D动画</title>
+    <script type="importmap">
+   {
+        "imports": {
+          "three": "/libs/threejs/build/three.module.js",
+          "three/addons/": "/libs/threejs/examples/jsm/"
+        }
+      }
+</script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+        .controls button {
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #c00;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .controls button:hover {
+            background-color: #e00;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+    <div class="controls">
+        <button id="pauseBtn">暂停/继续</button>
+        <button id="resetBtn">重置</button>
+        <button id="zoomInBtn">放大</button>
+        <button id="zoomOutBtn">缩小</button>
+    </div>
+    <script type="module">
+        import * as THREE from 'three'
+        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+        const container = document.getElementById('container')
+
+        // 创建场景
+        const scene = new THREE.Scene()
+
+        // 创建相机
+        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
+        camera.position.set(0, 0, 5)
+
+        // 创建渲染器
+        const renderer = new THREE.WebGLRenderer({ antialias: true })
+        renderer.setSize(container.clientWidth, container.clientHeight)
+        renderer.setPixelRatio(window.devicePixelRatio)
+        renderer.setClearColor(0x0a0a0a)
+        container.appendChild(renderer.domElement)
+
+        // 添加轨道控制器
+        const controls = new OrbitControls(camera, renderer.domElement)
+        controls.enableDamping = true
+        controls.dampingFactor = 0.1
+        controls.enablePan = false
+        controls.maxDistance = 10
+        controls.minDistance = 2
+        controls.target.set(0, 0, 0)
+
+        // 窗口大小调整事件
+        window.onresize = () => {
+            renderer.setSize(container.clientWidth, container.clientHeight)
+            camera.aspect = container.clientWidth / container.clientHeight
+            camera.updateProjectionMatrix()
+        }
+
+        // 国旗材质 
+        const flagTexture = new THREE.TextureLoader().load(FILE_HOST +  "images/chinaFlag.jpg")
+        flagTexture.anisotropy = renderer.capabilities.getMaxAnisotropy()
+
+        // 国旗波浪效果材质
+        // 国旗材质 - 使用RawShaderMaterial实现高级自定义着色器效果
+        const flagMaterial = new THREE.RawShaderMaterial({
+            vertexShader: `
+    // 全局变换矩阵 - 用于将顶点从模型空间转换到裁剪空间
+    uniform mat4 projectionMatrix; // 投影矩阵，负责透视投影
+    uniform mat4 modelMatrix;      // 模型矩阵，负责模型的位置、旋转和缩放
+    uniform mat4 viewMatrix;       // 视图矩阵，代表相机的位置和方向
+    
+    // 波浪动画控制参数
+    uniform vec2 uFrequency;       // 波浪频率 (x和y方向的波浪密度)
+    uniform float uTime;           // 时间变量，控制波浪动画的进度
+    uniform float uStrength;       // 波浪强度，控制波浪的高度
+    
+    // 顶点属性 - 每个顶点都有这些属性
+    attribute vec3 position;       // 顶点的位置坐标
+    attribute vec2 uv;             // 顶点的纹理坐标，用于采样纹理
+    
+    // 传递给片段着色器的变量
+    varying float vDark;           // 暗部强度，用于模拟波浪的阴影
+    varying vec2 vUv;              // 纹理坐标，传递给片段着色器
+     
+    void main() {
+        // 将顶点位置从模型空间转换到世界空间
+        vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+        
+        // 计算波浪衰减因子 - 从旗杆(左侧)到旗尾(右侧)波浪逐渐增强
+        float xFactor = clamp((modelPosition.x + 1.25) / 2.0, 0.0, 2.0);
+        
+        // 计算波浪效果 - 使用正弦函数创建波浪运动
+        float vWave = sin(modelPosition.x * uFrequency.x - uTime ) * xFactor * uStrength;
+        // 添加次要波浪，使效果更自然
+        vWave += sin(modelPosition.y * uFrequency.y - uTime) * xFactor * uStrength * 0.5;
+        
+        // 添加细微的垂直波动，模拟真实旗帜飘动
+        modelPosition.y += sin(modelPosition.x * 2.0 + uTime * 0.5) * 0.05 * xFactor;
+        
+        // 应用波浪效果到Z轴(旗帜向前/向后飘动)
+        modelPosition.z += vWave;
+        
+        // 完成顶点的坐标变换 - 从世界空间到视图空间再到裁剪空间
+        vec4 viewPosition = viewMatrix * modelPosition;
+        vec4 projectedPosition = projectionMatrix * viewPosition;
+        gl_Position = projectedPosition;
+        
+        // 传递纹理坐标和波浪强度到片段着色器
+        vUv = uv;
+        vDark = vWave; // 波浪强度用于后续计算阴影效果
+    }
+  `,
+
+            fragmentShader: `
+    // 设置浮点数精度
+    precision mediump float;
+    
+    // 从顶点着色器接收的插值变量
+    varying float vDark;           // 波浪强度(暗部信息)
+    varying vec2 vUv;              // 纹理坐标
+    
+    // 纹理采样器
+    uniform sampler2D uTexture;    // 国旗纹理
+    
+    void main() {
+        // 从纹理中采样颜色
+        vec4 textColor = texture2D(uTexture, vUv);
+        
+        // 应用波浪产生的暗部效果 - vDark值越大，颜色越暗
+        // 0.85是基础亮度，确保即使在波谷处也不会完全黑暗
+        textColor.rgb *= vDark + 0.85;
+        
+        // 设置最终的像素颜色
+        gl_FragColor = textColor;
+    }
+  `,
+            // 其他材质属性
+            side: THREE.DoubleSide,      // 双面渲染，确保从背面也能看到旗帜
+            uniforms: {
+                uFrequency: { value: new THREE.Vector2(3, 3) },  // 波浪频率
+                uTime: { value: 0 },                      // 初始时间
+                uTexture: { value: flagTexture },         // 国旗纹理
+                uStrength: { value: 0.2 }                 // 波浪强度
+            }
+        })
+
+        // 创建国旗几何体
+        const flagGeometry = new THREE.PlaneGeometry(3, 2, 64, 64)
+
+        // 创建国旗网格
+        const flagMesh = new THREE.Mesh(flagGeometry, flagMaterial)
+        flagMesh.position.set(0, 0, 0)
+        scene.add(flagMesh)
+
+        // 添加旗杆
+        const poleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 2.5, 32)
+        const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+        const poleMesh = new THREE.Mesh(poleGeometry, poleMaterial)
+        poleMesh.position.set(-1.52, -0.25, 0)
+        scene.add(poleMesh)
+
+        // 添加顶部装饰
+        const topGeometry = new THREE.ConeGeometry(0.05, 0.15, 32)
+        const topMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 })
+        const topMesh = new THREE.Mesh(topGeometry, topMaterial)
+        topMesh.position.set(-1.52, 1.25, 0)
+        topMesh.rotation.x = Math.PI
+        scene.add(topMesh)
+
+        // 添加光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+        scene.add(ambientLight)
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+        directionalLight.position.set(-1, 1, 1)
+        scene.add(directionalLight)
+
+        // 动画控制
+        let isAnimating = true
+        let animationSpeed = 1.0
+
+        // 按钮事件
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            isAnimating = !isAnimating
+        })
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            flagMaterial.uniforms.uTime.value = 0
+            camera.position.set(0, 0, 5)
+            controls.target.set(0, 0, 0)
+        })
+
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            camera.position.z = Math.max(2, camera.position.z - 0.5)
+        })
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            camera.position.z = Math.min(10, camera.position.z + 0.5)
+        })
+
+        // 动画循环
+        function animate() {
+            if (isAnimating) {
+                flagMaterial.uniforms.uTime.value += 0.06 * animationSpeed
+            }
+
+            controls.update()
+            renderer.render(scene, camera)
+            requestAnimationFrame(animate)
+        }
+
+        animate()
+    </script>
+</body>
+
+</html>

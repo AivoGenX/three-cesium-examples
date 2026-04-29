@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js熔岩流动效果着色器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #330000 0%, #110000 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff5500;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff5500;
+      border: 1px solid #ff5500;
+      box-shadow: 0 0 20px #ff5500;
+    }
+    .lava-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #ffaa00;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffaa00;
+      border: 1px solid #ffaa00;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #ffff66;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #ffff66;
+      border: 1px solid #ffff66;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">🌋 熔岩流动效果 - 实时渲染 🌋</div>
+  <div class="lava-info" id="lavaInfo">温度: 高温 | 流动速度: 中等</div>
+  <div class="help">
+    🎮 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 调整参数：改变熔岩效果<br>
+    • 实时交互：体验火山奇观
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // 导入Three.js核心库和辅助工具
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x330000);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,0,8)的位置观察场景
+    camera.position.set(0, 0, 8)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 窗口大小变化时的响应函数，保持渲染内容适配窗口
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // 熔岩效果参数
+    const lavaParams = {
+      temperature: 0.8,
+      flowSpeed: 0.6,
+      viscosity: 0.7,
+      glowIntensity: 1.2,
+      turbulence: 0.8,
+      lavaType: 0,
+      showBubbles: true
+    };
+
+    // 创建球体几何体，作为熔岩的载体
+    const geometry = new THREE.SphereGeometry(3, 64, 32);
+
+    // 顶点着色器代码 - 熔岩流动效果
+    const vertexShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uFlowSpeed;
+      uniform float uViscosity;
+      uniform float uTurbulence;
+      
+      void main() {
+        vUv = uv;
+        vPosition = position;
+        vNormal = normal;
+        
+        // 熔岩流动效果
+        float flow = sin(position.x * 3.0 + uTime * uFlowSpeed) * 
+                    cos(position.y * 4.0 + uTime * uFlowSpeed * 0.8) *
+                    sin(position.z * 3.0 + uTime * uFlowSpeed * 0.6);
+        
+        // 湍流效果
+        float turbulence = sin(position.x * 6.0 + uTime * uTurbulence * 2.0) *
+                          cos(position.y * 8.0 + uTime * uTurbulence * 1.5);
+        
+        // 粘度影响
+        float viscosityEffect = mix(0.1, 0.3, uViscosity);
+        
+        vec3 newPosition = position + normal * (flow + turbulence) * viscosityEffect;
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `;
+
+    // 片段着色器代码 - 熔岩流动效果
+    const fragmentShader = `
+      varying vec2 vUv;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      
+      uniform float uTime;
+      uniform float uTemperature;
+      uniform float uFlowSpeed;
+      uniform float uViscosity;
+      uniform float uGlowIntensity;
+      uniform float uTurbulence;
+      uniform int uLavaType;
+      uniform bool uShowBubbles;
+      
+      // 噪声函数
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      
+      // 熔岩效果
+      float lava(vec2 uv, float temperature) {
+        float lavaField = 0.0;
+        
+        // 多层熔岩
+        lavaField += sin(uv.x * 8.0 + uTime * 0.4) * 
+                    cos(uv.y * 10.0 + uTime * 0.6);
+        lavaField += sin(uv.x * 12.0 + uTime * 0.8) * 
+                    cos(uv.y * 14.0 + uTime * 1.0) * 0.7;
+        lavaField += sin(uv.x * 16.0 + uTime * 1.2) * 
+                    cos(uv.y * 18.0 + uTime * 1.4) * 0.4;
+        
+        return lavaField * temperature;
+      }
+      
+      // 气泡效果
+      float bubbles(vec2 uv, float density) {
+        if(!uShowBubbles) return 0.0;
+        
+        float bubbleField = 0.0;
+        for(int i = 0; i < 20; i++) {
+          vec2 bubblePos = vec2(
+            noise(vec2(float(i) * 0.123, 0.456)),
+            noise(vec2(float(i) * 0.456, 0.789))
+          );
+          float dist = distance(uv, bubblePos);
+          float bubbleSize = noise(vec2(float(i) * 0.789, 0.123)) * 0.1 + 0.05;
+          float bubbleLife = mod(uTime * 0.5 + float(i) * 3.0, 6.28);
+          float bubbleIntensity = sin(bubbleLife) * 0.5 + 0.5;
+          bubbleField += exp(-dist * 50.0) * bubbleIntensity * density;
+        }
+        return bubbleField;
+      }
+      
+      // 熔岩类型
+      vec3 getLavaType(int type) {
+        if(type == 0) {
+          // 红色熔岩
+          return vec3(1.0, 0.3, 0.1);
+        } else if(type == 1) {
+          // 橙色熔岩
+          return vec3(1.0, 0.5, 0.1);
+        } else {
+          // 黄色熔岩
+          return vec3(1.0, 0.8, 0.1);
+        }
+      }
+      
+      void main() {
+        vec2 uv = vUv;
+        
+        // 熔岩效果
+        float lavaField = lava(uv, uTemperature);
+        
+        // 气泡效果
+        float bubbleField = bubbles(uv, 0.2);
+        
+        // 温度影响
+        float heatEffect = uTemperature * 1.5;
+        
+        // 颜色计算
+        vec3 baseColor = getLavaType(uLavaType);
+        vec3 finalColor = baseColor * (lavaField * 0.8 + bubbleField * 0.2) * heatEffect * uGlowIntensity;
+        
+        // 发光效果
+        float glow = sin(uTime * 2.0) * 0.2 + 0.8;
+        finalColor *= glow;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    // 创建自定义着色器材质
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uTemperature: { value: lavaParams.temperature },
+        uFlowSpeed: { value: lavaParams.flowSpeed },
+        uViscosity: { value: lavaParams.viscosity },
+        uGlowIntensity: { value: lavaParams.glowIntensity },
+        uTurbulence: { value: lavaParams.turbulence },
+        uLavaType: { value: lavaParams.lavaType },
+        uShowBubbles: { value: lavaParams.showBubbles }
+      }
+    });
+
+    // 创建网格对象并添加到场景中
+    const lavaSphere = new THREE.Mesh(geometry, material);
+    scene.add(lavaSphere);
+
+    // 更新熔岩信息显示
+    function updateLavaInfo() {
+      const lavaElement = document.getElementById('lavaInfo');
+      let temperature = "低温";
+      if(lavaParams.temperature > 0.5) temperature = "中温";
+      if(lavaParams.temperature > 0.8) temperature = "高温";
+      
+      let speed = "慢";
+      if(lavaParams.flowSpeed > 0.4) speed = "中等";
+      if(lavaParams.flowSpeed > 0.7) speed = "快";
+      
+      lavaElement.textContent = `温度: ${temperature} | 流动速度: ${speed}`;
+    }
+
+    // 创建GUI控制面板
+    const gui = new GUI();
+    
+    // 熔岩参数控制
+    const lavaFolder = gui.addFolder('熔岩效果参数');
+    lavaFolder.add(lavaParams, 'temperature', 0.1, 1.2).name('温度');
+    lavaFolder.add(lavaParams, 'flowSpeed', 0.1, 1.0).name('流动速度');
+    lavaFolder.add(lavaParams, 'viscosity', 0.1, 1.0).name('粘度');
+    lavaFolder.add(lavaParams, 'glowIntensity', 0.1, 2.0).name('发光强度');
+    lavaFolder.add(lavaParams, 'turbulence', 0.1, 1.2).name('湍流强度');
+    lavaFolder.add(lavaParams, 'showBubbles').name('显示气泡');
+    
+    // 熔岩类型控制
+    const lavaTypes = {
+      "红色熔岩": 0,
+      "橙色熔岩": 1,
+      "黄色熔岩": 2
+    };
+    lavaFolder.add(lavaParams, 'lavaType', lavaTypes).name('熔岩类型');
+    
+    lavaFolder.open();
+
+    // 参数变化时更新材质和熔岩信息
+    gui.onChange(() => {
+      material.uniforms.uTemperature.value = lavaParams.temperature;
+      material.uniforms.uFlowSpeed.value = lavaParams.flowSpeed;
+      material.uniforms.uViscosity.value = lavaParams.viscosity;
+      material.uniforms.uGlowIntensity.value = lavaParams.glowIntensity;
+      material.uniforms.uTurbulence.value = lavaParams.turbulence;
+      material.uniforms.uLavaType.value = lavaParams.lavaType;
+      material.uniforms.uShowBubbles.value = lavaParams.showBubbles;
+      
+      updateLavaInfo();
+    });
+
+    // 动画循环函数
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新时间
+      material.uniforms.uTime.value += 0.016;
+      
+      // 缓慢旋转
+      lavaSphere.rotation.y += 0.002;
+      lavaSphere.rotation.x += 0.001;
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 初始化熔岩信息显示
+    updateLavaInfo();
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

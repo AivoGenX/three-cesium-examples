@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<!-- 中文标题 -->
+<title>云朵实例化雾效场景</title>
+<style>
+  /* 让画布占满整个窗口，并隐藏滚动条 */
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000;}
+  #box{position:fixed;left:0;top:0;width:100%;height:100%;}
+</style>
+
+<!-- 本地 three 裸模块映射 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+<div id="box"></div>
+
+<script type="module">
+/* ---------- 1. 引入所需模块 ---------- */
+import {
+  CanvasTexture,
+  TextureLoader,
+  PlaneGeometry,
+  ShaderMaterial,
+  InstancedMesh,
+  Object3D,
+  Vector2,
+  InstancedBufferAttribute,
+  PerspectiveCamera,
+  WebGLRenderer,
+  PCFSoftShadowMap,
+  Scene,
+  Color
+} from 'three';
+import Stats  from 'three/addons/libs/stats.module.js';
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+/* ---------- 2. 全局小工具 ---------- */ 
+const dummy     = new Object3D(); // 用于快速计算单个实例矩阵
+const mouse     = new Vector2();  // 记录鼠标位置
+const halfSize  = new Vector2(innerWidth / 2, innerHeight / 2);
+
+// 生成 [min, max) 随机数
+const createRandom = (min = 0, max = 1) => Math.random() * (max - min) + min;
+
+/* ---------- 3. 着色器 ---------- */
+// 顶点着色器：只做坐标变换，并把 uv 传下去
+const vs = /* glsl */`
+  varying vec2 vUv;
+  void main(){
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+  }
+`;
+
+// 片元着色器：实现云朵贴图 + 线性雾效 + 深度衰减透明度
+const fs = /* glsl */`
+  varying vec2 vUv;
+  uniform sampler2D map;       // 云朵纹理
+  uniform float fogNear;       // 雾效起始距离
+  uniform float fogFar;        // 雾效终止距离
+  uniform vec3 fogColor;       // 雾颜色
+  uniform int enableFog;       // 0:关闭 1:开启
+
+  void main(){
+    vec4 tex = texture2D(map, vUv);      // 采样云朵颜色
+
+    if(enableFog == 1){
+      float depth   = gl_FragCoord.z / gl_FragCoord.w;  // 计算相机距离
+      float factor  = smoothstep(fogNear, fogFar, depth); // 线性插值
+      tex.rgb       = mix(tex.rgb, fogColor, factor);     // 与雾颜色混合
+      tex.a        *= pow(gl_FragCoord.z, 20.0);          // 越远越透明
+    }
+
+    gl_FragColor = tex;
+  }
+`;
+
+/* ---------- 4. 初始化函数 ---------- */
+async function init() {
+  /* 4.1 参数面板（GUI） */
+  const params = {
+    count: 800,          // 云朵实例总数
+    enableFog: true,     // 是否启用雾效
+    fogColor: '#4584b4', // 雾颜色
+    fogNear: -100,       // 雾起始
+    fogFar: 3000,        // 雾结束
+  };
+
+  /* 4.2 渲染器 */
+  const dom = document.getElementById('box');
+  const renderer = new WebGLRenderer({ antialias: true });
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type    = PCFSoftShadowMap;
+  renderer.setPixelRatio(devicePixelRatio);
+  renderer.setSize(dom.offsetWidth, dom.offsetHeight);
+  dom.appendChild(renderer.domElement);
+
+  /* 4.3 相机 */
+  const camera = new PerspectiveCamera(
+    30, innerWidth / innerHeight, 1, params.count * 1.5
+  );
+  camera.position.z = params.count;
+  window.camera = camera; // 方便调试
+
+  /* 4.4 场景 */
+  const scene = new Scene();
+  window.scene = scene;
+
+  /* 4.5 性能统计面板 */
+  const stats = new Stats();
+  dom.appendChild(stats.dom);
+
+  /* 4.6 背景渐变（Canvas 生成） */
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = 2; bgCanvas.height = 512;
+  const ctx = bgCanvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, bgCanvas.height);
+  grad.addColorStop(0, '#1e4877');
+  grad.addColorStop(1, '#4584b4');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+  scene.background = new CanvasTexture(bgCanvas);
+
+  /* 4.7 云朵贴图 */
+  const cloudTex = await new TextureLoader().loadAsync(FILE_HOST + 'images/channels/cloud.png');
+
+  /* 4.8 着色器材质 */
+  const mat = new ShaderMaterial({
+    uniforms: {
+      map:       { value: cloudTex },
+      fogColor:  { value: new Color(params.fogColor) },
+      fogNear:   { value: params.fogNear },
+      fogFar:    { value: params.fogFar },
+      enableFog: { value: Number(params.enableFog) }
+    },
+    vertexShader: vs,
+    fragmentShader: fs,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false
+  });
+
+  /* 4.9 实例化网格 */
+  const geo = new PlaneGeometry(64, 64);
+  const mesh = new InstancedMesh(geo, mat, params.count);
+  scene.add(mesh);
+
+  /* 4.10 更新实例数量及位置/缩放/旋转 */
+  function updateMeshCount() {
+    const c = params.count;
+    mesh.count = c; // 设置可见实例数
+    mesh.dispose(); // 释放旧内存
+    mesh.instanceMatrix = new InstancedBufferAttribute(new Float32Array(c * 16), 16);
+
+    for (let i = 0; i < c; i++) {
+      dummy.position.set(
+        createRandom(-500, 500),           // x: 左右散开
+        -Math.random() * Math.random() * 200 - 15, // y: 纵向随机
+        i                                   // z: 沿相机方向排布
+      );
+      dummy.rotation.z = Math.random() * Math.PI;   // 随机旋转
+      dummy.scale.setScalar(createRandom(0.5, 2));  // 随机大小
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+
+    /* 相机跟随实例数量变化 */
+    camera.position.z = c;
+    camera.far = c * 1.5;
+    camera.updateProjectionMatrix();
+  }
+  updateMeshCount();
+
+  /* 4.11 渲染循环 */
+  const startTime = Date.now();
+  function animate() {
+    requestAnimationFrame(animate);
+
+    // 相机缓慢前后移动 + 跟随鼠标
+    camera.position.x += (mouse.x - camera.position.x) * 0.01;
+    camera.position.y += (-mouse.y - camera.position.y) * 0.01;
+    camera.position.z = -((Date.now() - startTime) * 0.03) % params.count + params.count;
+
+    renderer.render(scene, camera);
+    stats.update();
+  }
+  animate();
+
+  /* 4.12 事件监听 */
+  renderer.domElement.addEventListener('mousemove', e => {
+    mouse.set(
+      (e.clientX - halfSize.x) * 0.25,
+      (e.clientY - halfSize.y) * 0.15
+    );
+  });
+  addEventListener('resize', () => {
+    halfSize.set(innerWidth / 2, innerHeight / 2);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  /* 4.13 GUI 控制 */
+  const gui = new GUI();
+  gui.add(params, 'count', 0, 10000, 1).onChange(updateMeshCount).name('云朵数量');
+  const enableFogCtrl = gui.add(params, 'enableFog').name('启用雾效');
+  const fogFolder = gui.addFolder('雾效参数');
+  fogFolder.show(params.enableFog);
+  fogFolder.addColor(params, 'fogColor').onChange(c => mat.uniforms.fogColor.value.set(c)).name('雾颜色');
+  fogFolder.add(params, 'fogNear', -1000, 1000).onChange(v => mat.uniforms.fogNear.value = v).name('雾起点');
+  fogFolder.add(params, 'fogFar', 0, 5000).onChange(v => mat.uniforms.fogFar.value = v).name('雾终点');
+  enableFogCtrl.onChange(v => {
+    mat.uniforms.enableFog.value = v ? 1 : 0;
+    fogFolder.show(v);
+  });
+}
+
+/* ---------- 5. 入口 ---------- */
+init();
+</script>
+</body>
+</html>

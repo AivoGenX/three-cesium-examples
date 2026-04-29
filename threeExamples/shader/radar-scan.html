@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Enhanced Radar</title> 
+<script type="importmap">
+{
+    "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+    }
+}
+</script>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        background-color: #0a1929;
+        display: flex;
+        flex-direction: column;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+    #box {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .controls-panel {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(10, 25, 41, 0.8);
+        padding: 15px;
+        border-radius: 10px;
+        backdrop-filter: blur(5px);
+        z-index: 100;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        width: 250px;
+    }
+    
+    .control-group {
+        margin-bottom: 15px;
+    }
+    
+    .control-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 12px;
+        color: #ccc;
+    }
+    
+    .control-group input {
+        width: 100%;
+        padding: 6px 10px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+    
+    .color-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .color-picker {
+        width: 40px;
+        height: 40px;
+        border: none;
+        cursor: pointer;
+        background: transparent;
+        padding: 0;
+    }
+    
+    .color-picker::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+    
+    .color-picker::-webkit-color-swatch {
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 4px;
+    }
+    
+    .range-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #aaa;
+    }
+</style>
+</head>
+<body>
+<div id="box"></div>
+
+<div class="controls-panel">
+    <h3 class="text-lg mb-4">雷达控制</h3>
+    
+    <div class="color-controls">
+        <div>
+            <label class="text-xs block mb-1">雷达颜色</label>
+            <input type="color" id="radarColor" class="color-picker" value="#00ff00">
+        </div>
+        <div>
+            <label class="text-xs block mb-1">扫描颜色</label>
+            <input type="color" id="scanColor" class="color-picker" value="#00ffff">
+        </div>
+        <div>
+            <label class="text-xs block mb-1">背景色</label>
+            <input type="color" id="bgColor" class="color-picker" value="#0a1929">
+        </div>
+    </div>
+    
+    <div class="control-group">
+        <label>雷达半径</label>
+        <input type="range" id="radius" min="100" max="500" value="240">
+        <div class="range-info">
+            <span>100</span>
+            <span>500</span>
+        </div>
+    </div>
+    
+    <div class="control-group">
+        <label>扫描速度</label>
+        <input type="range" id="speed" min="50" max="600" value="300">
+        <div class="range-info">
+            <span>慢</span>
+            <span>快</span>
+        </div>
+    </div>
+    
+    <div class="control-group">
+        <label>尾迹宽度</label>
+        <input type="range" id="followWidth" min="30" max="300" value="220">
+        <div class="range-info">
+            <span>窄</span>
+            <span>宽</span>
+        </div>
+    </div>
+    
+    <div class="control-group">
+        <label>透明度</label>
+        <input type="range" id="opacity" min="0.1" max="1.0" step="0.1" value="0.5">
+        <div class="range-info">
+            <span>透明</span>
+            <span>不透明</span>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three'
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+// 颜色转换工具函数
+function hexToRgb(hex) {
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+    return { r, g, b };
+}
+
+const box = document.getElementById('box')
+
+const scene = new THREE.Scene()
+
+// 添加网格辅助线
+const gridHelper = new THREE.GridHelper(1000, 20, 0x224466, 0x112233);
+scene.add(gridHelper);
+
+// 添加圆形雷达范围标记
+function createRadarMarkers(radius, count) {
+    const markers = new THREE.Group();
+    const material = new THREE.LineBasicMaterial({ color: 0x226644, opacity: 0.3, transparent: true });
+    
+    for (let i = 1; i <= count; i++) {
+        const circle = new THREE.RingGeometry(radius * i / count, radius * i / count + 1, 100);
+        const edges = new THREE.EdgesGeometry(circle);
+        const line = new THREE.LineSegments(edges, material);
+        line.rotation.x = Math.PI / 2;
+        markers.add(line);
+    }
+    
+    // 添加角度标记线
+    const angleMaterial = new THREE.LineBasicMaterial({ color: 0x226644, opacity: 0.2, transparent: true });
+    for (let i = 0; i < 12; i++) {
+        const angle = (i * 30) * Math.PI / 180;
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)
+        ]);
+        const line = new THREE.Line(lineGeometry, angleMaterial);
+        markers.add(line);
+    }
+    
+    return markers;
+}
+
+// 添加雷达标记
+const radarMarkers = createRadarMarkers(240, 3);
+scene.add(radarMarkers);
+
+const camera = new THREE.PerspectiveCamera(50, box.clientWidth / box.clientHeight, 0.1, 10000)
+camera.position.set(0, 800, 1000)
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true })
+renderer.setSize(box.clientWidth, box.clientHeight)
+box.appendChild(renderer.domElement)
+
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+controls.enableZoom = true
+controls.enablePan = true
+
+// 定义雷达参数
+const radarData = {
+    position: { x: 0, y: 20, z: 0 },
+    radius: 240,
+    color: hexToRgb('#00ff00'),
+    scanColor: hexToRgb('#00ffff'),
+    opacity: 0.5,
+    speed: 300,
+    followWidth: 220
+}
+
+// 创建几何体
+let circleGeometry = new THREE.CircleGeometry(radarData.radius, 1000)
+const rotateMatrix = new THREE.Matrix4().makeRotationX((-Math.PI / 180) * 90)
+circleGeometry.applyMatrix4(rotateMatrix)
+
+// 创建材质
+const material = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    opacity: radarData.opacity,
+    transparent: true
+})
+
+const radar = new THREE.Mesh(circleGeometry, material)
+radar.position.set(radarData.position.x, radarData.position.y, radarData.position.z)
+scene.add(radar)
+
+// 添加雷达中心点
+const centerGeometry = new THREE.SphereGeometry(5, 16, 16);
+const centerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+const radarCenter = new THREE.Mesh(centerGeometry, centerMaterial);
+radarCenter.position.set(radarData.position.x, radarData.position.y + 5, radarData.position.z);
+scene.add(radarCenter);
+
+// 自定义着色器逻辑
+material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, {
+        uSpeed: { value: radarData.speed },
+        uRadius: { value: radarData.radius },
+        uTime: { value: 0 },
+        uFollowWidth: { value: radarData.followWidth },
+        uRadarColor: { value: new THREE.Color(radarData.color.r, radarData.color.g, radarData.color.b) },
+        uScanColor: { value: new THREE.Color(radarData.scanColor.r, radarData.scanColor.g, radarData.scanColor.b) }
+    })
+
+    // 更新时间的动画循环
+    function update(time) {
+        shader.uniforms.uTime.value = time / 1000;
+        requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+
+    // 顶点着色器修改
+    const vertex = `
+        varying vec3 vPosition;
+        void main() {
+            vPosition = position;
+    `;
+    shader.vertexShader = shader.vertexShader.replace('void main() {', vertex);
+
+    // 片段着色器修改
+    const fragment = `
+        uniform float uRadius;     
+        uniform float uTime;            
+        uniform float uSpeed; 
+        uniform float uFollowWidth; 
+        uniform vec3 uRadarColor;
+        uniform vec3 uScanColor;
+        varying vec3 vPosition;
+        
+        // 计算角度函数
+        float calcAngle(vec3 oFrag) {
+            float fragAngle;
+            const vec3 ox = vec3(1,0,0);
+            
+            float dianji = oFrag.x * ox.x + oFrag.z * ox.z;
+            float oFrag_length = length(oFrag);
+            float ox_length = length(ox);
+            float yuxian = dianji / (oFrag_length * ox_length);
+            
+            fragAngle = acos(yuxian);
+            fragAngle = degrees(fragAngle);
+            
+            if(oFrag.z > 0.0) {
+                fragAngle = -fragAngle + 360.0;
+            }
+            
+            float scanAngle = uTime * uSpeed - floor(uTime * uSpeed / 360.0) * 360.0;
+            float angle = scanAngle - fragAngle;
+            
+            if(angle < 0.0) {
+                angle = angle + 360.0;
+            }
+            
+            return angle;
+        }
+        
+        // 距离衰减函数
+        float distanceAttenuation(float distance) {
+            return 1.0 - smoothstep(0.0, uRadius, distance);
+        }
+        
+        void main() {
+    `;
+
+    const fragementColor = `
+        #include <opaque_fragment>
+        
+        float dist = length(vPosition);
+        
+        // 雷达边缘处理
+        if(dist > uRadius - 2.0) {
+            gl_FragColor = vec4(uRadarColor, 0.8);
+        }
+        // 雷达中心处理
+        else if(dist < 5.0) {
+            gl_FragColor = vec4(uScanColor, 1.0);
+        }
+        else {
+            float angle = calcAngle(vPosition);
+            float attenuation = distanceAttenuation(dist);
+            
+            if(angle < uFollowWidth) {
+                // 扫描尾迹 - 颜色渐变
+                float trailFactor = 1.0 - angle / uFollowWidth;
+                vec3 color = mix(uRadarColor, uScanColor, trailFactor * 0.8);
+                gl_FragColor = vec4(color, attenuation * (0.3 + trailFactor * 0.7));
+            } 
+            else {
+                // 雷达基础颜色
+                gl_FragColor = vec4(uRadarColor, attenuation * 0.2);
+            }
+        }
+    `;
+
+    shader.fragmentShader = shader.fragmentShader.replace('void main() {', fragment);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', fragementColor);
+}
+
+// 动画循环
+function animate() {
+    requestAnimationFrame(animate)
+    controls.update()
+    renderer.render(scene, camera)
+}
+animate()
+
+// 窗口大小调整
+window.onresize = () => {
+    renderer.setSize(box.clientWidth, box.clientHeight)
+    camera.aspect = box.clientWidth / box.clientHeight
+    camera.updateProjectionMatrix()
+}
+
+// 控制面板事件监听
+document.getElementById('radarColor').addEventListener('input', (e) => {
+    const color = hexToRgb(e.target.value);
+    radarData.color = color;
+    material.userData.shader.uniforms.uRadarColor.value.set(color.r, color.g, color.b);
+});
+
+document.getElementById('scanColor').addEventListener('input', (e) => {
+    const color = hexToRgb(e.target.value);
+    radarData.scanColor = color;
+    material.userData.shader.uniforms.uScanColor.value.set(color.r, color.g, color.b);
+    centerMaterial.color.set(color.r, color.g, color.b);
+});
+
+document.getElementById('bgColor').addEventListener('input', (e) => {
+    document.body.style.backgroundColor = e.target.value;
+});
+
+document.getElementById('radius').addEventListener('input', (e) => {
+    const value = parseInt(e.target.value);
+    radarData.radius = value;
+    
+    // 更新雷达几何体
+    scene.remove(radar);
+    circleGeometry = new THREE.CircleGeometry(radarData.radius, 1000);
+    circleGeometry.applyMatrix4(rotateMatrix);
+    radar.geometry = circleGeometry;
+    scene.add(radar);
+    
+    // 更新标记
+    scene.remove(radarMarkers);
+    radarMarkers = createRadarMarkers(radarData.radius, 3);
+    scene.add(radarMarkers);
+    
+    // 更新着色器 uniform
+    material.userData.shader.uniforms.uRadius.value = value;
+});
+
+document.getElementById('speed').addEventListener('input', (e) => {
+    const value = parseInt(e.target.value);
+    radarData.speed = value;
+    material.userData.shader.uniforms.uSpeed.value = value;
+});
+
+document.getElementById('followWidth').addEventListener('input', (e) => {
+    const value = parseInt(e.target.value);
+    radarData.followWidth = value;
+    material.userData.shader.uniforms.uFollowWidth.value = value;
+});
+
+document.getElementById('opacity').addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    radarData.opacity = value;
+    material.opacity = value;
+});
+</script>
+</body>
+</html>
+    

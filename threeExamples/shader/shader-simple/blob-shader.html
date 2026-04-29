@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 动态噪声形状</title>
+    <!-- 配置模块导入映射 -->
+      <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/",
+        "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/+esm"
+      }
+    }
+  </script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        background-color: #1f1f1f;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #box {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 渲染容器 -->
+    <div id="box"></div>
+
+    <script type="module">
+      // 导入所需模块
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GUI } from 'three/addons/libs/lil-gui.module.min.js';;
+      import gsap from "gsap";
+
+      /**
+       * 主题颜色配置
+       * 集中管理应用中使用的颜色
+       */
+      const Theme = {
+        primary: 0xffffff, // 主色：白色
+        secundary: 0x292733, // 次要色：深紫色
+        danger: 0xff0000, // 警示色：红色
+        darker: 0x000000, // 深色：黑色
+      };
+
+      // 全局变量声明
+      let scene, camera, renderer, mat;
+      let _width, _height;
+      let _primitive;
+      const shapeGroup = new THREE.Group(); // 用于组织形状的组
+      const start = Date.now(); // 记录动画开始时间
+
+      /**
+       * 初始化场景、相机和渲染器
+       * 创建Three.js核心组件并设置基本参数
+       */
+      function createWorld() {
+        // 获取窗口尺寸
+        _width = window.innerWidth;
+        _height = window.innerHeight;
+
+        // 创建场景 - 所有物体的容器
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(Theme.secundary); // 设置背景色
+
+        // 创建透视相机
+        // 参数: 视野角度, 宽高比, 近裁剪面, 远裁剪面
+        camera = new THREE.PerspectiveCamera(35, _width / _height, 1, 1000);
+        camera.position.set(0, 10, 26); // 设置相机初始位置
+
+        // 创建渲染器
+        renderer = new THREE.WebGLRenderer({
+          antialias: false, // 不开启抗锯齿以提高性能
+          alpha: false, // 不使用透明背景
+        });
+        renderer.setSize(_width, _height); // 设置渲染尺寸
+        renderer.shadowMap.enabled = true; // 启用阴影映射
+
+        // 添加轨道控制器，允许用户交互旋转、缩放场景
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // 启用阻尼效果，使旋转更平滑
+        controls.dampingFactor = 0.1; // 阻尼系数
+
+        // 将渲染器的DOM元素添加到页面
+        document.getElementById("box").appendChild(renderer.domElement);
+
+        // 监听窗口大小变化事件
+        window.addEventListener("resize", onWindowResize, false);
+      }
+
+      /**
+       * 窗口大小变化处理函数
+       * 调整渲染器和相机以适应新的窗口尺寸
+       */
+      function onWindowResize() {
+        _width = window.innerWidth;
+        _height = window.innerHeight;
+
+        // 更新渲染器尺寸
+        renderer.setSize(_width, _height);
+
+        // 更新相机宽高比并重新计算投影矩阵
+        camera.aspect = _width / _height;
+        camera.updateProjectionMatrix();
+
+        console.log("窗口已调整大小");
+      }
+
+      /**
+       * 几何体元素类
+       * 创建带有自定义着色器的3D几何体和点集合
+       */
+      class PrimitiveElement {
+        constructor() {
+          // 创建着色器材质
+          mat = new THREE.ShaderMaterial({
+            side: THREE.DoubleSide, // 双面渲染
+            uniforms: {
+              time: { type: "f", value: 0.1 }, // 时间变量，用于动画
+              pointscale: { type: "f", value: 0.2 }, // 点大小缩放
+              decay: { type: "f", value: 0.3 }, // 噪声衰减系数
+              size: { type: "f", value: 0.3 }, // 大小因子
+              displace: { type: "f", value: 0.3 }, // 位移强度
+              complex: { type: "f", value: 0.0 }, // 噪声复杂度
+              waves: { type: "f", value: 0.1 }, // 波浪效果强度
+              eqcolor: { type: "f", value: 0.0 }, // 颜色均衡
+              rcolor: { type: "f", value: 0.0 }, // 红色通道
+              gcolor: { type: "f", value: 0.0 }, // 绿色通道
+              bcolor: { type: "f", value: 0.0 }, // 蓝色通道
+              fragment: { type: "i", value: true }, // 碎片效果开关
+              redhell: { type: "i", value: true }, // 颜色模式开关
+            },
+            // 顶点着色器 - 处理几何体顶点位置和动画
+            vertexShader: `
+                        // 柏林噪声辅助函数
+                        vec3 mod289(vec3 x) {
+                            return x - floor(x * (1.0 / 289.0)) * 289.0;
+                        }
+                      
+                        vec4 mod289(vec4 x) {
+                            return x - floor(x * (1.0 / 289.0)) * 289.0;
+                        }
+                      
+                        vec4 permute(vec4 x) {
+                            return mod289(((x*34.0)+1.0)*x);
+                        }
+                      
+                        vec4 taylorInvSqrt(vec4 r) {
+                            return 1.79284291400159 - 0.85373472095314 * r;
+                        }
+                      
+                        vec3 fade(vec3 t) {
+                            return t*t*t*(t*(t*6.0-15.0)+10.0);
+                        }
+                        
+                        // 经典柏林噪声实现
+                        float cnoise(vec3 P) {
+                            vec3 Pi0 = floor(P); // 用于索引的整数部分
+                            vec3 Pi1 = Pi0 + vec3(1.0); // 整数部分 + 1
+                            Pi0 = mod289(Pi0);
+                            Pi1 = mod289(Pi1);
+                            vec3 Pf0 = fract(P); // 用于插值的小数部分
+                            vec3 Pf1 = Pf0 - vec3(1.0); // 小数部分 - 1.0
+                            vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+                            vec4 iy = vec4(Pi0.yy, Pi1.yy);
+                            vec4 iz0 = Pi0.zzzz;
+                            vec4 iz1 = Pi1.zzzz;
+                    
+                            vec4 ixy = permute(permute(ix) + iy);
+                            vec4 ixy0 = permute(ixy + iz0);
+                            vec4 ixy1 = permute(ixy + iz1);
+                    
+                            vec4 gx0 = ixy0 * (1.0 / 5.0);
+                            vec4 gy0 = fract(floor(gx0) * (1.0 / 5.0)) - 0.5;
+                            gx0 = fract(gx0);
+                            vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
+                            vec4 sz0 = step(gz0, vec4(0.0));
+                            gx0 -= sz0 * (step(0.0, gx0) - 0.5);
+                            gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+                    
+                            vec4 gx1 = ixy1 * (1.0 / 5.0);
+                            vec4 gy1 = fract(floor(gx1) * (1.0 / 5.0)) - 0.5;
+                            gx1 = fract(gx1);
+                            vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
+                            vec4 sz1 = step(gz1, vec4(0.0));
+                            gx1 -= sz1 * (step(0.0, gx1) - 0.5);
+                            gy1 -= sz1 * (step(0.0, gy1) - 0.5);
+                    
+                            vec3 g000 = vec3(gx0.x,gy0.x,gz0.x);
+                            vec3 g100 = vec3(gx0.y,gy0.y,gz0.y);
+                            vec3 g010 = vec3(gx0.z,gy0.z,gz0.z);
+                            vec3 g110 = vec3(gx0.w,gy0.w,gz0.w);
+                            vec3 g001 = vec3(gx1.x,gy1.x,gz1.x);
+                            vec3 g101 = vec3(gx1.y,gy1.y,gz1.y);
+                            vec3 g011 = vec3(gx1.z,gy1.z,gz1.z);
+                            vec3 g111 = vec3(gx1.w,gy1.w,gz1.w);
+                    
+                            vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
+                            g000 *= norm0.x;
+                            g010 *= norm0.y;
+                            g100 *= norm0.z;
+                            g110 *= norm0.w;
+                            vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
+                            g001 *= norm1.x;
+                            g011 *= norm1.y;
+                            g101 *= norm1.z;
+                            g111 *= norm1.w;
+                    
+                            float n000 = dot(g000, Pf0);
+                            float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
+                            float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
+                            float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
+                            float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
+                            float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
+                            float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
+                            float n111 = dot(g111, Pf1);
+                    
+                            vec3 fade_xyz = fade(Pf0);
+                            vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
+                            vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
+                            float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
+                            return 2.2 * n_xyz;
+                        }
+                      
+                        // 周期性柏林噪声变体
+                        float pnoise(vec3 P, vec3 rep) {
+                            vec3 Pi0 = mod(floor(P), rep); // 整数部分，模周期
+                            vec3 Pi1 = mod(Pi0 + vec3(1.0), rep); // 整数部分 + 1，模周期
+                            Pi0 = mod289(Pi0);
+                            Pi1 = mod289(Pi1);
+                            vec3 Pf0 = fract(P); // 用于插值的小数部分
+                            vec3 Pf1 = Pf0 - vec3(1.0); // 小数部分 - 1.0
+                            vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+                            vec4 iy = vec4(Pi0.yy, Pi1.yy);
+                            vec4 iz0 = Pi0.zzzz;
+                            vec4 iz1 = Pi1.zzzz;
+                    
+                            vec4 ixy = permute(permute(ix) + iy);
+                            vec4 ixy0 = permute(ixy + iz0);
+                            vec4 ixy1 = permute(ixy + iz1);
+                    
+                            vec4 gx0 = ixy0 * (1.0 / 5.0);
+                            vec4 gy0 = fract(floor(gx0) * (1.0 / 5.0)) - 0.5;
+                            gx0 = fract(gx0);
+                            vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
+                            vec4 sz0 = step(gz0, vec4(0.0));
+                            gx0 -= sz0 * (step(0.0, gx0) - 0.5);
+                            gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+                    
+                            vec4 gx1 = ixy1 * (1.0 / 5.0);
+                            vec4 gy1 = fract(floor(gx1) * (1.0 / 5.0)) - 0.5;
+                            gx1 = fract(gx1);
+                            vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
+                            vec4 sz1 = step(gz1, vec4(0.0));
+                            gx1 -= sz1 * (step(0.0, gx1) - 0.5);
+                            gy1 -= sz1 * (step(0.0, gy1) - 0.5);
+                    
+                            vec3 g000 = vec3(gx0.x,gy0.x,gz0.x);
+                            vec3 g100 = vec3(gx0.y,gy0.y,gz0.y);
+                            vec3 g010 = vec3(gx0.z,gy0.z,gz0.z);
+                            vec3 g110 = vec3(gx0.w,gy0.w,gz0.w);
+                            vec3 g001 = vec3(gx1.x,gy1.x,gz1.x);
+                            vec3 g101 = vec3(gx1.y,gy1.y,gz1.y);
+                            vec3 g011 = vec3(gx1.z,gy1.z,gz1.z);
+                            vec3 g111 = vec3(gx1.w,gy1.w,gz1.w);
+                    
+                            vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
+                            g000 *= norm0.x;
+                            g010 *= norm0.y;
+                            g100 *= norm0.z;
+                            g110 *= norm0.w;
+                            vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
+                            g001 *= norm1.x;
+                            g011 *= norm1.y;
+                            g101 *= norm1.z;
+                            g111 *= norm1.w;
+                    
+                            float n000 = dot(g000, Pf0);
+                            float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
+                            float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
+                            float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
+                            float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
+                            float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
+                            float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
+                            float n111 = dot(g111, Pf1);
+                    
+                            vec3 fade_xyz = fade(Pf0);
+                            vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
+                            vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
+                            float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
+                            return 1.5 * n_xyz;
+                        }
+                        
+                        // 湍流效果函数 - 叠加多层噪声创建更复杂的模式
+                        float turbulence( vec3 p) {
+                            float t = -0.005;
+                            for (float f = 1.0 ; f <= 1.0 ; f++ ){
+                                float power = pow(1.3, f);
+                                t += abs(pnoise(vec3(power * p), vec3(10.0, 10.0, 10.0)) / power);
+                            }
+                            return t;
+                        }
+                      
+                        // 传递给片元着色器的变量
+                        varying vec2 vUv;
+                        varying float noise;
+                        varying float qnoise;
+                        varying float displacement;
+                      
+                        // 接收uniforms变量
+                        uniform float time;
+                        uniform float displace;
+                        uniform float pointscale;
+                        uniform float decay;
+                        uniform float size;
+                        uniform float complex;
+                        uniform float waves;
+                        uniform float eqcolor;
+                        uniform bool fragment;
+                      
+                        void main() {
+                            vUv = uv; // 传递UV坐标
+                      
+                            // 计算噪声值用于顶点位移
+                            noise = (2.0 * -waves) * turbulence(decay * abs(normal + time));
+                            qnoise = (0.3 * -eqcolor) * turbulence(decay * abs(normal + time));
+                            float b = pnoise(complex * position + vec3((decay * 2.0) * time), vec3(100.0));
+                            
+                            // 计算顶点位移量
+                            displacement = -atan(noise) + tan(b * displace);
+                      
+                            // 应用位移到顶点位置
+                            vec3 newPosition = position + (normal * displacement);
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, abs(size));
+                            gl_PointSize = 3.0; // 点的大小
+                        }
+                    `,
+            // 片元着色器 - 处理像素颜色
+            fragmentShader: `
+                        // 接收从顶点着色器传递的变量
+                        varying float qnoise;
+                        varying float noise;
+                        
+                        // 接收uniforms变量
+                        uniform float time;
+                        uniform bool redhell;
+                        uniform float rcolor;
+                        uniform float gcolor;
+                        uniform float bcolor;
+                      
+                        void main() {
+                            float r, g, b;
+                            
+                            // 根据redhell参数选择不同的颜色计算模式
+                            if (!redhell) {
+                                r = sin(qnoise + rcolor);
+                                g = normalize(qnoise + (gcolor / 2.0));
+                                b = tan(qnoise + bcolor);
+                            } else {
+                                r = normalize(qnoise + rcolor);
+                                g = cos(qnoise + gcolor);
+                                b = sin(qnoise + bcolor);
+                            }
+                            
+                            // 设置最终像素颜色
+                            gl_FragColor = vec4(r, g, b, 1.0);
+                        }
+                    `,
+          });
+
+          // 创建线框材质
+          const wireframeMaterial = new THREE.MeshBasicMaterial({
+            color: Theme.darker,
+          });
+
+          // 创建几何体
+          const geometry = new THREE.IcosahedronGeometry(2, 60); // 精细的二十面体
+          const wireframeGeometry = new THREE.IcosahedronGeometry(2.3, 20); // 粗略的二十面体用于点集合
+
+          // 创建网格和点集合
+          this.shape = new THREE.Mesh(geometry, mat);
+          this.point = new THREE.Points(wireframeGeometry, mat);
+
+          // 将形状添加到组中
+          shapeGroup.add(this.point);
+          shapeGroup.add(this.shape);
+
+          // 将组添加到场景
+          scene.add(shapeGroup);
+        }
+      }
+
+      /**
+       * 创建几何体实例
+       * 初始化PrimitiveElement并赋值给全局变量
+       */
+      function createPrimitive() {
+        _primitive = new PrimitiveElement();
+      }
+
+      /**
+       * GUI控制选项配置
+       * 定义可通过界面调整的参数和预设效果
+       */
+      const options = {
+        perlin: {
+          speed: 0.4, // 动画速度
+          size: 0.7, // 大小因子
+          perlins: 1.0, // 噪声强度
+          decay: 1.2, // 衰减系数
+          displace: 1.0, // 位移强度
+          complex: 0.5, // 复杂度
+          waves: 3.7, // 波浪强度
+          eqcolor: 10.0, // 颜色均衡
+          rcolor: 1.5, // 红色通道
+          gcolor: 1.5, // 绿色通道
+          bcolor: 1.5, // 蓝色通道
+          fragment: true, // 碎片效果开关
+          points: true, // 点显示开关
+          redhell: true, // 颜色模式开关
+        },
+        // 随机生成形状参数
+        perlinRandom: function () {
+          gsap.to(this.perlin, 2, {
+            waves: Math.random() * 20.0,
+            complex: Math.random() * 1.0,
+            displace: Math.random() * 2.5,
+          });
+        },
+        // 随机生成颜色参数
+        random: function () {
+          gsap.to(this.perlin, 1, {
+            eqcolor: 11.0,
+            rcolor: Math.random() * 1.5,
+            gcolor: Math.random() * 0.5,
+            bcolor: Math.random() * 1.5,
+          });
+        },
+        // 恢复默认颜色
+        normal: function () {
+          this.perlin.redhell = true;
+          gsap.to(this.perlin, 1, {
+            eqcolor: 10.0,
+            rcolor: 1.5,
+            gcolor: 1.5,
+            bcolor: 1.5,
+          });
+        },
+        // 深色模式
+        darker: function () {
+          this.perlin.redhell = false;
+          gsap.to(this.perlin, 1, {
+            eqcolor: 9.0,
+            rcolor: 0.4,
+            gcolor: 0.05,
+            bcolor: 0.6,
+          });
+        },
+        // 火山效果预设
+        volcano: function () {
+          this.perlin.redhell = false;
+          gsap.to(this.perlin, 1, {
+            size: 0.7,
+            waves: 0.6,
+            complex: 1.0,
+            displace: 0.3,
+            eqcolor: 9.0,
+            rcolor: 0.85,
+            gcolor: 0.05,
+            bcolor: 0.32,
+          });
+        },
+        // 棉花糖效果预设
+        cloud: function () {
+          this.perlin.redhell = true;
+          gsap.to(this.perlin, 1, {
+            size: 1.0,
+            waves: 20.0,
+            complex: 0.1,
+            displace: 0.1,
+            eqcolor: 4.0,
+            rcolor: 1.5,
+            gcolor: 0.7,
+            bcolor: 1.5,
+          });
+        },
+        // 彩虹效果预设
+        tornasol: function () {
+          this.perlin.redhell = true;
+          gsap.to(this.perlin, 1, {
+            size: 1.0,
+            waves: 3.0,
+            complex: 0.65,
+            displace: 0.5,
+            eqcolor: 9.5,
+            rcolor: 1.5,
+            gcolor: 1.5,
+            bcolor: 1.5,
+          });
+        },
+      };
+
+      /**
+       * 创建GUI控制器
+       * 添加可交互的控制面板，用于实时调整动画参数
+       */
+      function createGUI() {
+        const gui = new GUI();
+
+        // 创建"形状设置"文件夹
+        const shapeGUI = gui.addFolder("形状设置");
+        shapeGUI.add(options, "perlinRandom").name("• 随机形状");
+        shapeGUI.add(options.perlin, "speed", 0.1, 1.0).name("速度").listen();
+        shapeGUI.add(options.perlin, "size", 0.0, 3.0).name("大小").listen();
+        shapeGUI
+          .add(options.perlin, "waves", 0.0, 20.0)
+          .name("波浪强度")
+          .listen();
+        shapeGUI
+          .add(options.perlin, "complex", 0.1, 1.0)
+          .name("复杂度")
+          .listen();
+        shapeGUI
+          .add(options.perlin, "displace", 0.1, 2.5)
+          .name("位移强度")
+          .listen();
+
+        // 创建"颜色设置"文件夹
+        const colorGUI = gui.addFolder("颜色设置");
+        colorGUI.add(options, "random").name("• 随机颜色");
+        colorGUI.add(options, "normal").name("• 默认颜色");
+        colorGUI.add(options, "darker").name("• 深色模式");
+        colorGUI
+          .add(options.perlin, "eqcolor", 0.0, 30.0)
+          .name("色调")
+          .listen();
+        colorGUI.add(options.perlin, "rcolor", 0.0, 2.5).name("红色").listen();
+        colorGUI.add(options.perlin, "gcolor", 0.0, 2.5).name("绿色").listen();
+        colorGUI.add(options.perlin, "bcolor", 0.0, 2.5).name("蓝色").listen();
+        colorGUI.add(options.perlin, "redhell", true).name("电子流模式");
+
+        // 添加预设效果按钮
+        gui.add(options, "volcano").name("• 火山效果");
+        gui.add(options, "tornasol").name("• 彩虹效果");
+        gui.add(options, "cloud").name("• 棉花糖效果");
+        gui.add(options.perlin, "points", true).name("显示点集合");
+      }
+
+      /**
+       * 动画循环
+       * 持续更新场景状态并渲染
+       */
+      function animation() {
+        // 根据选项控制点集合的可见性
+        _primitive.point.visible = options.perlin.points;
+
+        // 更新着色器uniforms变量
+        mat.uniforms["time"].value =
+          (options.perlin.speed / 1000) * (Date.now() - start);
+        mat.uniforms["pointscale"].value = options.perlin.perlins;
+        mat.uniforms["decay"].value = options.perlin.decay;
+        mat.uniforms["size"].value = options.perlin.size;
+        mat.uniforms["displace"].value = options.perlin.displace;
+        mat.uniforms["complex"].value = options.perlin.complex;
+        mat.uniforms["waves"].value = options.perlin.waves;
+        mat.uniforms["fragment"].value = options.perlin.fragment;
+        mat.uniforms["redhell"].value = options.perlin.redhell;
+        mat.uniforms["eqcolor"].value = options.perlin.eqcolor;
+        mat.uniforms["rcolor"].value = options.perlin.rcolor;
+        mat.uniforms["gcolor"].value = options.perlin.gcolor;
+        mat.uniforms["bcolor"].value = options.perlin.bcolor;
+
+        // 旋转形状组
+        shapeGroup.rotation.y += 0.001;
+        shapeGroup.rotation.x += 0.0005;
+
+        // 请求下一帧动画并渲染
+        requestAnimationFrame(animation);
+        renderer.render(scene, camera);
+      }
+
+      // 初始化并启动应用
+      createWorld(); // 创建场景、相机和渲染器
+      createGUI(); // 创建控制面板
+      createPrimitive(); // 创建几何体
+      animation(); // 启动动画循环
+    </script>
+  </body>
+</html>

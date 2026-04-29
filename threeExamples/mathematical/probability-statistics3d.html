@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js概率统计可视化 - 三维图表</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 100%);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ff6b6b;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+      text-shadow: 0 0 10px #ff6b6b;
+      border: 1px solid #ff6b6b;
+      box-shadow: 0 0 20px #ff6b6b;
+    }
+    .stats-info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      color: #4ecdc4;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #4ecdc4;
+      border: 1px solid #4ecdc4;
+      font-family: 'Courier New', monospace;
+      max-width: 300px;
+    }
+    .help {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: #90e0ef;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 100;
+      text-shadow: 0 0 5px #90e0ef;
+      border: 1px solid #90e0ef;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="info">📊 概率统计可视化 - 三维图表展示 📊</div>
+  <div class="stats-info" id="statsInfo">分布：正态分布 | 均值：0.0 | 标准差：1.0</div>
+  <div class="help">
+    🎯 使用说明：<br>
+    • 鼠标拖动：旋转视角<br>
+    • 鼠标滚轮：缩放场景<br>
+    • 切换分布：观察不同概率分布<br>
+    • 调整参数：体验分布变化<br>
+    • 显示统计量：查看均值、方差等
+  </div>
+  
+  <!-- 导入模块映射，配置Three.js依赖路径 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    // ============================================================================
+    // 导入Three.js核心库和辅助工具
+    // ============================================================================
+    import * as THREE from 'three'
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js"; 
+    import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+
+    // ============================================================================
+    // 场景初始化
+    // ============================================================================
+    
+    // 获取渲染容器，使用整个body元素
+    const box = document.body;
+
+    // 创建Three.js场景，作为所有3D对象的容器
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    // 创建透视相机，参数依次为：视野角度、宽高比、近裁剪面、远裁剪面
+    const camera = new THREE.PerspectiveCamera(60, box.clientWidth / box.clientHeight, 0.1, 1000)
+
+    // 设置相机位置，从(0,5,10)的位置观察场景
+    camera.position.set(0, 5, 10)
+
+    // 创建WebGL渲染器，启用抗锯齿、透明背景和对数深度缓冲区
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true
+    })
+
+    // 设置渲染器尺寸为容器大小
+    renderer.setSize(box.clientWidth, box.clientHeight)
+
+    // 将渲染器的DOM元素添加到页面中
+    box.appendChild(renderer.domElement)
+
+    // 创建轨道控制器，允许用户通过鼠标交互旋转和缩放场景
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    // 启用阻尼效果，使相机移动更平滑
+    controls.enableDamping = true
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+
+    // 添加平行光
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 10, 5);
+    scene.add(directionalLight);
+
+    // ============================================================================
+    // 窗口大小变化时的响应函数
+    // ============================================================================
+    window.onresize = () => {
+      // 更新渲染器尺寸
+      renderer.setSize(box.clientWidth, box.clientHeight)
+      // 更新相机的宽高比
+      camera.aspect = box.clientWidth / box.clientHeight
+      // 更新相机投影矩阵
+      camera.updateProjectionMatrix()
+    }
+
+    // ============================================================================
+    // 概率统计参数
+    // ============================================================================
+    let distributionChart = null;
+    let dataPoints = null;
+    let statisticsMarkers = null;
+    
+    const statsParameters = {
+      distributionType: 0, // 0=正态分布, 1=泊松分布, 2=指数分布, 3=二项分布, 4=均匀分布
+      mean: 0.0,
+      stdDev: 1.0,
+      lambda: 2.0,
+      rate: 0.5,
+      trials: 10,
+      probability: 0.5,
+      minValue: 0.0,
+      maxValue: 10.0,
+      sampleSize: 100,
+      showChart: true,
+      showPoints: true,
+      showStats: true,
+      chartHeight: 3.0,
+      pointSize: 0.1,
+      animationSpeed: 0.5
+    };
+
+    // ============================================================================
+    // 创建概率分布可视化
+    // ============================================================================
+    function createDistributionVisualization() {
+      // 移除之前的可视化对象
+      if (distributionChart) scene.remove(distributionChart);
+      if (dataPoints) scene.remove(dataPoints);
+      if (statisticsMarkers) scene.remove(statisticsMarkers);
+
+      const visualizationGroup = new THREE.Group();
+      
+      // 根据分布类型创建不同的可视化
+      switch(statsParameters.distributionType) {
+        case 0: // 正态分布
+          createNormalDistribution(visualizationGroup);
+          break;
+        case 1: // 泊松分布
+          createPoissonDistribution(visualizationGroup);
+          break;
+        case 2: // 指数分布
+          createExponentialDistribution(visualizationGroup);
+          break;
+        case 3: // 二项分布
+          createBinomialDistribution(visualizationGroup);
+          break;
+        case 4: // 均匀分布
+          createUniformDistribution(visualizationGroup);
+          break;
+      }
+
+      scene.add(visualizationGroup);
+      distributionChart = visualizationGroup;
+    }
+
+    // ============================================================================
+    // 创建正态分布可视化
+    // ============================================================================
+    function createNormalDistribution(group) {
+      const mean = statsParameters.mean;
+      const stdDev = statsParameters.stdDev;
+      const sampleSize = statsParameters.sampleSize;
+      
+      // 创建概率密度函数曲面
+      if (statsParameters.showChart) {
+        const vertices = [];
+        const indices = [];
+        
+        const range = 4 * stdDev;
+        const minX = mean - range;
+        const maxX = mean + range;
+        const density = 50;
+
+        // 生成顶点
+        for (let i = 0; i <= density; i++) {
+          const x = (i / density) * (maxX - minX) + minX;
+          for (let j = 0; j <= density; j++) {
+            const z = (j / density) * (maxX - minX) + minX;
+            // 二维正态分布概率密度
+            const y = statsParameters.chartHeight * normalPDF2D(x, z, mean, stdDev);
+            vertices.push(x, y, z);
+          }
+        }
+
+        // 生成索引
+        for (let i = 0; i < density; i++) {
+          for (let j = 0; j < density; j++) {
+            const a = i * (density + 1) + j;
+            const b = a + 1;
+            const c = a + (density + 1);
+            const d = c + 1;
+            indices.push(a, b, d);
+            indices.push(a, d, c);
+          }
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshPhongMaterial({ 
+          color: 0xff6b6b,
+          transparent: true,
+          opacity: 0.7,
+          side: THREE.DoubleSide
+        });
+
+        const surface = new THREE.Mesh(geometry, material);
+        group.add(surface);
+      }
+
+      // 创建数据点
+      if (statsParameters.showPoints) {
+        const pointsGroup = new THREE.Group();
+        
+        for (let i = 0; i < sampleSize; i++) {
+          const x = normalRandom(mean, stdDev);
+          const z = normalRandom(mean, stdDev);
+          const y = 0.1; // 稍微高于平面
+          
+          const sphereGeometry = new THREE.SphereGeometry(statsParameters.pointSize, 8, 8);
+          const sphereMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x4ecdc4,
+            transparent: true,
+            opacity: 0.8
+          });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(x, y, z);
+          pointsGroup.add(sphere);
+        }
+        
+        group.add(pointsGroup);
+        dataPoints = pointsGroup;
+      }
+
+      // 创建统计标记
+      if (statsParameters.showStats) {
+        createStatisticsMarkers(group, mean, stdDev);
+      }
+    }
+
+    // ============================================================================
+    // 创建泊松分布可视化
+    // ============================================================================
+    function createPoissonDistribution(group) {
+      const lambda = statsParameters.lambda;
+      const maxK = Math.min(20, Math.floor(lambda * 3));
+      
+      // 创建柱状图
+      if (statsParameters.showChart) {
+        for (let k = 0; k <= maxK; k++) {
+          const probability = poissonPMF(k, lambda);
+          const height = statsParameters.chartHeight * probability * 5; // 放大显示
+          
+          if (height > 0.01) {
+            const geometry = new THREE.BoxGeometry(0.3, height, 0.3);
+            const material = new THREE.MeshPhongMaterial({ 
+              color: 0xff6b6b,
+              transparent: true,
+              opacity: 0.8
+            });
+            const bar = new THREE.Mesh(geometry, material);
+            bar.position.set(k - maxK/2, height/2, 0);
+            group.add(bar);
+          }
+        }
+      }
+
+      // 创建数据点
+      if (statsParameters.showPoints) {
+        const pointsGroup = new THREE.Group();
+        
+        for (let i = 0; i < statsParameters.sampleSize; i++) {
+          const k = poissonRandom(lambda);
+          const x = k - maxK/2;
+          const y = 0.1;
+          const z = (Math.random() - 0.5) * 2;
+          
+          const sphereGeometry = new THREE.SphereGeometry(statsParameters.pointSize, 8, 8);
+          const sphereMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x4ecdc4,
+            transparent: true,
+            opacity: 0.8
+          });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(x, y, z);
+          pointsGroup.add(sphere);
+        }
+        
+        group.add(pointsGroup);
+        dataPoints = pointsGroup;
+      }
+
+      // 创建统计标记
+      if (statsParameters.showStats) {
+        createStatisticsMarkers(group, lambda, Math.sqrt(lambda));
+      }
+    }
+
+    // ============================================================================
+    // 创建指数分布可视化
+    // ============================================================================
+    function createExponentialDistribution(group) {
+      const rate = statsParameters.rate;
+      const maxX = 10 / rate; // 显示到10倍平均时间
+      
+      // 创建概率密度曲线
+      if (statsParameters.showChart) {
+        const curvePoints = [];
+        
+        for (let x = 0; x <= maxX; x += maxX/50) {
+          const y = statsParameters.chartHeight * exponentialPDF(x, rate);
+          curvePoints.push(new THREE.Vector3(x - maxX/2, y, 0));
+        }
+        
+        const curveGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+        const curveMaterial = new THREE.LineBasicMaterial({ 
+          color: 0xff6b6b,
+          linewidth: 3
+        });
+        const curve = new THREE.Line(curveGeometry, curveMaterial);
+        group.add(curve);
+      }
+
+      // 创建数据点
+      if (statsParameters.showPoints) {
+        const pointsGroup = new THREE.Group();
+        
+        for (let i = 0; i < statsParameters.sampleSize; i++) {
+          const x = exponentialRandom(rate);
+          const y = 0.1;
+          const z = (Math.random() - 0.5) * 2;
+          
+          const sphereGeometry = new THREE.SphereGeometry(statsParameters.pointSize, 8, 8);
+          const sphereMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x4ecdc4,
+            transparent: true,
+            opacity: 0.8
+          });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(x - maxX/2, y, z);
+          pointsGroup.add(sphere);
+        }
+        
+        group.add(pointsGroup);
+        dataPoints = pointsGroup;
+      }
+
+      // 创建统计标记
+      if (statsParameters.showStats) {
+        createStatisticsMarkers(group, 1/rate, 1/rate);
+      }
+    }
+
+    // ============================================================================
+    // 创建二项分布可视化
+    // ============================================================================
+    function createBinomialDistribution(group) {
+      const n = statsParameters.trials;
+      const p = statsParameters.probability;
+      
+      // 创建柱状图
+      if (statsParameters.showChart) {
+        for (let k = 0; k <= n; k++) {
+          const probability = binomialPMF(k, n, p);
+          const height = statsParameters.chartHeight * probability * 10; // 放大显示
+          
+          if (height > 0.01) {
+            const geometry = new THREE.BoxGeometry(0.3, height, 0.3);
+            const material = new THREE.MeshPhongMaterial({ 
+              color: 0xff6b6b,
+              transparent: true,
+              opacity: 0.8
+            });
+            const bar = new THREE.Mesh(geometry, material);
+            bar.position.set(k - n/2, height/2, 0);
+            group.add(bar);
+          }
+        }
+      }
+
+      // 创建数据点
+      if (statsParameters.showPoints) {
+        const pointsGroup = new THREE.Group();
+        
+        for (let i = 0; i < statsParameters.sampleSize; i++) {
+          const k = binomialRandom(n, p);
+          const x = k - n/2;
+          const y = 0.1;
+          const z = (Math.random() - 0.5) * 2;
+          
+          const sphereGeometry = new THREE.SphereGeometry(statsParameters.pointSize, 8, 8);
+          const sphereMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x4ecdc4,
+            transparent: true,
+            opacity: 0.8
+          });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(x, y, z);
+          pointsGroup.add(sphere);
+        }
+        
+        group.add(pointsGroup);
+        dataPoints = pointsGroup;
+      }
+
+      // 创建统计标记
+      if (statsParameters.showStats) {
+        createStatisticsMarkers(group, n * p, Math.sqrt(n * p * (1 - p)));
+      }
+    }
+
+    // ============================================================================
+    // 创建均匀分布可视化
+    // ============================================================================
+    function createUniformDistribution(group) {
+      const min = statsParameters.minValue;
+      const max = statsParameters.maxValue;
+      const range = max - min;
+      
+      // 创建概率密度平面
+      if (statsParameters.showChart) {
+        const geometry = new THREE.BoxGeometry(range, 0.1, range);
+        const material = new THREE.MeshPhongMaterial({ 
+          color: 0xff6b6b,
+          transparent: true,
+          opacity: 0.5
+        });
+        const plane = new THREE.Mesh(geometry, material);
+        plane.position.set((min + max)/2, 0.05, 0);
+        group.add(plane);
+      }
+
+      // 创建数据点
+      if (statsParameters.showPoints) {
+        const pointsGroup = new THREE.Group();
+        
+        for (let i = 0; i < statsParameters.sampleSize; i++) {
+          const x = uniformRandom(min, max);
+          const z = uniformRandom(min, max);
+          const y = 0.2; // 高于平面
+          
+          const sphereGeometry = new THREE.SphereGeometry(statsParameters.pointSize, 8, 8);
+          const sphereMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x4ecdc4,
+            transparent: true,
+            opacity: 0.8
+          });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(x, y, z);
+          pointsGroup.add(sphere);
+        }
+        
+        group.add(pointsGroup);
+        dataPoints = pointsGroup;
+      }
+
+      // 创建统计标记
+      if (statsParameters.showStats) {
+        createStatisticsMarkers(group, (min + max)/2, (max - min)/Math.sqrt(12));
+      }
+    }
+
+    // ============================================================================
+    // 创建统计标记
+    // ============================================================================
+    function createStatisticsMarkers(group, mean, stdDev) {
+      const markersGroup = new THREE.Group();
+      
+      // 均值标记
+      const meanGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+      const meanMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffff00,
+        emissive: 0xffff00,
+        emissiveIntensity: 0.5
+      });
+      const meanMarker = new THREE.Mesh(meanGeometry, meanMaterial);
+      meanMarker.position.set(mean, 0.2, 0);
+      markersGroup.add(meanMarker);
+      
+      // 标准差标记
+      const stdDevGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+      const stdDevMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00,
+        emissive: 0x00ff00,
+        emissiveIntensity: 0.3
+      });
+      
+      const stdDevMarker1 = new THREE.Mesh(stdDevGeometry, stdDevMaterial);
+      stdDevMarker1.position.set(mean + stdDev, 0.2, 0);
+      markersGroup.add(stdDevMarker1);
+      
+      const stdDevMarker2 = new THREE.Mesh(stdDevGeometry, stdDevMaterial);
+      stdDevMarker2.position.set(mean - stdDev, 0.2, 0);
+      markersGroup.add(stdDevMarker2);
+      
+      group.add(markersGroup);
+      statisticsMarkers = markersGroup;
+    }
+
+    // ============================================================================
+    // 概率分布函数
+    // ============================================================================
+    
+    // 正态分布概率密度函数（二维）
+    function normalPDF2D(x, z, mean, stdDev) {
+      const exponent = -((x - mean)**2 + (z - mean)**2) / (2 * stdDev**2);
+      return Math.exp(exponent) / (2 * Math.PI * stdDev**2);
+    }
+    
+    // 正态分布随机数生成
+    function normalRandom(mean = 0, stdDev = 1) {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return mean + stdDev * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+    
+    // 泊松分布概率质量函数
+    function poissonPMF(k, lambda) {
+      return Math.exp(-lambda) * Math.pow(lambda, k) / factorial(k);
+    }
+    
+    // 泊松分布随机数生成
+    function poissonRandom(lambda) {
+      let L = Math.exp(-lambda);
+      let k = 0;
+      let p = 1;
+      
+      do {
+        k++;
+        p *= Math.random();
+      } while (p > L);
+      
+      return k - 1;
+    }
+    
+    // 指数分布概率密度函数
+    function exponentialPDF(x, rate) {
+      return x >= 0 ? rate * Math.exp(-rate * x) : 0;
+    }
+    
+    // 指数分布随机数生成
+    function exponentialRandom(rate) {
+      return -Math.log(1 - Math.random()) / rate;
+    }
+    
+    // 二项分布概率质量函数
+    function binomialPMF(k, n, p) {
+      return combination(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k);
+    }
+    
+    // 二项分布随机数生成
+    function binomialRandom(n, p) {
+      let successes = 0;
+      for (let i = 0; i < n; i++) {
+        if (Math.random() < p) successes++;
+      }
+      return successes;
+    }
+    
+    // 均匀分布随机数生成
+    function uniformRandom(min, max) {
+      return min + Math.random() * (max - min);
+    }
+    
+    // 阶乘函数
+    function factorial(n) {
+      if (n === 0 || n === 1) return 1;
+      let result = 1;
+      for (let i = 2; i <= n; i++) {
+        result *= i;
+      }
+      return result;
+    }
+    
+    // 组合数函数
+    function combination(n, k) {
+      return factorial(n) / (factorial(k) * factorial(n - k));
+    }
+
+    // ============================================================================
+    // 统计信息显示更新函数
+    // ============================================================================
+    function updateStatsInfo() {
+      const infoElement = document.getElementById('statsInfo');
+      const distributionType = statsParameters.distributionType;
+      
+      const distributions = ["正态分布", "泊松分布", "指数分布", "二项分布", "均匀分布"];
+      const distributionName = distributions[distributionType];
+      
+      let details = '';
+      if(distributionType == 0) {
+        const mean = statsParameters.mean.toFixed(1);
+        const stdDev = statsParameters.stdDev.toFixed(1);
+        details = ` | 均值：${mean} | 标准差：${stdDev}`;
+      } else if(distributionType == 1) {
+        const lambda = statsParameters.lambda.toFixed(1);
+        details = ` | λ：${lambda}`;
+      } else if(distributionType == 2) {
+        const rate = statsParameters.rate.toFixed(1);
+        details = ` | 率：${rate}`;
+      } else if(distributionType == 3) {
+        const n = statsParameters.trials;
+        const p = statsParameters.probability.toFixed(2);
+        details = ` | 试验数：${n} | 概率：${p}`;
+      } else if(distributionType == 4) {
+        const min = statsParameters.minValue.toFixed(1);
+        const max = statsParameters.maxValue.toFixed(1);
+        details = ` | 范围：[${min}, ${max}]`;
+      }
+      
+      infoElement.textContent = `分布：${distributionName}${details}`;
+    }
+
+    // ============================================================================
+    // 创建GUI控制面板
+    // ============================================================================
+    const gui = new GUI();
+    
+    // 分布类型控制
+    const distributionTypes = {
+      "正态分布": 0,
+      "泊松分布": 1,
+      "指数分布": 2,
+      "二项分布": 3,
+      "均匀分布": 4
+    };
+    
+    const distributionController = gui.add(statsParameters, 'distributionType', distributionTypes).name('分布类型');
+    distributionController.onChange(() => {
+      updateStatsInfo();
+      createDistributionVisualization();
+    });
+    
+    // 分布参数控制
+    const paramsFolder = gui.addFolder('分布参数');
+    const meanController = paramsFolder.add(statsParameters, 'mean', -5.0, 5.0).name('均值');
+    const stdDevController = paramsFolder.add(statsParameters, 'stdDev', 0.1, 3.0).name('标准差');
+    const lambdaController = paramsFolder.add(statsParameters, 'lambda', 0.1, 10.0).name('λ参数');
+    const rateController = paramsFolder.add(statsParameters, 'rate', 0.1, 2.0).name('率参数');
+    const trialsController = paramsFolder.add(statsParameters, 'trials', 1, 20).step(1).name('试验数');
+    const probController = paramsFolder.add(statsParameters, 'probability', 0.1, 0.9).name('成功概率');
+    const minController = paramsFolder.add(statsParameters, 'minValue', -5.0, 5.0).name('最小值');
+    const maxController = paramsFolder.add(statsParameters, 'maxValue', 0.0, 10.0).name('最大值');
+    
+    // 参数变化时更新可视化
+    [meanController, stdDevController, lambdaController, rateController, 
+     trialsController, probController, minController, maxController].forEach(controller => {
+      controller.onChange(() => {
+        updateStatsInfo();
+        createDistributionVisualization();
+      });
+    });
+    
+    paramsFolder.open();
+    
+    // 显示设置
+    const displayFolder = gui.addFolder('显示设置');
+    displayFolder.add(statsParameters, 'showChart').name('显示图表');
+    displayFolder.add(statsParameters, 'showPoints').name('显示数据点');
+    displayFolder.add(statsParameters, 'showStats').name('显示统计量');
+    displayFolder.add(statsParameters, 'sampleSize', 10, 500).step(10).name('样本大小');
+    displayFolder.add(statsParameters, 'chartHeight', 1.0, 5.0).name('图表高度');
+    displayFolder.add(statsParameters, 'pointSize', 0.05, 0.3).name('点大小');
+    
+    displayFolder.open();
+
+    // ============================================================================
+    // 初始化场景
+    // ============================================================================
+    createDistributionVisualization();
+    updateStatsInfo();
+
+    // ============================================================================
+    // 动画循环
+    // ============================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 更新控制器
+      controls.update();
+      
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动动画循环
+    animate();
+  </script>
+</body>
+
+</html>

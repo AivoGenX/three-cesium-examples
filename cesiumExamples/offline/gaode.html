@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>高德离线地图</title>
+  </head>
+
+  <body>
+    <script type="importmap">
+      {
+        "imports": {
+          "cesium": "/libs/libs/Cesium/Cesium.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as Cesium from 'cesium'
+
+      const box = document.getElementById('box')
+
+      const viewer = new Cesium.Viewer(box, {
+
+          animation: false,
+
+          baseLayerPicker: false,
+
+          baseLayer: false,
+
+          fullscreenButton: false,
+
+          timeline: false,
+
+          infoBox: false,
+
+      })
+
+      viewer.imageryLayers.addImageryProvider(
+
+          new Cesium.UrlTemplateImageryProvider({
+
+              url: FILE_HOST + "map/Gaode/tiles/{z}/{x}/{y}.png",
+
+              maximumLevel: 5,
+
+              minimumLevel: 3,
+
+          })
+
+      )
+    </script>
+  </body>
+</html>

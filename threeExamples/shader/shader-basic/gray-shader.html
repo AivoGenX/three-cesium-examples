@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 图片灰度效果展示</title>
+    <!-- 配置Three.js的模块导入映射 -->
+    <script type="importmap">
+     {
+        "imports": {
+          "three": "/libs/threejs/build/three.module.js",
+          "three/addons/": "/libs/threejs/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+        /* 基础样式设置 */
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #1f1f1f;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* 防止页面滚动 */
+        }
+        
+        /* 渲染容器样式 */
+        #renderContainer {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Three.js渲染容器 -->
+    <div id="renderContainer"></div>
+
+    <script type="module">
+        // 导入Three.js核心模块和轨道控制器
+        import * as THREE from 'three';
+       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+        // 获取渲染容器元素
+        const renderContainer = document.getElementById('renderContainer');
+
+        /**
+         * 初始化Three.js场景
+         * 场景是所有物体的容器
+         */
+        const scene = new THREE.Scene();
+
+        /**
+         * 初始化相机
+         * PerspectiveCamera(视野角度, 宽高比, 近裁剪面, 远裁剪面)
+         */
+        const camera = new THREE.PerspectiveCamera(
+            75, // 视野角度
+            renderContainer.clientWidth / renderContainer.clientHeight, // 宽高比
+            0.1, // 近裁剪面
+            1000 // 远裁剪面
+        );
+        // 设置相机位置
+        camera.position.set(0, 0, 1);
+
+        /**
+         * 初始化渲染器
+         * WebGLRenderer负责将场景渲染到页面上
+         */
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true // 开启抗锯齿，使边缘更平滑
+        });
+        // 设置渲染器尺寸
+        renderer.setSize(renderContainer.clientWidth, renderContainer.clientHeight);
+        // 将渲染器的DOM元素添加到容器中
+        renderContainer.appendChild(renderer.domElement);
+
+        /**
+         * 添加轨道控制器
+         * 允许用户通过鼠标交互旋转、缩放和平移场景
+         */
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // 启用阻尼效果，使旋转更平滑
+        controls.dampingFactor = 0.1; // 阻尼系数
+
+        /**
+         * 顶点着色器
+         * 负责处理顶点的位置和传递UV坐标
+         */
+        const vertexShader = ` 
+            // 声明一个 varying 变量，用于在顶点着色器和片元着色器之间传递UV坐标
+            varying vec2 vUv;
+            
+            void main() {
+                // 将UV坐标传递给片元着色器
+                vUv = uv;
+                // 计算顶点的最终位置
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        /**
+         * 片元着色器
+         * 负责处理每个像素的颜色，这里实现了灰度效果
+         */
+        const fragmentShader = `
+            // 定义RGB通道的亮度系数
+            #define R_LUMINANCE 0.298912
+            #define G_LUMINANCE 0.586611
+            #define B_LUMINANCE 0.114478
+
+            // 接收从顶点着色器传递过来的UV坐标
+            varying vec2 vUv;
+            
+            // 声明一个uniform变量，用于接收纹理
+            uniform sampler2D tDiffuse;
+            
+            // 计算灰度的系数向量
+            const vec3 monochromeScale = vec3(R_LUMINANCE, G_LUMINANCE, B_LUMINANCE);
+
+            void main() {
+                // 从纹理中获取当前像素的颜色
+                vec4 color = texture2D(tDiffuse, vUv);
+                
+                // 使用点积计算灰度值
+                float grayColor = dot(color.rgb, monochromeScale);
+                
+                // 将灰度值设置为新的颜色，保持alpha通道不变
+                gl_FragColor = vec4(vec3(grayColor), color.a);
+            }
+        `;
+
+        /**
+         * 创建着色器材质的uniforms
+         * uniforms是可以在JavaScript和着色器之间传递的数据
+         */
+        const uniforms = {
+            // 纹理采样器，加载图片作为纹理
+            tDiffuse: { 
+                type: 't', 
+                value: new THREE.TextureLoader().load('/files/author/AivoGenX.png') 
+            }
+        };
+
+        /**
+         * 创建自定义着色器材质
+         * 将顶点着色器、片元着色器和uniforms组合起来
+         */
+        const shaderMaterial = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader
+        });
+
+        /**
+         * 创建平面几何体
+         * PlaneGeometry(width, height)，默认是1x1的平面
+         */
+        const planeGeometry = new THREE.PlaneGeometry();
+
+        /**
+         * 创建网格对象
+         * 将几何体和材质组合起来
+         */
+        const planeMesh = new THREE.Mesh(planeGeometry, shaderMaterial);
+        // 将网格添加到场景中
+        scene.add(planeMesh);
+
+        /**
+         * 动画循环函数
+         * 负责不断渲染场景，创建动画效果
+         */
+        function animate() {
+            // 请求下一帧动画
+            requestAnimationFrame(animate);
+            
+            // 更新控制器的阻尼效果
+            controls.update();
+            
+            // 渲染场景
+            renderer.render(scene, camera);
+        }
+
+        /**
+         * 窗口大小变化处理函数
+         * 确保渲染器和相机在窗口大小变化时正确调整
+         */
+        function onWindowResize() {
+            // 更新渲染器尺寸
+            renderer.setSize(renderContainer.clientWidth, renderContainer.clientHeight);
+            
+            // 更新相机的宽高比
+            camera.aspect = renderContainer.clientWidth / renderContainer.clientHeight;
+            
+            // 更新相机的投影矩阵
+            camera.updateProjectionMatrix();
+        }
+
+        // 监听窗口大小变化事件
+        window.addEventListener('resize', onWindowResize);
+
+        // 启动动画循环
+        animate();
+    </script>
+</body>
+</html>

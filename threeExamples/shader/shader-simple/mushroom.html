@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D 着色器场景 | Three.js 示例</title>
+    <!-- 配置Three.js模块导入映射 -->
+      <script type="importmap">
+    {
+      "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+      }
+    }
+  </script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        background-color: #1f1f1f;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #container {
+        width: 100%;
+        height: 100%;
+      }
+      /* 加载提示样式 */
+      .loading-indicator {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #ffffff;
+        font-family: "Segoe UI", Arial, sans-serif;
+        font-size: 1.2rem;
+        opacity: 0.8;
+        transition: opacity 0.5s ease;
+      }
+      .loading-indicator.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 加载提示 -->
+    <div class="loading-indicator" id="loading">初始化场景中...</div>
+    <!-- 渲染容器 -->
+    <div id="container"></div>
+
+    <script type="module">
+      // 导入Three.js核心库和轨道控制器
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      // 获取DOM容器
+      const container = document.getElementById("container");
+      const loadingIndicator = document.getElementById("loading");
+
+      // 初始化场景
+      const scene = new THREE.Scene();
+
+      // 初始化相机 - 透视相机
+      // 参数: 视野角度(50°), 宽高比, 近裁剪面, 远裁剪面
+      const camera = new THREE.PerspectiveCamera(
+        50,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        100000
+      );
+      camera.position.set(10, 10, 10); // 设置相机初始位置
+      scene.add(camera);
+
+      // 初始化渲染器
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true, // 启用抗锯齿
+        alpha: true, // 启用alpha通道
+        logarithmicDepthBuffer: true, // 解决深度缓冲区精度问题
+      });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比，平衡性能
+      renderer.setClearColor(0x000000); // 设置背景色为黑色
+      container.appendChild(renderer.domElement);
+
+      // 初始化轨道控制器 - 允许用户旋转、缩放查看场景
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; // 启用阻尼效果，使操作更平滑
+      controls.dampingFactor = 0.05; // 阻尼系数
+      controls.rotateSpeed = 0.5; // 旋转速度
+      controls.zoomSpeed = 0.7; // 缩放速度
+
+      // 定义着色器 uniforms (从JS传递到着色器的变量)
+      const uniforms = {
+        Mouse: {
+          type: "v2",
+          value: new THREE.Vector2(0, 0), // 鼠标位置，标准化到[-1,1]范围
+        },
+        Resolution: {
+          type: "v2",
+          value: new THREE.Vector2(window.innerWidth, window.innerHeight), // 屏幕分辨率
+        },
+        Time: {
+          type: "f",
+          value: 1.0, // 时间变量，用于动画控制
+        },
+      };
+
+      // 监听鼠标移动事件，更新鼠标位置uniform
+      container.addEventListener("mousemove", (event) => {
+        uniforms.Mouse.value = new THREE.Vector2(
+          (event.offsetX / event.target.clientWidth) * 2 - 1, // X坐标标准化
+          -(event.offsetY / event.target.clientHeight) * 2 + 1 // Y坐标标准化（反转Y轴）
+        );
+      });
+
+      // 处理窗口大小变化
+      window.addEventListener("resize", onWindowResize);
+      function onWindowResize() {
+        // 更新相机宽高比
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+
+        // 更新渲染器尺寸
+        renderer.setSize(container.clientWidth, container.clientHeight);
+
+        // 更新着色器中的分辨率
+        uniforms.Resolution.value.set(
+          container.clientWidth,
+          container.clientHeight
+        );
+      }
+
+      // 创建盒子几何体 - 作为着色器的渲染载体
+      const geometry = new THREE.BoxGeometry(10, 10, 10);
+
+      // 创建自定义着色器材质
+      const material = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        side: THREE.DoubleSide, // 双面可见
+        vertexShader: `
+                varying vec2 vUv;  // 传递UV坐标给片段着色器
+                
+                void main() {
+                    // 将UV坐标传递给片段着色器
+                    vUv = uv;
+                    // 计算顶点最终位置
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+        fragmentShader: `
+                #ifdef GL_ES
+                precision mediump float;  // 针对移动设备的精度设置
+                #endif
+                
+                // 从JS接收的uniform变量
+                uniform vec2 Resolution;  // 屏幕分辨率
+                uniform vec2 Mouse;       // 鼠标位置
+                uniform float Time;       // 时间变量
+                
+                varying vec2 vUv;         // 从顶点着色器接收的UV坐标
+
+                // 2D旋转矩阵函数
+                mat2 rot2D(float angle) {
+                    float s = sin(angle);
+                    float c = cos(angle);
+                    return mat2(c, -s, s, c);
+                }
+
+                // 带切口的空心球距离场函数
+                // p: 采样点, r: 半径, h: 切口高度, t: 厚度
+                float sdCutHollowSphere(vec3 p, float r, float h, float t) {
+                    float w = sqrt(r*r - h*h);
+                    vec2 q = vec2(length(p.xz), p.y);
+                    return ((h*q.x < w*q.y) ? length(q - vec2(w, h)) : 
+                                           abs(length(q) - r)) - t;
+                }
+
+                // 条纹装饰距离场
+                vec4 sdstripe(vec3 p, vec3 color) {
+                    p.xz = abs(p.xz);  // 对称处理
+                    // 创建两个嵌套的空心球作为条纹
+                    float d1 = sdCutHollowSphere(p - vec3(0.0, -3.3, 0.0), 0.8, 0.01, 0.01);
+                    float d2 = sdCutHollowSphere(p - vec3(0.9, -3.3, 0.9), 0.5, 0.005, 0.01);
+                    float d = min(d1, d2);  // 取最小距离
+                    return vec4(d, color);  // 返回距离和颜色
+                }
+
+                // 带切口的球体距离场函数
+                vec4 sdCutSphere(vec3 p, float r, float h, vec3 color) {
+                    float w = sqrt(r*r - h*h);
+                    vec2 q = vec2(length(p.xz), p.y);
+                    
+                    // 根据位置计算距离
+                    float s = max((h - r)*q.x*q.x + w*w*(h + r - 2.0*q.y), h*q.x - w*q.y);
+                    float d = (s < 0.0) ? length(q) - r :
+                              (q.x < w) ? h - q.y :
+                              length(q - vec2(w, h));
+                              
+                    return vec4(d, color);
+                }
+
+                // 平面距离场函数
+                vec4 sdPlane(vec3 p, vec3 color) {
+                    return vec4(-p.y + 0.2, color);  // y=0.2的平面
+                }
+
+                // 带帽圆锥体距离场函数
+                // a,b: 两端点, ra,rb: 两端半径, color: 颜色
+                vec4 sdCappedCone(vec3 p, vec3 a, vec3 b, float ra, float rb, vec3 color) {
+                    float rba = rb - ra;
+                    float baba = dot(b - a, b - a);
+                    float papa = dot(p - a, p - a);
+                    float paba = dot(p - a, b - a) / baba;
+                    float x = sqrt(papa - paba*paba*baba);
+                    
+                    float cax = max(0.0, x - ((paba < 0.5) ? ra : rb));
+                    float cay = abs(paba - 0.5) - 0.5;
+                    float k = rba*rba + baba;
+                    float f = clamp((rba*(x - ra) + paba*baba)/k, 0.0, 1.0);
+                    float cbx = x - ra - f*rba;
+                    float cby = paba - f;
+                    
+                    float s = (cbx < 0.0 && cay < 0.0) ? -1.0 : 1.0;
+                    return vec4(s*sqrt(min(cax*cax + cay*cay*baba,
+                                           cbx*cbx + cby*cby*baba)), color);
+                }
+
+                // 平滑最小值函数 - 用于混合两个距离场
+                float smin(float d1, float d2, float k) {
+                    float h = clamp(0.5 + 0.5*(d2 - d1)/k, 0.0, 1.0);
+                    return mix(d2, d1, h) - k*h*(1.0 - h);
+                }
+
+                // 颜色混合函数 - 选择距离更近的形状颜色
+                vec4 colorMin(vec4 a, vec4 b) {
+                    return (a.x < b.x) ? a : b;
+                }
+
+                // 点弯曲函数 - 使形状随时间弯曲
+                vec3 bendPoint(vec3 p, float k) {
+                    float c = cos(k*p.y);
+                    float s = sin(k*p.y);
+                    mat2 m = mat2(c, -s, s, c);  // 构造旋转矩阵
+                    return vec3(m*p.xy, p.z);    // 应用旋转
+                }
+
+                // 场景距离场函数 - 定义整个3D场景
+                vec4 map(vec3 p) {
+                    vec3 q = p;  // 保存原始坐标用于平面计算
+                    
+                    // 应用弯曲效果，弯曲程度随时间变化
+                    p = bendPoint(p, sin(Time*5.0));
+                    
+                    // 定义圆锥体参数
+                    vec3 coneTop = vec3(0.0, 0.8, 0.0);
+                    vec3 coneBottom = vec3(0.0, -0.2, 0.0);
+                    vec4 cone = sdCappedCone(-p, coneBottom, coneTop, 0.2, 0.1, vec3(0.8667, 0.8667, 0.7216));
+                    
+                    // 定义带切口的球体
+                    vec4 cutSphere = sdCutSphere(-p - vec3(0.0, 0.4, 0.0), 0.5, 0.2, vec3(0.9608, 0.4667, 0.4)) - 0.1;
+                    
+                    // 合并形状
+                    vec4 entity = colorMin(cone, cutSphere);
+                    // 添加条纹装饰
+                    entity = colorMin(entity, sdstripe(p*4.0, vec3(3.5)) / 4.0);
+                    // 添加地面平面
+                    entity = colorMin(entity, sdPlane(q, vec3(0.4196, 0.5529, 0.3647)));
+                    
+                    return entity;
+                }
+
+                void main() {
+                    // 射线起点（相机位置）
+                    vec3 ro = vec3(0.0, 0.0, -8.0);
+                    // 射线方向（从UV计算）
+                    vec3 rd = normalize(vec3(vUv - 0.5, 1.0));
+                    
+                    // 随时间旋转射线，创造动画效果
+                    ro.xz *= rot2D(-Time);
+                    rd.xz *= rot2D(-Time);
+                    
+                    // 调整射线位置和角度
+                    ro.y -= 4.0;
+                    rd.y += 0.5;
+                    
+                    float t = 0.0;  // 射线行进距离
+                    vec4 color = vec4(0.0);  // 最终颜色
+                    
+                    // 射线步进循环 - 最多80步
+                    for(int i = 0; i < 80; i++) {
+                        vec3 p = ro + rd * t;  // 计算当前采样点
+                        vec4 d = map(p) / 1.8; // 获取距离场信息并缩放
+                        
+                        t += d.x;  // 前进距离
+                        
+                        // 终止条件：距离过近（命中物体）或过远（超出范围）
+                        if(t > 100.0 || d.x < 0.001) {
+                            break;
+                        }
+                        
+                        // 累积颜色（基于距离衰减）
+                        color = vec4(t * d.yzw * 0.13, 1.0);
+                    }
+                    
+                    // 输出最终颜色
+                    gl_FragColor = color;
+                }
+            `,
+      });
+
+      // 创建网格并添加到场景
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.scale.set(1, -1, 1); // Y轴翻转
+      scene.add(mesh);
+
+      // 隐藏加载提示
+      setTimeout(() => {
+        loadingIndicator.classList.add("hidden");
+      }, 800);
+
+      // 动画循环
+      function render() {
+        // 更新时间变量
+        uniforms.Time.value += 0.005;
+
+        // 更新控制器（用于阻尼效果）
+        controls.update();
+
+        // 渲染场景
+        renderer.render(scene, camera);
+
+        // 请求下一帧动画
+        requestAnimationFrame(render);
+      }
+
+      // 启动动画
+      render();
+    </script>
+  </body>
+</html>

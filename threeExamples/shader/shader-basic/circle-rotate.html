@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>动态着色器图案 | Three.js 示例</title>
+    <!-- 配置Three.js模块导入映射 -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/libs/threejs/build/three.module.js",
+          "three/addons/": "/libs/threejs/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        background-color: #121212; /* 更深的背景色，增强对比度 */
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+      }
+      /* 添加加载提示样式 */
+      .loading {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+        opacity: 0.7;
+        transition: opacity 0.5s ease;
+      }
+      .loading.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 加载提示 -->
+    <div class="loading" id="loading">加载中...</div>
+    <!-- 渲染容器 -->
+    <div id="canvas-container"></div>
+
+    <script type="module">
+      // 导入Three.js核心库和轨道控制器
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      // 获取DOM元素
+      const container = document.getElementById("canvas-container");
+      const loadingIndicator = document.getElementById("loading");
+
+      // 初始化场景
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x121212); // 设置场景背景色
+
+      // 初始化相机 - 透视相机
+      // 参数: 视野角度, 宽高比, 近平面, 远平面
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 0, 1.5); // 设置相机初始位置
+
+      // 初始化渲染器
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true, // 启用抗锯齿，使边缘更平滑
+        alpha: true, // 启用alpha通道，支持透明
+        logarithmicDepthBuffer: true, // 解决深度缓冲区精度问题
+      });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比，平衡性能和质量
+      container.appendChild(renderer.domElement);
+
+      // 初始化轨道控制器 - 允许用户交互旋转查看场景
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; // 启用阻尼效果，使旋转更平滑
+      controls.dampingFactor = 0.1; // 阻尼系数
+      controls.enableZoom = true; // 允许缩放
+      controls.zoomSpeed = 0.5; // 缩放速度
+      controls.enablePan = false; // 禁用平移，简化交互
+
+      // 处理窗口大小变化
+      window.addEventListener("resize", onWindowResize);
+      function onWindowResize() {
+        // 更新渲染器尺寸
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        // 更新相机宽高比
+        camera.aspect = container.clientWidth / container.clientHeight;
+        // 更新相机投影矩阵
+        camera.updateProjectionMatrix();
+        // 更新着色器中的分辨率
+        uniforms.iResolution.value.set(
+          container.clientWidth,
+          container.clientHeight
+        );
+      }
+
+      // 存储鼠标位置的变量
+      let mouse = new THREE.Vector2(0, 0);
+
+      // 监听鼠标移动事件，用于交互效果
+      window.addEventListener("mousemove", (event) => {
+        // 将鼠标坐标标准化到[-1, 1]范围
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        // 更新着色器中的鼠标位置
+        uniforms.iMouse.value = mouse;
+      });
+
+      // 定义着色器 uniforms (着色器外部传递的变量)
+      const uniforms = {
+        iTime: { value: 0 }, // 时间变量，用于动画
+        iResolution: {
+          value: new THREE.Vector2(
+            container.clientWidth,
+            container.clientHeight
+          ),
+        }, // 屏幕分辨率
+        iMouse: { value: mouse }, // 鼠标位置
+        iColorOffset: { value: Math.random() * 10 }, // 随机颜色偏移，增加多样性
+        iScale: { value: 1.05 + Math.random() * 0.1 }, // 随机缩放因子
+      };
+
+      // 创建平面几何体 - 将作为着色器的渲染表面
+      const geometry = new THREE.PlaneGeometry(1, 1);
+
+      // 创建自定义着色器材质
+      const material = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        transparent: true, // 启用透明度
+        side: THREE.DoubleSide, // 双面可见
+        vertexShader: `
+                // 顶点着色器
+                varying vec2 vUv;  // 传递UV坐标给片段着色器
+                
+                void main() {
+                    vUv = uv;  // 将UV坐标传递给片段着色器
+                    
+                    // 计算顶点在视图空间中的位置
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    // 计算最终裁剪空间位置
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+        fragmentShader: `
+                // 片段着色器
+                uniform float iTime;         // 时间
+                uniform vec2 iResolution;    // 分辨率
+                uniform vec2 iMouse;         // 鼠标位置
+                uniform float iColorOffset;  // 颜色偏移
+                uniform float iScale;        // 缩放因子
+                
+                varying vec2 vUv;            // 从顶点着色器接收的UV坐标
+
+                // 数学常量和配置
+                #define PI 3.1415926
+                #define NUM 20.               // 同心圆数量
+                #define PALETTE vec3(0.2, 1.6, 2.2) + 1.2  // 基础色调
+                
+                // 效果开关 - 随机启用不同组合，增加多样性
+                #define COLORED
+                #define MIRROR
+                #define ROT_OFST
+                #define TRIANGLE_NOISE
+                #define MOUSE_INTERACTION  // 新增：鼠标交互
+                
+                // 2x2旋转矩阵
+                mat2 mm2(in float a) {
+                    float c = cos(a);
+                    float s = sin(a);
+                    return mat2(c, -s, s, c);
+                }
+                
+                // 三角形波形函数
+                float tri(in float x) {
+                    return abs(fract(x) - 0.5);
+                }
+                
+                // 二维三角形噪声
+                vec2 tri2(in vec2 p) {
+                    return vec2(
+                        tri(p.x + tri(p.y * 2.)),
+                        tri(p.y + tri(p.x * 2.))
+                    );
+                }
+                
+                // 固定旋转矩阵
+                mat2 m2 = mat2(0.970, 0.242, -0.242, 0.970);
+                
+                // 生成三角形噪声
+                float triangleNoise(in vec2 p) {
+                    float z = 1.5;
+                    float z2 = 1.5;
+                    float rz = 0.0;
+                    vec2 bp = p;
+                    
+                    // 多层噪声叠加，增加复杂度
+                    for (float i = 0.0; i <= 3.0; i++) {
+                        vec2 dg = tri2(bp * 2.0) * 0.8;
+                        dg *= mm2(iTime * 0.3);  // 随时间旋转噪声
+                        p += dg / z2;
+                        
+                        bp *= 1.6;
+                        z2 *= 0.6;
+                        z *= 1.8;
+                        p *= 1.2;
+                        p *= m2;  // 应用固定旋转
+                        
+                        rz += (tri(p.x + tri(p.y))) / z;
+                    }
+                    return rz;
+                }
+                
+                void main(void) {
+                    // 时间控制，添加一些随机速度变化
+                    float time = iTime * (1.0 + sin(iTime * 0.1) * 0.1);
+                    
+                    // 计算宽高比，确保图案不拉伸
+                    float aspect = iResolution.x / iResolution.y;
+                    float w = 50.0 / sqrt(iResolution.x * aspect + iResolution.y);
+                    
+                    // 将UV坐标转换为中心在原点的坐标系统
+                    vec2 p = (vUv - 0.5) * 2.0;
+                    p.x *= aspect;  // 校正宽高比
+                    p *= iScale;    // 应用缩放因子
+                    
+                    // 存储原始坐标用于某些效果
+                    vec2 bp = p;
+                    
+                    // 根据鼠标位置添加旋转效果
+                    #ifdef MOUSE_INTERACTION
+                    p *= mm2(iMouse.x * 0.5);
+                    #endif
+                    
+                    // 计算到中心的距离
+                    float lp = length(p);
+                    // 计算当前环的ID
+                    float id = floor(lp * NUM + 0.5) / NUM;
+                    
+                    // 为每个环添加不同的旋转偏移
+                    #ifdef ROT_OFST
+                    p *= mm2(id * 11.0 + sin(time * 0.5) * 0.2);
+                    #endif
+                    
+                    // 垂直镜像效果，只显示上半部分
+                    #ifdef MIRROR
+                    p.y = abs(p.y);
+                    #endif
+                    
+                    // 转换为极坐标 (半径, 角度)
+                    vec2 plr = vec2(lp, atan(p.y, p.x));
+                    
+                    // 绘制同心圆，使用正弦函数创建脉冲效果
+                    float rz = 1.0 - pow(
+                        abs(sin(plr.x * PI * NUM)) * 1.25 / pow(w, 0.25), 
+                        2.5 + sin(id * 10.0 + time) * 0.5  // 动态调整脉冲锐度
+                    );
+                    
+                    // 为每个环添加动态相位偏移，创造流动效果
+                    float enp = plr.y + sin((time + id * 5.5) + iColorOffset) * 1.52 - 1.5;
+                    rz *= smoothstep(0.0, 0.05, enp);
+                    
+                    // 平滑处理环的边缘
+                    rz *= smoothstep(0.0, 0.022 * w / plr.x, enp) * step(id, 1.0);
+                    
+                    #ifndef MIRROR
+                    rz *= smoothstep(-0.01, 0.02 * w / plr.x, PI - plr.y);
+                    #endif
+                    
+                    // 应用三角形噪声，增加纹理细节
+                    #ifdef TRIANGLE_NOISE
+                    rz *= (triangleNoise(p / (w * w)) * 0.9 + 0.4);
+                    
+                    // 生成彩色
+                    vec3 col = (sin(PALETTE + id * 5.0 + time + iColorOffset) * 0.5 + 0.5) * rz;
+                    col += smoothstep(0.4, 1.0, rz) * 0.15;
+                    col *= smoothstep(0.2, 1.0, rz) + 1.0;
+                    
+                    #else
+                    vec3 col = (sin(PALETTE + id * 5.0 + time) * 0.5 + 0.5) * rz;
+                    col *= smoothstep(0.8, 1.15, rz) * 0.7 + 0.8;
+                    #endif
+                    
+                    // 单色模式切换
+                    #ifndef COLORED
+                    col = vec3(dot(col, vec3(0.7)));
+                    #endif
+                    
+                    // 剔除接近黑色的像素，增强透明度效果
+                    if (col.r < 0.1 && col.g < 0.1 && col.b < 0.1) {
+                        discard;
+                    }
+                    
+                    // 输出最终颜色
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+      });
+
+      // 创建网格并添加到场景
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+
+      // 隐藏加载提示
+      setTimeout(() => {
+        loadingIndicator.classList.add("hidden");
+      }, 500);
+
+      // 动画循环
+      function animate() {
+        // 持续更新时间
+        uniforms.iTime.value += 0.01;
+
+        // 请求下一帧动画
+        requestAnimationFrame(animate);
+
+        // 更新控制器 (用于阻尼效果)
+        controls.update();
+
+        // 渲染场景
+        renderer.render(scene, camera);
+      }
+
+      // 启动动画
+      animate();
+    </script>
+  </body>
+</html>

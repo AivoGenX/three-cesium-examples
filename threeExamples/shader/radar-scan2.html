@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Open Three</title>
+<!-- 配置importmap，用于导入Three.js模块 -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "/libs/threejs/build/three.module.js",
+        "three/addons/": "/libs/threejs/examples/jsm/"
+    }
+}
+</script>
+<style>
+    body {
+        margin: 0;
+        padding: 1px;
+        box-sizing: border-box;
+        background-color: #1f1f1f;
+        display: flex;
+        flex-direction: column;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+    #box {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+</head>
+<body>
+<!-- 用于放置Three.js渲染结果的容器 -->
+<div id="box"></div>
+<script type="module">
+// 导入Three.js核心模块和轨道控制器
+import * as THREE from 'three'
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+// 获取DOM元素，作为Three.js的渲染容器
+const box = document.getElementById('box')
+
+// 创建场景
+const scene = new THREE.Scene()
+
+// 创建透视相机
+// 参数：视角角度、宽高比、近平面、远平面
+const camera = new THREE.PerspectiveCamera(50, box.clientWidth / box.clientHeight, 0.1, 10000)
+
+// 设置相机位置
+camera.position.set(0, 800, 1000)
+
+// 创建WebGL渲染器
+// 参数：开启抗锯齿、支持透明、使用对数深度缓冲区
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true })
+
+// 设置渲染器尺寸为容器大小
+renderer.setSize(box.clientWidth, box.clientHeight)
+
+// 将渲染器的DOM元素添加到页面容器中
+box.appendChild(renderer.domElement)
+
+// 创建轨道控制器，用于鼠标交互控制相机
+const controls = new OrbitControls(camera, renderer.domElement)
+
+// 启用阻尼效果，使相机移动更平滑
+controls.enableDamping = true
+
+// 定义动画循环函数
+function animate() {
+  // 请求下一帧动画
+  requestAnimationFrame(animate)
+  
+  // 更新控制器状态（用于阻尼效果）
+  controls.update()
+  
+  // 渲染场景
+  renderer.render(scene, camera)
+}
+
+// 启动动画循环
+animate()
+
+// 监听窗口大小变化事件
+window.onresize = () => {
+  // 调整渲染器尺寸
+  renderer.setSize(box.clientWidth, box.clientHeight)
+  
+  // 更新相机宽高比
+  camera.aspect = box.clientWidth / box.clientHeight
+  
+  // 更新相机投影矩阵
+  camera.updateProjectionMatrix()
+}
+
+// 定义雷达的参数配置
+const radarData = {
+  position: {       // 雷达位置
+    x: 0,
+    y: 20,
+    z: 0
+  },
+  radius: 240,      // 雷达半径
+  color: '#f005f0', // 雷达颜色
+  opacity: 0.5,     // 雷达透明度
+  speed: 300,       // 扫描速度（度/秒）
+  followWidth: 220  // 扫描尾迹宽度（度）
+}
+
+// 创建圆形几何体作为雷达基底
+const circleGeometry = new THREE.CircleGeometry(radarData.radius, 1000)
+// 创建旋转矩阵，将圆形绕X轴旋转-90度（使其平躺）
+const rotateMatrix = new THREE.Matrix4().makeRotationX((-Math.PI / 180) * 90)
+// 应用旋转矩阵到几何体
+circleGeometry.applyMatrix4(rotateMatrix)
+
+// 创建基础材质
+const material = new THREE.MeshBasicMaterial({
+  color: radarData.color,    // 设置颜色
+  opacity: radarData.opacity,// 设置透明度
+  transparent: true         // 启用透明
+})
+
+// 创建雷达网格对象
+const radar = new THREE.Mesh(circleGeometry, material)
+radar.updateMatrix()
+
+// 将雷达添加到场景
+scene.add(radar)
+
+// 自定义材质的着色器代码，实现雷达扫描效果
+material.onBeforeCompile = (shader) => {
+  // 向着色器添加自定义uniform变量
+  Object.assign(shader.uniforms, {
+    uSpeed: {         // 扫描速度
+      value: radarData.speed
+    },
+    uRadius: {        // 雷达半径
+      value: radarData.radius
+    },
+    uTime: {          // 时间变量，用于动画
+      value: 0
+    },
+    uFollowWidth: {   // 扫描尾迹宽度
+      value: radarData.followWidth
+    }
+  })
+
+  // 更新时间变量的动画循环
+  requestAnimationFrame(function update(time) {
+    shader.uniforms.uTime.value = time / 1000  // 将时间转换为秒
+    requestAnimationFrame(update)
+  })
+
+  // 自定义顶点着色器代码
+  const vertex = `
+      varying vec3 vPosition;  // 声明顶点位置变量，传递给片段着色器
+      void main() {
+        vPosition = position;  // 将顶点位置赋值给varying变量
+    `
+  // 替换原顶点着色器的main函数开头
+  shader.vertexShader = shader.vertexShader.replace('void main() {', vertex)
+  
+  // 自定义片段着色器代码
+  const fragment = `
+      uniform float uRadius;     // 雷达半径
+      uniform float uTime;       // 时间变量
+      uniform float uSpeed;      // 扫描速度
+      uniform float uFollowWidth;// 扫描尾迹宽度
+      varying vec3 vPosition;    // 从顶点着色器接收的顶点位置
+     
+      // 计算角度的函数
+      float calcAngle(vec3 oFrag){
+        float fragAngle;  // 片段角度
+        
+        const vec3 ox = vec3(1,0,0);  // X轴方向向量
+        
+        // 计算点积（用于求夹角）
+        float dianji = oFrag.x * ox.x + oFrag.z*ox.z;
+        
+        // 计算向量长度
+        float oFrag_length = length(oFrag); // 当前片段位置向量长度
+        float ox_length = length(ox);       // X轴向量长度
+        
+        // 计算余弦值（点积公式）
+        float yuxian = dianji / (oFrag_length * ox_length);
+        
+        // 计算角度（弧度转角度）
+        fragAngle = acos(yuxian);
+        fragAngle = degrees(fragAngle);
+        
+        // 调整角度范围，使0-360度对应整个圆周
+        if(oFrag.z > 0.0) {
+          fragAngle = -fragAngle + 360.0;
+        }
+        
+        // 计算当前扫描角度（取模360，使角度在0-360之间循环）
+        float scanAngle = uTime * uSpeed - floor(uTime * uSpeed / 360.0) * 360.0;
+        
+        // 计算当前片段与扫描线的角度差
+        float angle = scanAngle - fragAngle;
+        if(angle < 0.0){
+          angle = angle + 360.0;
+        }
+        
+        return angle;
+      }
+
+      void main() {
+  `
+
+  // 自定义片段着色器的颜色计算部分
+  const fragementColor = `
+      #include <opaque_fragment>
+      
+      // 如果是中心原点或超出雷达范围，保持原有颜色
+      if(length(vPosition) == 0.0 || length(vPosition) > uRadius-2.0){
+        gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+      } else {
+        // 计算当前片段与扫描线的角度差
+        float angle = calcAngle(vPosition);
+        
+        // 如果在尾迹范围内
+        if(angle < uFollowWidth){
+          // 计算透明度，使尾迹逐渐消失
+          float opacity =  1.0 - angle / uFollowWidth; 
+          gl_FragColor = vec4( outgoingLight, diffuseColor.a * opacity );  
+        } else {
+          // 不在尾迹范围内的像素设为透明
+          gl_FragColor = vec4( outgoingLight, 0.0 ); 
+        }
+      }
+    `
+  
+  // 替换原片段着色器的main函数开头
+  shader.fragmentShader = shader.fragmentShader.replace('void main() {', fragment)
+  
+  // 替换片段着色器中的不透明片段处理部分
+  shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', fragementColor)
+}
+ 
+
+</script>
+</body>
+</html>
