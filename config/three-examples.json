@@ -2378,6 +2378,42 @@
         ]
       },
       {
+        "id": "lampshade",
+        "name": "灯罩",
+        "author": "Fate-ui",
+        "codeUrl": "${HOST}threeExamples/application/lampshade.html",
+        "image": "${HOST}threeExamples/application/lampshade.png",
+        "meta": {
+          "title": "Three.js 灯罩着色器示例 - 3D 渲染效果",
+          "keywords": "three.js,灯罩,着色器,3D渲染,WebGL",
+          "description": "使用 Three.js 着色器创建的透明灯罩效果，展示 WebGL 3D 渲染技术"
+        },
+        "tags": [
+          "Three.js",
+          "WebGL",
+          "3D",
+          "着色器"
+        ]
+      },
+      {
+        "id": "fake-light",
+        "name": "伪灯光",
+        "author": "threelab",
+        "codeUrl": "${HOST}threeExamples/application/fake-light.html",
+        "image": "${HOST}threeExamples/application/fake-light.png",
+        "meta": {
+          "title": "Three.js 伪灯光效果示例 - 模拟真实光照",
+          "keywords": "three.js,伪灯光,fake light,透明材质,光照模拟,WebGL",
+          "description": "使用 Mesh 平面配合透明材质和着色器模拟真实光照效果，无需真实灯光即可实现炫酷的光影表现"
+        },
+        "tags": [
+          "Three.js",
+          "WebGL",
+          "3D",
+          "着色器"
+        ]
+      },
+      {
         "id": "sprite-text",
         "name": "精灵文字",
         "author": "z2586300277",

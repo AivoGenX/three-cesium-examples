@@ -1,9 +1,9 @@
 import { HOST } from "./host.js";
 export default [
   {
-    id: "AivoGenX",
-    name: "AivoGenX",
-    github: "https://github.com/AivoGenX",
+    id: "threelab",
+    name: "threelab",
+    github: "https://github.com/threelab",
     icon: "https://avatars.githubusercontent.com/u/22042727?v=4",
   },
   {
@@ -346,7 +346,7 @@ export default [
   },
   {
     id: "TriLab",
-    name: "TriLab", 
+    name: "TriLab",
     icon: "https://avatars.githubusercontent.com/u/184769639?v=4",
     github: "https://github.com/AivoGenX",
   },
@@ -367,5 +367,12 @@ export default [
     name: "NASA-AMMOS",
     github: "https://github.com/NASA-AMMOS",
     icon: "https://avatars.githubusercontent.com/u/13568273?s=200&v=4",
+  },
+
+  {
+    id: "Fate-ui",
+    name: "Fate-ui",
+    github: "https://github.com/Fate-ui",
+    icon: "https://avatars.githubusercontent.com/u/69997002?v=4",
   },
 ];
