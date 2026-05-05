@@ -10,7 +10,7 @@ export default [
     id: "z2586300277",
     name: "优雅永不过时",
     github: "https://github.com/z2586300277",
-    icon: HOST + "/files/author/z2586300277.png",
+    icon: "https://threehub.cn/files/author/z2586300277.png",
   },
   {
     id: "g2657",
@@ -374,5 +374,11 @@ export default [
     name: "Fate-ui",
     github: "https://github.com/Fate-ui",
     icon: "https://avatars.githubusercontent.com/u/69997002?v=4",
+  },
+  {
+    id: "ylfq",
+    name: "ylfq",
+    github: "https://github.com/ylfq",
+    icon: "https://avatars.githubusercontent.com/u/98632581?v=4",
   },
 ];

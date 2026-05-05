@@ -634,6 +634,63 @@
           "着色器",
           "赛博朋克"
         ]
+      },
+      {
+        "id": "ice-shader",
+        "name": "冰面",
+        "author": "z2586300277",
+        "codeUrl": "${HOST}threeExamples/shader/shader-advanced/ice-shader.html",
+        "image": "${HOST}threeExamples/shader/shader-advanced/ice-shader.jpg",
+        "meta": {
+          "title": "冰面着色器 - Three.js高级着色器",
+          "keywords": "Three.js,冰面,着色器,裂纹,WebGL特效,3D渲染",
+          "description": "使用Three.js实现的冰面着色器效果，基于Simplex噪声和视差映射实现逼真的冰裂纹效果"
+        },
+        "tags": [
+          "Three.js",
+          "WebGL",
+          "3D",
+          "着色器",
+          "冰面"
+        ]
+      },
+      {
+        "id": "black-hole",
+        "name": "黑洞引力透镜",
+        "author": "ylfq",
+        "codeUrl": "${HOST}threeExamples/shader/shader-advanced/black-hole.html",
+        "image": "${HOST}threeExamples/shader/shader-advanced/black-hole.jpg",
+        "meta": {
+          "title": "黑洞引力透镜 - Three.js高级着色器",
+          "keywords": "Three.js,黑洞,引力透镜,着色器,光线追踪,WebGL特效,3D渲染",
+          "description": "使用Three.js实现的黑洞引力透镜效果，基于光线追踪和引力偏转算法模拟真实的黑洞周围的扭曲视觉效果"
+        },
+        "tags": [
+          "Three.js",
+          "WebGL",
+          "3D",
+          "着色器",
+          "黑洞"
+        ]
+      },
+      {
+        "id": "wormhole",
+        "name": "虫洞时空漩涡",
+        "author": "threelab",
+        "codeUrl": "${HOST}threeExamples/shader/shader-advanced/wormhole.html",
+        "image": "${HOST}threeExamples/shader/shader-advanced/wormhole.jpg",
+        "meta": {
+          "title": "虫洞时空漩涡 - Three.js高级着色器",
+          "keywords": "Three.js,虫洞,时空漩涡,着色器,隧道效果,WebGL特效,3D渲染",
+          "description": "使用Three.js实现的虫洞时空漩涡效果，基于极坐标和螺旋噪声模拟穿越时空的漩涡隧道视觉效果"
+        },
+        "tags": [
+          "Three.js",
+          "WebGL",
+          "3D",
+          "着色器",
+          "虫洞"
+        ]
       }
     ],
     "meta": {
@@ -3204,6 +3261,20 @@
           "3D",
           "动画"
         ]
+      },
+      {
+        "id": "fire",
+        "name": "火焰效果",
+        "author": "z2586300277",
+        "codeUrl": "${HOST}threeExamples/application/fire.html",
+        "image": "${HOST}threeExamples/application/fire.jpg",
+         "referUrl":"https://codepen.io/vcomics/pen/jeWpgX",
+        "meta": {
+          "title": "Three.js 火焰着色器 - 实时火焰粒子效果",
+          "keywords": "three.js,火焰,着色器,粒子效果,WebGL,3D",
+          "description": "使用 Three.js 着色器实现的实时火焰效果，基于 Simplex 噪声实现逼真的火焰动画"
+        },
+        "tags": ["Three.js", "WebGL", "3D", "着色器"]
       }
     ]
   },
